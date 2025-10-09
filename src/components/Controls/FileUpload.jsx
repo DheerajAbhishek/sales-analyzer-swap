@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { uploadFileService } from '../../services/api'
+import { authService } from '../../services/authService'
 
 const FileUpload = () => {
     const [selectedFiles, setSelectedFiles] = useState([])
@@ -29,12 +30,10 @@ const FileUpload = () => {
         setUploading(true)
 
         try {
-            // Upload all files
             const uploadPromises = selectedFiles.map(async (file) => {
-                const { uploadUrl, key } = await uploadFileService.getUploadUrl(file.name)
-                await uploadFileService.uploadFile(uploadUrl, file)
                 setUploadStatus(`Uploading ${file.name}...`)
-                return key
+                const result = await uploadFileService.uploadFileComplete(file)
+                return result.key
             })
 
             const fileKeys = await Promise.all(uploadPromises)

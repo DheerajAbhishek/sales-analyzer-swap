@@ -5,6 +5,7 @@ import pandas as pd
 import logging
 import re
 import hashlib
+from botocore.exceptions import ClientError
 
 # Set up logging
 logger = logging.getLogger()
@@ -64,10 +65,32 @@ def read_file(tmp_path, file_ext, skiprows=0, sheet_name=None):
 def lambda_handler(event, context):
     job_id = event.get("requestContext", {}).get("jobId")
 
+    def _sanitize_email_for_key(email: str) -> str:
+        if not email:
+            return "unknown"
+        e = email.strip().lower()
+        e = e.replace("@", "_at_")
+        e = e.replace(".", "_dot_")
+        import re
+
+        e = re.sub(r"[^a-z0-9_\-]", "_", e)
+        return e
+
     try:
         # ---------------- File Processing ----------------
         params = event.get("queryStringParameters") or {}
         filename_from_event = params.get("filename")
+        # businessEmail may be passed as a query param or in request body
+        business_email = params.get("businessEmail") or params.get("business_email")
+        if not business_email:
+            # try to get from body if available
+            try:
+                body = json.loads(event.get("body") or "{}")
+                business_email = body.get("businessEmail") or body.get("business_email")
+            except Exception:
+                business_email = None
+
+        user_folder = _sanitize_email_for_key(business_email) if business_email else None
 
         if not filename_from_event:
             return {
@@ -80,6 +103,7 @@ def lambda_handler(event, context):
         file_hash = get_file_hash(tmp_path)
 
         file_ext = os.path.splitext(filename_from_event)[1].lower()
+        logger.info(f"✅ File downloaded: {filename_from_event}, format: {file_ext}")
         logger.info(
             f"Processing file '{filename_from_event}' with hash: {file_hash} and extension {file_ext}"
         )
@@ -426,13 +450,24 @@ def lambda_handler(event, context):
         total_net_sale = 0.0
 
         for report_date, day_df in df.groupby(date_col):
-            insights_key = f"daily-insights/{restaurant_id}/{report_date.strftime('%Y-%m-%d')}.json"
+            if user_folder:
+                insights_key = f"users/{user_folder}/daily-insights/{restaurant_id}/{report_date.strftime('%Y-%m-%d')}.json"
+            else:
+                insights_key = f"daily-insights/{restaurant_id}/{report_date.strftime('%Y-%m-%d')}.json"
             existing_insight = {}
             try:
                 s3_object = s3.get_object(Bucket=BUCKET, Key=insights_key)
                 existing_insight = json.loads(s3_object["Body"].read().decode("utf-8"))
-            except s3.exceptions.NoSuchKey:
-                pass
+            except ClientError as e:
+                # When object is not found S3 raises a ClientError with NoSuchKey
+                err_code = e.response.get("Error", {}).get("Code")
+                if err_code == 'NoSuchKey':
+                    # No existing insight — this is expected for new keys
+                    existing_insight = {}
+                else:
+                    # Log and continue with empty existing_insight to avoid failing the whole job
+                    logger.warning(f"Unexpected error fetching {insights_key} from S3: {e}")
+                    existing_insight = {}
 
             processed_hashes = existing_insight.get("processedFileHashes", [])
             if file_hash in processed_hashes:
@@ -556,6 +591,7 @@ def lambda_handler(event, context):
             if discount_breakdown:
                 final_insight["discountBreakdown"] = discount_breakdown
 
+            logger.info(f"🪣 Writing daily insight to S3: {insights_key}")
             s3.put_object(
                 Bucket=BUCKET,
                 Key=insights_key,
@@ -566,6 +602,7 @@ def lambda_handler(event, context):
         # ---------------- DynamoDB Job Tracking ----------------
         if job_id:
             jobs_table = dynamodb.Table(JOBS_TABLE_NAME)
+            logger.info(f"🧾 Updating DynamoDB job record for jobId={job_id}")
             response = jobs_table.update_item(
                 Key={"jobId": job_id},
                 UpdateExpression="SET processedCount = processedCount + :val",
@@ -609,6 +646,7 @@ def lambda_handler(event, context):
 
         }
 
+        logger.info("✅ Lambda completed successfully")
         return {
             "statusCode": 200,
             "headers": {

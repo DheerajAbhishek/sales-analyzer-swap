@@ -1,13 +1,87 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import ControlsPanel from './components/Controls/ControlsPanel.jsx'
 import Dashboard from './components/Dashboard/Dashboard.jsx'
-import { RESTAURANT_ID_MAP } from './utils/constants'
+import AuthPage from './components/Auth/AuthPage.jsx'
+import LandingPage from './components/LandingPage.jsx'
+import Profile from './components/Profile.jsx'
 import { reportService } from './services/api'
+import { authService } from './services/authService'
 
-function App() {
+// Protected Route Component
+const ProtectedRoute = ({ children }) => {
+    const [user, setUser] = useState(null)
+    const [isCheckingAuth, setIsCheckingAuth] = useState(true)
+    const [userRestaurants, setUserRestaurants] = useState(null)
+
+    useEffect(() => {
+        const checkAuth = async () => {
+            const token = authService.getToken()
+            if (token) {
+                const result = await authService.verifyToken(token)
+                if (result.success) {
+                    setUser(result.user)
+                    setUserRestaurants(result.restaurants)
+                    console.log('User restaurants available:', result.restaurants)
+                } else {
+                    authService.logout()
+                }
+            }
+            setIsCheckingAuth(false)
+        }
+
+        checkAuth()
+    }, [])
+
+    if (isCheckingAuth) {
+        return (
+            <div className="auth-loading">
+                <div className="loading-spinner"></div>
+                <p>Loading...</p>
+            </div>
+        )
+    }
+
+    return user ? children : <Navigate to="/login" replace />
+}
+
+// Dashboard Component with Authentication
+const DashboardPage = () => {
+    const [user, setUser] = useState(authService.getCurrentUser())
+    const [userRestaurants, setUserRestaurants] = useState(authService.getUserRestaurants())
     const [dashboardData, setDashboardData] = useState(null)
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState(null)
+    const navigate = useNavigate()
+
+    const [showProfile, setShowProfile] = useState(false)
+
+    // Log user restaurants on component mount for debugging
+    useEffect(() => {
+        console.log('Dashboard: User restaurants loaded:', userRestaurants)
+    }, [userRestaurants])
+
+    // Listen for restaurant updates after file uploads
+    useEffect(() => {
+        const handleRestaurantUpdate = (event) => {
+            console.log('Dashboard: Restaurants updated after upload:', event.detail)
+            setUserRestaurants(event.detail)
+        }
+
+        window.addEventListener('userRestaurantsUpdated', handleRestaurantUpdate)
+
+        return () => {
+            window.removeEventListener('userRestaurantsUpdated', handleRestaurantUpdate)
+        }
+    }, [])
+
+    const handleLogout = () => {
+        authService.logout()
+        setUser(null)
+        setDashboardData(null)
+        setError(null)
+        navigate('/')
+    }
 
     const handleGetReport = async (selections) => {
         const { restaurants, channels, startDate, endDate, groupBy, thresholds } = selections
@@ -17,29 +91,25 @@ function App() {
         setDashboardData(null)
 
         try {
-            // Build restaurant details array
+            // Use the restaurant IDs directly from the API response
+            // Each restaurant ID can be used directly for the API call
             const restaurantDetails = []
-            restaurants.forEach(resKey => {
-                const restaurantInfo = RESTAURANT_ID_MAP[resKey]
-                channels.forEach(channelKey => {
-                    const restaurantId = restaurantInfo[channelKey]
-                    // Only add if restaurantId exists and is not empty
-                    if (restaurantId && restaurantId.trim() !== '') {
-                        restaurantDetails.push({
-                            id: restaurantId,
-                            name: restaurantInfo.name,
-                            platform: channelKey,
-                            key: resKey
-                        })
-                    }
+
+            restaurants.forEach(restaurantId => {
+                // Each restaurant ID from user's S3 objects can be used directly
+                restaurantDetails.push({
+                    id: restaurantId,
+                    name: restaurantId, // Use the ID as name for now, or map if needed
+                    platform: 'auto', // Platform will be determined by the backend
+                    key: restaurantId
                 })
             })
 
             if (restaurantDetails.length === 0) {
-                throw new Error('No valid Restaurant/Channel combination found.')
+                throw new Error('No restaurants selected.')
             }
 
-            // Fetch data for all restaurant/channel combinations
+            // Fetch data for all restaurant IDs
             const fetchPromises = restaurantDetails.map(detail =>
                 reportService.getConsolidatedInsights(detail.id, startDate, endDate, groupBy)
             )
@@ -67,43 +137,107 @@ function App() {
     }
 
     return (
-        <div className="main-layout">
-            <div className="controls-column">
-                <ControlsPanel
-                    onGetReport={handleGetReport}
-                    loading={loading}
-                />
-            </div>
-            <div className="dashboard-column">
-                {error && (
-                    <div className="card">
-                        <div className="status error">
-                            ERROR: {error}
-                        </div>
-                    </div>
-                )}
-                {loading && (
-                    <div className="card">
-                        <div className="status loading">
-                            Fetching reports...
-                        </div>
-                    </div>
-                )}
-                {dashboardData && !loading && (
-                    <Dashboard
-                        data={dashboardData}
+        <>
+            <header className="top-navbar">
+                <div className="brand">Sales Insights</div>
+                <div className="nav-actions">
+                    <div className="welcome">Welcome, {user?.restaurantName}</div>
+                    <button className="profile-toggle" onClick={() => setShowProfile(s => !s)}>
+                        Profile
+                    </button>
+                </div>
+            </header>
+
+            {showProfile && (
+                <div className="profile-container">
+                    <Profile user={user} onLogout={handleLogout} />
+                </div>
+            )}
+
+            <div className="main-layout">
+                <div className="controls-column">
+                    <ControlsPanel
+                        onGetReport={handleGetReport}
+                        loading={loading}
+                        userRestaurants={userRestaurants}
                     />
-                )}
-                {!dashboardData && !loading && !error && (
-                    <div className="card">
-                        <h1 className="dashboard-title">Sales Insights Dashboard</h1>
-                        <p style={{ textAlign: 'center', color: 'var(--primary-gray)', fontSize: '1.1rem' }}>
-                            Select your parameters from the controls panel to generate insights
-                        </p>
-                    </div>
-                )}
+                </div>
+                <div className="dashboard-column">
+                    {error && (
+                        <div className="card">
+                            <div className="status error">
+                                ERROR: {error}
+                            </div>
+                        </div>
+                    )}
+                    {loading && (
+                        <div className="card">
+                            <div className="status loading">
+                                Fetching reports...
+                            </div>
+                        </div>
+                    )}
+                    {dashboardData && !loading && (
+                        <Dashboard
+                            data={dashboardData}
+                        />
+                    )}
+                    {!dashboardData && !loading && !error && (
+                        <div className="card">
+                            <h1 className="dashboard-title">Sales Insights Dashboard</h1>
+                            <p style={{ textAlign: 'center', color: 'var(--primary-gray)', fontSize: '1.1rem' }}>
+                                Select your parameters from the controls panel to generate insights
+                            </p>
+                        </div>
+                    )}
+                </div>
             </div>
-        </div>
+        </>
+    )
+}
+
+// Auth Component with Navigation
+const AuthPageWithNavigation = () => {
+    const navigate = useNavigate()
+
+    const handleAuthSuccess = (userData) => {
+        navigate('/dashboard')
+    }
+
+    return <AuthPage onAuthSuccess={handleAuthSuccess} />
+}
+
+// Landing Component with Navigation
+const LandingPageWithNavigation = () => {
+    const navigate = useNavigate()
+
+    const handleGetStarted = () => {
+        navigate('/login')
+    }
+
+    return <LandingPage onGetStarted={handleGetStarted} />
+}
+
+function App() {
+    console.log('[dev] App.jsx: rendering App component')
+
+    return (
+        <Router>
+            <Routes>
+                <Route path="/" element={<LandingPageWithNavigation />} />
+                <Route path="/login" element={<AuthPageWithNavigation />} />
+                <Route path="/signup" element={<AuthPageWithNavigation />} />
+                <Route
+                    path="/dashboard"
+                    element={
+                        <ProtectedRoute>
+                            <DashboardPage />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+        </Router>
     )
 }
 

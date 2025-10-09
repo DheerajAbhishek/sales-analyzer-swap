@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react'
 import Select from 'react-select'
-import { RESTAURANT_ID_MAP, getRestaurantLatestDate } from '../../utils/constants'
+import { API_BASE_URL } from '../../utils/constants'
 import { validateSelections } from '../../utils/helpers'
 import { thresholdService } from '../../services/thresholdService'
 import flatpickr from 'flatpickr'
 
-const ReportControls = ({ onGetReport, loading }) => {
+const ReportControls = ({ onGetReport, loading, userRestaurants }) => {
     const [selectedRestaurants, setSelectedRestaurants] = useState([])
     const [selectedChannels, setSelectedChannels] = useState([])
     const [startDate, setStartDate] = useState('')
@@ -58,28 +58,35 @@ const ReportControls = ({ onGetReport, loading }) => {
         }
     }
 
-    const fetchLastAvailableDate = async (restaurantKey) => {
-        setFetchingDates(prev => ({ ...prev, [restaurantKey]: true }))
+    const fetchLastAvailableDate = async (restaurantId) => {
+        setFetchingDates(prev => ({ ...prev, [restaurantId]: true }))
 
         try {
-            const result = await getRestaurantLatestDate(restaurantKey)
+            const response = await fetch(`${API_BASE_URL}/get-last-date`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ restaurantId })
+            });
+            const data = await response.json();
 
-            if (result && result.platforms) {
+            console.log(`Restaurant ${restaurantId} response:`, data);
+
+            if (data.success && data.data.lastDate) {
                 setRestaurantLastDates(prev => ({
                     ...prev,
-                    [restaurantKey]: {
-                        platforms: result.platforms,
-                        hasData: result.hasData,
-                        restaurantId: restaurantKey
+                    [restaurantId]: {
+                        date: data.data.lastDate,
+                        hasData: true,
+                        totalDates: data.data.totalDatesFound || 0,
+                        restaurantId: restaurantId
                     }
                 }))
             } else {
                 setRestaurantLastDates(prev => ({
                     ...prev,
-                    [restaurantKey]: {
-                        platforms: [],
+                    [restaurantId]: {
                         hasData: false,
-                        message: 'No data found across all platforms for this restaurant'
+                        message: data.data?.message || 'No data available'
                     }
                 }))
             }
@@ -87,14 +94,13 @@ const ReportControls = ({ onGetReport, loading }) => {
             console.error('Error fetching last available date:', error)
             setRestaurantLastDates(prev => ({
                 ...prev,
-                [restaurantKey]: {
-                    platforms: [],
+                [restaurantId]: {
                     hasData: false,
                     message: 'Error fetching data'
                 }
             }))
         } finally {
-            setFetchingDates(prev => ({ ...prev, [restaurantKey]: false }))
+            setFetchingDates(prev => ({ ...prev, [restaurantId]: false }))
         }
     }
 
@@ -102,22 +108,22 @@ const ReportControls = ({ onGetReport, loading }) => {
         if (selectedOption && !selectedRestaurants.includes(selectedOption.value)) {
             setSelectedRestaurants(prev => [...prev, selectedOption.value])
 
-            // Fetch last available date for this restaurant across all platforms
+            // Fetch last available date for this restaurant
             await fetchLastAvailableDate(selectedOption.value)
         }
     }
 
-    const removeRestaurant = (restaurantKey) => {
-        setSelectedRestaurants(prev => prev.filter(key => key !== restaurantKey))
+    const removeRestaurant = (restaurantId) => {
+        setSelectedRestaurants(prev => prev.filter(id => id !== restaurantId))
         // Clean up the last date data when restaurant is removed
         setRestaurantLastDates(prev => {
             const updated = { ...prev }
-            delete updated[restaurantKey]
+            delete updated[restaurantId]
             return updated
         })
         setFetchingDates(prev => {
             const updated = { ...prev }
-            delete updated[restaurantKey]
+            delete updated[restaurantId]
             return updated
         })
     }
@@ -300,13 +306,13 @@ const ReportControls = ({ onGetReport, loading }) => {
         })
     }
 
-    // Convert restaurant data to react-select format
-    const restaurantOptions = Object.entries(RESTAURANT_ID_MAP)
-        .filter(([key]) => !selectedRestaurants.includes(key))
-        .map(([key, restaurant]) => ({
-            value: key,
-            label: restaurant.name
-        }))
+    // Convert user restaurants to react-select format
+    const restaurantOptions = userRestaurants?.restaurantIds
+        ?.filter(restaurantId => !selectedRestaurants.includes(restaurantId))
+        ?.map(restaurantId => ({
+            value: restaurantId,
+            label: restaurantId // Use the restaurant ID as the label for now
+        })) || []
 
     return (
         <div className="card">
@@ -314,29 +320,54 @@ const ReportControls = ({ onGetReport, loading }) => {
 
             <div className="form-group">
                 <h4 className="form-label">1. Select Restaurant(s)</h4>
-                <Select
-                    value={null}
-                    onChange={handleRestaurantChange}
-                    options={restaurantOptions}
-                    styles={customSelectStyles}
-                    placeholder="Choose a restaurant to add..."
-                    isSearchable={true}
-                    isClearable={false}
-                    menuPortalTarget={document.body}
-                    menuPosition="fixed"
-                />
+                {!userRestaurants ? (
+                    <div style={{
+                        padding: '1rem',
+                        textAlign: 'center',
+                        color: 'var(--primary-gray)',
+                        fontStyle: 'italic',
+                        border: '2px dashed #e2e8f0',
+                        borderRadius: '20px',
+                        background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)'
+                    }}>
+                        Loading your restaurants...
+                    </div>
+                ) : userRestaurants.restaurantIds?.length === 0 ? (
+                    <div style={{
+                        padding: '1rem',
+                        textAlign: 'center',
+                        color: 'var(--primary-gray)',
+                        fontStyle: 'italic',
+                        border: '2px dashed #e2e8f0',
+                        borderRadius: '20px',
+                        background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)'
+                    }}>
+                        No restaurants found in your account. Please upload some data files first.
+                    </div>
+                ) : (
+                    <Select
+                        value={null}
+                        onChange={handleRestaurantChange}
+                        options={restaurantOptions}
+                        styles={customSelectStyles}
+                        placeholder="Choose a restaurant to add..."
+                        isSearchable={true}
+                        isClearable={false}
+                        menuPortalTarget={document.body}
+                        menuPosition="fixed"
+                    />
+                )}
 
                 {selectedRestaurants.length > 0 && (
                     <div className="selected-items">
-                        {selectedRestaurants.map(key => {
-                            const restaurant = RESTAURANT_ID_MAP[key]
-                            const lastDateInfo = restaurantLastDates[key]
-                            const isFetchingDate = fetchingDates[key]
+                        {selectedRestaurants.map(restaurantId => {
+                            const lastDateInfo = restaurantLastDates[restaurantId]
+                            const isFetchingDate = fetchingDates[restaurantId]
 
                             return (
-                                <div key={key} className="selected-tag">
+                                <div key={restaurantId} className="selected-tag">
                                     <div>
-                                        <span>{restaurant.name}</span>
+                                        <span>{restaurantId}</span>
                                         {isFetchingDate && (
                                             <div style={{ fontSize: '0.75rem', color: '#ffffff', marginTop: '2px', fontWeight: '500' }}>
                                                 Checking latest data...
@@ -345,28 +376,14 @@ const ReportControls = ({ onGetReport, loading }) => {
                                         {!isFetchingDate && lastDateInfo && (
                                             <div style={{ fontSize: '0.75rem', marginTop: '2px' }}>
                                                 {lastDateInfo.hasData ? (
-                                                    <div>
-                                                        {lastDateInfo.platforms.map((platform, index) => (
-                                                            <div key={platform.platformId} style={{
-                                                                marginBottom: index < lastDateInfo.platforms.length - 1 ? '2px' : '0'
-                                                            }}>
-                                                                {platform.date ? (
-                                                                    <span style={{ color: '#ffffff', fontWeight: '500' }}>
-                                                                        Latest {platform.platform}: {platform.date}
-                                                                        {platform.totalDates > 0 && (
-                                                                            <span style={{ color: '#e2e8f0', marginLeft: '4px', fontWeight: '400' }}>
-                                                                                ({platform.totalDates} days)
-                                                                            </span>
-                                                                        )}
-                                                                    </span>
-                                                                ) : (
-                                                                    <span style={{ color: '#fecaca', fontWeight: '500' }}>
-                                                                        {platform.platform}: No data
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                        ))}
-                                                    </div>
+                                                    <span style={{ color: '#ffffff', fontWeight: '500' }}>
+                                                        Latest: {lastDateInfo.date}
+                                                        {lastDateInfo.totalDates > 0 && (
+                                                            <span style={{ color: '#e2e8f0', marginLeft: '4px', fontWeight: '400' }}>
+                                                                ({lastDateInfo.totalDates} days)
+                                                            </span>
+                                                        )}
+                                                    </span>
                                                 ) : (
                                                     <span style={{ color: '#fecaca', fontWeight: '500' }}>
                                                         {lastDateInfo.message || 'No data found'}
@@ -378,7 +395,7 @@ const ReportControls = ({ onGetReport, loading }) => {
                                     <button
                                         type="button"
                                         className="remove-tag"
-                                        onClick={() => removeRestaurant(key)}
+                                        onClick={() => removeRestaurant(restaurantId)}
                                         title="Remove restaurant"
                                     >
                                         ✕
