@@ -3,11 +3,13 @@ import Select from 'react-select'
 import { API_BASE_URL } from '../../utils/constants'
 import { validateSelections } from '../../utils/helpers'
 import { thresholdService } from '../../services/thresholdService'
+import { userRestaurantMappingService } from '../../services/userRestaurantMappingService'
 import flatpickr from 'flatpickr'
 
 const ReportControls = ({ onGetReport, loading, userRestaurants }) => {
-    const [selectedRestaurants, setSelectedRestaurants] = useState([])
+    const [selectedRestaurants, setSelectedRestaurants] = useState([]) // Will store restaurant IDs from ProfilePage
     const [selectedChannels, setSelectedChannels] = useState([])
+    const [selectedPlatformIds, setSelectedPlatformIds] = useState([]) // Final platform IDs for API
     const [startDate, setStartDate] = useState('')
     const [endDate, setEndDate] = useState('')
     const [groupBy, setGroupBy] = useState('total')
@@ -17,6 +19,10 @@ const ReportControls = ({ onGetReport, loading, userRestaurants }) => {
     const [thresholdError, setThresholdError] = useState(null)
     const [restaurantLastDates, setRestaurantLastDates] = useState({})
     const [fetchingDates, setFetchingDates] = useState({})
+    const [restaurantOptions, setRestaurantOptions] = useState([])
+    const [optionsLoading, setOptionsLoading] = useState(false)
+    const [selectedRestaurantInfo, setSelectedRestaurantInfo] = useState({})
+    const [restaurantMappings, setRestaurantMappings] = useState([])
 
     useEffect(() => {
         // Initialize flatpickr
@@ -39,6 +45,51 @@ const ReportControls = ({ onGetReport, loading, userRestaurants }) => {
         // Load threshold settings
         loadThresholdSettings()
     }, [])
+
+    // Update restaurant options when userRestaurants changes
+    useEffect(() => {
+        const updateRestaurantOptions = async () => {
+            if (!userRestaurants?.restaurantIds) {
+                setRestaurantOptions([])
+                return
+            }
+
+            setOptionsLoading(true)
+            try {
+                // Get unique restaurants from mappings
+                const restaurantMappings = await userRestaurantMappingService.getUserRestaurantMappings()
+                setRestaurantMappings(restaurantMappings) // Store mappings for later use
+
+                const uniqueRestaurants = new Map()
+
+                // Create restaurant options from mappings
+                restaurantMappings.forEach(restaurant => {
+                    if (!uniqueRestaurants.has(restaurant.id)) {
+                        uniqueRestaurants.set(restaurant.id, {
+                            value: restaurant.id,
+                            label: restaurant.name,
+                            platforms: restaurant.platforms
+                        })
+                    }
+                })
+
+                setRestaurantOptions(Array.from(uniqueRestaurants.values()))
+            } catch (error) {
+                console.error('Error updating restaurant options:', error)
+                // Fallback to simple ID-based options
+                const fallbackOptions = userRestaurants.restaurantIds
+                    ?.map(restaurantId => ({
+                        value: restaurantId,
+                        label: restaurantId
+                    })) || []
+                setRestaurantOptions(fallbackOptions)
+            } finally {
+                setOptionsLoading(false)
+            }
+        }
+
+        updateRestaurantOptions()
+    }, [userRestaurants, selectedRestaurants])
 
     const loadThresholdSettings = async () => {
         setThresholdLoading(true)
@@ -106,25 +157,59 @@ const ReportControls = ({ onGetReport, loading, userRestaurants }) => {
 
     const handleRestaurantChange = async (selectedOption) => {
         if (selectedOption && !selectedRestaurants.includes(selectedOption.value)) {
-            setSelectedRestaurants(prev => [...prev, selectedOption.value])
+            const restaurantId = selectedOption.value
+            setSelectedRestaurants(prev => [...prev, restaurantId])
 
-            // Fetch last available date for this restaurant
-            await fetchLastAvailableDate(selectedOption.value)
+            // Store restaurant info for display
+            const restaurant = restaurantMappings.find(r => r.id === restaurantId)
+            if (restaurant) {
+                setSelectedRestaurantInfo(prev => ({
+                    ...prev,
+                    [restaurantId]: restaurant
+                }))
+            }
+
+            // Update platform IDs based on current channel selection
+            updatePlatformIds([...selectedRestaurants, restaurantId], selectedChannels)
         }
     }
 
     const removeRestaurant = (restaurantId) => {
-        setSelectedRestaurants(prev => prev.filter(id => id !== restaurantId))
-        // Clean up the last date data when restaurant is removed
-        setRestaurantLastDates(prev => {
-            const updated = { ...prev }
-            delete updated[restaurantId]
-            return updated
+        const newSelectedRestaurants = selectedRestaurants.filter(id => id !== restaurantId)
+        setSelectedRestaurants(newSelectedRestaurants)
+
+        // Clean up restaurant info
+        setSelectedRestaurantInfo(prev => {
+            const newInfo = { ...prev }
+            delete newInfo[restaurantId]
+            return newInfo
         })
-        setFetchingDates(prev => {
-            const updated = { ...prev }
-            delete updated[restaurantId]
-            return updated
+
+        // Update platform IDs
+        updatePlatformIds(newSelectedRestaurants, selectedChannels)
+    }
+
+    // Update platform IDs based on selected restaurants and channels
+    const updatePlatformIds = (restaurants, channels) => {
+        const platformIds = []
+
+        restaurants.forEach(restaurantId => {
+            const restaurant = restaurantMappings.find(r => r.id === restaurantId)
+            if (restaurant) {
+                channels.forEach(channel => {
+                    const platformId = restaurant.platforms[channel]
+                    if (platformId && platformId.trim() !== '') {
+                        platformIds.push(platformId)
+                    }
+                })
+            }
+        })
+
+        setSelectedPlatformIds(platformIds)
+
+        // Fetch last available dates for the platform IDs
+        platformIds.forEach(platformId => {
+            fetchLastAvailableDate(platformId)
         })
     }
 
@@ -165,11 +250,12 @@ const ReportControls = ({ onGetReport, loading, userRestaurants }) => {
     }
 
     const handleChannelChange = (channel, checked) => {
-        if (checked) {
-            setSelectedChannels(prev => [...prev, channel])
-        } else {
-            setSelectedChannels(prev => prev.filter(ch => ch !== channel))
-        }
+        const newSelectedChannels = checked
+            ? [...selectedChannels, channel]
+            : selectedChannels.filter(c => c !== channel)
+
+        setSelectedChannels(newSelectedChannels)
+        updatePlatformIds(selectedRestaurants, newSelectedChannels)
     }
 
     const handleSelectAllChannels = (checked) => {
@@ -181,13 +267,13 @@ const ReportControls = ({ onGetReport, loading, userRestaurants }) => {
     }
 
     const handleSubmit = () => {
-        if (!validateSelections(selectedRestaurants, selectedChannels, startDate, endDate)) {
+        if (!validateSelections(selectedPlatformIds, selectedChannels, startDate, endDate)) {
             alert('Please select at least one restaurant, one channel, and a date range.')
             return
         }
 
         onGetReport({
-            restaurants: selectedRestaurants,
+            restaurants: selectedPlatformIds, // Use platform IDs instead of restaurant IDs
             channels: selectedChannels,
             startDate,
             endDate,
@@ -306,13 +392,21 @@ const ReportControls = ({ onGetReport, loading, userRestaurants }) => {
         })
     }
 
-    // Convert user restaurants to react-select format
-    const restaurantOptions = userRestaurants?.restaurantIds
-        ?.filter(restaurantId => !selectedRestaurants.includes(restaurantId))
-        ?.map(restaurantId => ({
-            value: restaurantId,
-            label: restaurantId // Use the restaurant ID as the label for now
-        })) || []
+    // Helper function to find restaurant and channel from platform ID using user mappings
+    const findRestaurantAndChannel = (platformId) => {
+        const restaurantInfo = userRestaurantMappingService.findRestaurantByPlatformId(platformId)
+
+        if (restaurantInfo) {
+            return restaurantInfo
+        }
+
+        // Fallback: if no mapping found, guess based on ID pattern
+        return {
+            restaurantName: platformId,
+            channel: userRestaurantMappingService.guessChannelForId(platformId),
+            restaurantId: 'unknown'
+        }
+    }
 
     return (
         <div className="card">
@@ -350,9 +444,11 @@ const ReportControls = ({ onGetReport, loading, userRestaurants }) => {
                         onChange={handleRestaurantChange}
                         options={restaurantOptions}
                         styles={customSelectStyles}
-                        placeholder="Choose a restaurant to add..."
+                        placeholder={optionsLoading ? "Loading restaurants..." : "Choose a restaurant to add..."}
                         isSearchable={true}
                         isClearable={false}
+                        isLoading={optionsLoading}
+                        isDisabled={optionsLoading}
                         menuPortalTarget={document.body}
                         menuPosition="fixed"
                     />
@@ -361,36 +457,14 @@ const ReportControls = ({ onGetReport, loading, userRestaurants }) => {
                 {selectedRestaurants.length > 0 && (
                     <div className="selected-items">
                         {selectedRestaurants.map(restaurantId => {
-                            const lastDateInfo = restaurantLastDates[restaurantId]
-                            const isFetchingDate = fetchingDates[restaurantId]
+                            // Get restaurant info
+                            const restaurant = selectedRestaurantInfo[restaurantId]
+                            const displayName = restaurant?.name || restaurantId
 
                             return (
                                 <div key={restaurantId} className="selected-tag">
                                     <div>
-                                        <span>{restaurantId}</span>
-                                        {isFetchingDate && (
-                                            <div style={{ fontSize: '0.75rem', color: '#ffffff', marginTop: '2px', fontWeight: '500' }}>
-                                                Checking latest data...
-                                            </div>
-                                        )}
-                                        {!isFetchingDate && lastDateInfo && (
-                                            <div style={{ fontSize: '0.75rem', marginTop: '2px' }}>
-                                                {lastDateInfo.hasData ? (
-                                                    <span style={{ color: '#ffffff', fontWeight: '500' }}>
-                                                        Latest: {lastDateInfo.date}
-                                                        {lastDateInfo.totalDates > 0 && (
-                                                            <span style={{ color: '#e2e8f0', marginLeft: '4px', fontWeight: '400' }}>
-                                                                ({lastDateInfo.totalDates} days)
-                                                            </span>
-                                                        )}
-                                                    </span>
-                                                ) : (
-                                                    <span style={{ color: '#fecaca', fontWeight: '500' }}>
-                                                        {lastDateInfo.message || 'No data found'}
-                                                    </span>
-                                                )}
-                                            </div>
-                                        )}
+                                        <span>{displayName}</span>
                                     </div>
                                     <button
                                         type="button"
@@ -557,6 +631,7 @@ const ReportControls = ({ onGetReport, loading, userRestaurants }) => {
                 <p><strong>Selected:</strong></p>
                 <p>{selectedRestaurants.length} restaurant(s)</p>
                 <p>{selectedChannels.length} channel(s)</p>
+                <p>{selectedPlatformIds.length} platform ID(s) will be queried</p>
                 <p>{startDate && endDate ? 'Date range set' : 'No date range'}</p>
             </div>
         </div>

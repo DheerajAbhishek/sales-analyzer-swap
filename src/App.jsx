@@ -3,10 +3,13 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'r
 import ControlsPanel from './components/Controls/ControlsPanel.jsx'
 import Dashboard from './components/Dashboard/Dashboard.jsx'
 import AuthPage from './components/Auth/AuthPage.jsx'
+import OAuthCallback from './components/Auth/OAuthCallback.jsx'
 import LandingPage from './components/LandingPage.jsx'
 import Profile from './components/Profile.jsx'
+import ProfilePage from './components/ProfilePage.jsx'
 import { reportService } from './services/api'
 import { authService } from './services/authService'
+import { restaurantMetadataService } from './services/restaurantMetadataService'
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -16,15 +19,30 @@ const ProtectedRoute = ({ children }) => {
 
     useEffect(() => {
         const checkAuth = async () => {
-            const token = authService.getToken()
-            if (token) {
-                const result = await authService.verifyToken(token)
+            const authMethod = authService.getAuthMethod()
+
+            if (authMethod === 'google') {
+                // For Google OAuth, verify the authentication
+                const result = await authService.verifyGoogleAuth()
                 if (result.success) {
                     setUser(result.user)
                     setUserRestaurants(result.restaurants)
-                    console.log('User restaurants available:', result.restaurants)
+                    console.log('Google user restaurants available:', result.restaurants)
                 } else {
                     authService.logout()
+                }
+            } else {
+                // For traditional auth, verify the token
+                const token = authService.getToken()
+                if (token) {
+                    const result = await authService.verifyToken(token)
+                    if (result.success) {
+                        setUser(result.user)
+                        setUserRestaurants(result.restaurants)
+                        console.log('User restaurants available:', result.restaurants)
+                    } else {
+                        authService.logout()
+                    }
                 }
             }
             setIsCheckingAuth(false)
@@ -83,6 +101,10 @@ const DashboardPage = () => {
         navigate('/')
     }
 
+    const handleProfileClick = () => {
+        navigate('/profile')
+    }
+
     const handleGetReport = async (selections) => {
         const { restaurants, channels, startDate, endDate, groupBy, thresholds } = selections
 
@@ -96,10 +118,12 @@ const DashboardPage = () => {
             const restaurantDetails = []
 
             restaurants.forEach(restaurantId => {
-                // Each restaurant ID from user's S3 objects can be used directly
+                // Get display name from metadata
+                const restaurantData = restaurantMetadataService.getRestaurantData(restaurantId)
+
                 restaurantDetails.push({
                     id: restaurantId,
-                    name: restaurantId, // Use the ID as name for now, or map if needed
+                    name: restaurantData.name,
                     platform: 'auto', // Platform will be determined by the backend
                     key: restaurantId
                 })
@@ -142,7 +166,7 @@ const DashboardPage = () => {
                 <div className="brand">Sales Insights</div>
                 <div className="nav-actions">
                     <div className="welcome">Welcome, {user?.restaurantName}</div>
-                    <button className="profile-toggle" onClick={() => setShowProfile(s => !s)}>
+                    <button className="profile-toggle" onClick={handleProfileClick}>
                         Profile
                     </button>
                 </div>
@@ -196,6 +220,17 @@ const DashboardPage = () => {
     )
 }
 
+// OAuth Callback Component with Navigation
+const OAuthCallbackWithNavigation = () => {
+    const navigate = useNavigate()
+
+    const handleAuthSuccess = (userData) => {
+        navigate('/dashboard')
+    }
+
+    return <OAuthCallback onAuthSuccess={handleAuthSuccess} />
+}
+
 // Auth Component with Navigation
 const AuthPageWithNavigation = () => {
     const navigate = useNavigate()
@@ -218,6 +253,23 @@ const LandingPageWithNavigation = () => {
     return <LandingPage onGetStarted={handleGetStarted} />
 }
 
+// Profile Page Component with Navigation
+const ProfilePageWithNavigation = () => {
+    const navigate = useNavigate()
+    const user = authService.getCurrentUser()
+
+    const handleLogout = () => {
+        authService.logout()
+        navigate('/')
+    }
+
+    const handleBack = () => {
+        navigate('/dashboard')
+    }
+
+    return <ProfilePage user={user} onLogout={handleLogout} onBack={handleBack} />
+}
+
 function App() {
     console.log('[dev] App.jsx: rendering App component')
 
@@ -227,11 +279,20 @@ function App() {
                 <Route path="/" element={<LandingPageWithNavigation />} />
                 <Route path="/login" element={<AuthPageWithNavigation />} />
                 <Route path="/signup" element={<AuthPageWithNavigation />} />
+                <Route path="/oauth/callback" element={<OAuthCallbackWithNavigation />} />
                 <Route
                     path="/dashboard"
                     element={
                         <ProtectedRoute>
                             <DashboardPage />
+                        </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/profile"
+                    element={
+                        <ProtectedRoute>
+                            <ProfilePageWithNavigation />
                         </ProtectedRoute>
                     }
                 />

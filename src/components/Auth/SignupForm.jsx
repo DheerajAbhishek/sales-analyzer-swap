@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { authService } from '../../services/authService'
+import GoogleSignInButton from './GoogleSignInButton'
 
 const SignupForm = ({ onSuccess }) => {
     const [formData, setFormData] = useState({
@@ -73,72 +74,51 @@ const SignupForm = ({ onSuccess }) => {
         }
     }
 
+    const handleGoogleSuccess = () => {
+        // Google signup success will be handled by the callback
+        // This is here for consistency with LoginForm
+    }
+
+    const handleGoogleError = (errorMessage) => {
+        setError(errorMessage)
+    }
+
     return (
-        <form onSubmit={handleSubmit} className="auth-form">
-            {error && (
-                <div className="auth-error">
-                    {error}
-                </div>
-            )}
-
-            {success && (
-                <div className="auth-success">
-                    {success}
-                </div>
-            )}
-
-            <div className="form-group">
-                <label htmlFor="restaurantName">Restaurant Name</label>
-                <input
-                    type="text"
-                    id="restaurantName"
-                    name="restaurantName"
-                    value={formData.restaurantName}
-                    onChange={handleChange}
-                    required
+        <div className="auth-form-wrapper">
+            {/* Google Sign-In Section */}
+            <div className="google-signin-section">
+                <GoogleSignInButton
+                    onSuccess={handleGoogleSuccess}
+                    onError={handleGoogleError}
                     disabled={loading}
                 />
-            </div>
 
-            <div className="form-group">
-                <label htmlFor="businessEmail">Business Email ID</label>
-                <input
-                    type="email"
-                    id="businessEmail"
-                    name="businessEmail"
-                    value={formData.businessEmail}
-                    onChange={handleChange}
-                    required
-                    disabled={loading}
-                />
-            </div>
-
-            <div className="form-group">
-                <label htmlFor="phoneNumber">Phone Number</label>
-                <div className="phone-input">
-                    <span className="country-code">+91</span>
-                    <input
-                        type="tel"
-                        id="phoneNumber"
-                        name="phoneNumber"
-                        value={formData.phoneNumber}
-                        onChange={handleChange}
-                        required
-                        disabled={loading}
-                        placeholder="Enter 10 digit number"
-                        maxLength="10"
-                    />
+                <div className="auth-divider">
+                    <span>or sign up with email</span>
                 </div>
             </div>
 
-            <div className="form-row">
+            {/* Traditional Email/Password Form */}
+            <form onSubmit={handleSubmit} className="auth-form">
+                {error && (
+                    <div className="auth-error">
+                        {error}
+                    </div>
+                )}
+
+                {success && (
+                    <div className="auth-success">
+                        {success}
+                    </div>
+                )}
+
                 <div className="form-group">
-                    <label htmlFor="state">State</label>
+                    <label htmlFor="restaurantName">Restaurant Name</label>
                     <input
                         type="text"
-                        id="state"
-                        name="state"
-                        value={formData.state}
+                        id="restaurantName"
+                        name="restaurantName"
+                        value={formData.restaurantName}
                         onChange={handleChange}
                         required
                         disabled={loading}
@@ -146,55 +126,101 @@ const SignupForm = ({ onSuccess }) => {
                 </div>
 
                 <div className="form-group">
-                    <label htmlFor="city">City</label>
+                    <label htmlFor="businessEmail">Business Email ID</label>
                     <input
-                        type="text"
-                        id="city"
-                        name="city"
-                        value={formData.city}
+                        type="email"
+                        id="businessEmail"
+                        name="businessEmail"
+                        value={formData.businessEmail}
                         onChange={handleChange}
                         required
                         disabled={loading}
                     />
                 </div>
-            </div>
 
-            <div className="form-group">
-                <label htmlFor="password">Password</label>
-                <input
-                    type="password"
-                    id="password"
-                    name="password"
-                    value={formData.password}
-                    onChange={handleChange}
-                    required
+                <div className="form-group">
+                    <label htmlFor="phoneNumber">Phone Number</label>
+                    <div className="phone-input">
+                        <span className="country-code">+91</span>
+                        <input
+                            type="tel"
+                            id="phoneNumber"
+                            name="phoneNumber"
+                            value={formData.phoneNumber}
+                            onChange={handleChange}
+                            required
+                            disabled={loading}
+                            placeholder="Enter 10 digit number"
+                            maxLength="10"
+                        />
+                    </div>
+                </div>
+
+                <div className="form-row">
+                    <div className="form-group">
+                        <label htmlFor="state">State</label>
+                        <input
+                            type="text"
+                            id="state"
+                            name="state"
+                            value={formData.state}
+                            onChange={handleChange}
+                            required
+                            disabled={loading}
+                        />
+                    </div>
+
+                    <div className="form-group">
+                        <label htmlFor="city">City</label>
+                        <input
+                            type="text"
+                            id="city"
+                            name="city"
+                            value={formData.city}
+                            onChange={handleChange}
+                            required
+                            disabled={loading}
+                        />
+                    </div>
+                </div>
+
+                <div className="form-group">
+                    <label htmlFor="password">Password</label>
+                    <input
+                        type="password"
+                        id="password"
+                        name="password"
+                        value={formData.password}
+                        onChange={handleChange}
+                        required
+                        disabled={loading}
+                        minLength="8"
+                    />
+                    <small className="form-hint">Must be at least 8 characters</small>
+                </div>
+
+                <div className="form-group">
+                    <label htmlFor="confirmPassword">Confirm Password</label>
+                    <input
+                        type="password"
+                        id="confirmPassword"
+                        name="confirmPassword"
+                        value={formData.confirmPassword}
+                        onChange={handleChange}
+                        required
+                        disabled={loading}
+                    />
+                </div>
+
+                <button
+                    type="submit"
+                    className="auth-button"
                     disabled={loading}
-                    minLength="8"
-                />
-                <small className="form-hint">Must be at least 8 characters</small>
-            </div>
-
-            <div className="form-group">
-                <label htmlFor="confirmPassword">Confirm Password</label>
-                <input
-                    type="password"
-                    id="confirmPassword"
-                    name="confirmPassword"
-                    value={formData.confirmPassword}
-                    onChange={handleChange}
-                    required
-                    disabled={loading}
-                />
-            </div>
-
-            <button
-                type="submit"
-                className="auth-button"
-                disabled={loading}
-            >
-                {loading ? 'Creating Account...' : 'Sign Up'}
-            </button>
-        </form>
+                >
+                    {loading ? 'Creating Account...' : 'Sign Up'}
+                </button>
+            </form>
+        </div>
     )
 }
 

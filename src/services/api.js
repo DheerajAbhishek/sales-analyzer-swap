@@ -1,5 +1,23 @@
 import { API_BASE_URL } from '../utils/constants';
 
+// Helper function to get user info for API calls
+const getUserInfo = () => {
+    const user = localStorage.getItem('user')
+    return user ? JSON.parse(user) : null
+}
+
+// Helper function to get auth headers
+const getAuthHeaders = () => {
+    const token = localStorage.getItem('token')
+    const user = getUserInfo()
+
+    return {
+        'Content-Type': 'application/json',
+        ...(token && { 'Authorization': `Bearer ${token}` }),
+        ...(user?.businessEmail && { 'business-email': user.businessEmail })
+    }
+}
+
 export const uploadFileService = {
     async getUploadUrl(filename, contentType = 'application/octet-stream') {
         const businessEmail = localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user')).businessEmail : null
@@ -208,6 +226,201 @@ export const restaurantService = {
         } catch (error) {
             console.error('Error refreshing user restaurants:', error);
             throw error;
+        }
+    }
+};
+
+// Restaurant Mapping API Service
+export const restaurantMappingService = {
+    // Save user restaurant mappings to backend
+    async saveRestaurantMappings(mappings) {
+        try {
+            const user = getUserInfo()
+            if (!user?.businessEmail) {
+                throw new Error('User email not found')
+            }
+
+            console.log('Saving mappings to backend:', mappings)
+
+            const response = await fetch(`${API_BASE_URL}/restaurant-mappings`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    businessEmail: user.businessEmail,
+                    mappings: mappings,
+                    updatedAt: new Date().toISOString()
+                })
+            })
+
+            console.log('Save response status:', response.status)
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}))
+                console.error('Save failed with error:', errorData)
+                throw new Error(errorData.message || 'Failed to save restaurant mappings')
+            }
+
+            const data = await response.json()
+            console.log('Save response data:', data)
+
+            return {
+                success: true,
+                data: data.body ? JSON.parse(data.body) : data
+            }
+        } catch (error) {
+            console.error('Error saving restaurant mappings:', error)
+            return {
+                success: false,
+                error: error.message
+            }
+        }
+    },
+
+    // Get user restaurant mappings from backend
+    async getRestaurantMappings() {
+        try {
+            const user = getUserInfo()
+            if (!user?.businessEmail) {
+                throw new Error('User email not found')
+            }
+
+            const response = await fetch(
+                `${API_BASE_URL}/restaurant-mappings?businessEmail=${encodeURIComponent(user.businessEmail)}`,
+                {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                }
+            )
+
+            if (!response.ok) {
+                if (response.status === 404) {
+                    // No mappings found - return empty array
+                    return {
+                        success: true,
+                        data: []
+                    }
+                }
+                const errorData = await response.json().catch(() => ({}))
+                throw new Error(errorData.message || 'Failed to fetch restaurant mappings')
+            }
+
+            const data = await response.json()
+            console.log('Raw API response:', data)
+
+            // Handle different response formats
+            let mappings = []
+            if (data.body) {
+                // If wrapped in body (API Gateway proxy integration)
+                const parsed = JSON.parse(data.body)
+                mappings = parsed.mappings || []
+            } else {
+                // Direct response
+                mappings = data.mappings || []
+            }
+
+            console.log('Extracted mappings:', mappings)
+
+            return {
+                success: true,
+                data: mappings
+            }
+        } catch (error) {
+            console.error('Error fetching restaurant mappings:', error)
+            return {
+                success: false,
+                error: error.message,
+                data: []
+            }
+        }
+    },
+
+    // Save restaurant metadata (names, custom settings) to backend
+    async saveRestaurantMetadata(metadata) {
+        try {
+            const user = getUserInfo()
+            if (!user?.businessEmail) {
+                throw new Error('User email not found')
+            }
+
+            const response = await fetch(`${API_BASE_URL}/restaurant-metadata`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    businessEmail: user.businessEmail,
+                    metadata: metadata,
+                    updatedAt: new Date().toISOString()
+                })
+            })
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}))
+                throw new Error(errorData.message || 'Failed to save restaurant metadata')
+            }
+
+            const data = await response.json()
+            return {
+                success: true,
+                data: data.body ? JSON.parse(data.body) : data
+            }
+        } catch (error) {
+            console.error('Error saving restaurant metadata:', error)
+            return {
+                success: false,
+                error: error.message
+            }
+        }
+    },
+
+    // Get restaurant metadata from backend
+    async getRestaurantMetadata() {
+        try {
+            const user = getUserInfo()
+            if (!user?.businessEmail) {
+                throw new Error('User email not found')
+            }
+
+            const response = await fetch(
+                `${API_BASE_URL}/restaurant-metadata?businessEmail=${encodeURIComponent(user.businessEmail)}`,
+                {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                }
+            )
+
+            if (!response.ok) {
+                if (response.status === 404) {
+                    // No metadata found - return empty object
+                    return {
+                        success: true,
+                        data: {}
+                    }
+                }
+                const errorData = await response.json().catch(() => ({}))
+                throw new Error(errorData.message || 'Failed to fetch restaurant metadata')
+            }
+
+            const data = await response.json()
+            const metadata = data.body ? JSON.parse(data.body) : data
+
+            return {
+                success: true,
+                data: metadata.metadata || {}
+            }
+        } catch (error) {
+            console.error('Error fetching restaurant metadata:', error)
+            return {
+                success: false,
+                error: error.message,
+                data: {}
+            }
         }
     }
 };

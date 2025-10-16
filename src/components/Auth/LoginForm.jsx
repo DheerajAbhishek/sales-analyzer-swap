@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { authService } from '../../services/authService'
+import GoogleSignInButton from './GoogleSignInButton'
 
 const LoginForm = ({ onSuccess }) => {
     const [formData, setFormData] = useState({
@@ -39,48 +40,68 @@ const LoginForm = ({ onSuccess }) => {
         }
     }
 
+    const handleGoogleError = (errorMessage) => {
+        setError(errorMessage)
+    }
+
     return (
-        <form onSubmit={handleSubmit} className="auth-form">
-            {error && (
-                <div className="auth-error">
-                    {error}
+        <div className="auth-form-wrapper">
+            {/* Google Sign-In Section */}
+            <div className="google-signin-section">
+                <GoogleSignInButton
+                    onSuccess={onSuccess}
+                    onError={handleGoogleError}
+                    disabled={loading}
+                />
+
+                <div className="auth-divider">
+                    <span>or</span>
                 </div>
-            )}
-
-            <div className="form-group">
-                <label htmlFor="businessEmail">Business Email ID</label>
-                <input
-                    type="email"
-                    id="businessEmail"
-                    name="businessEmail"
-                    value={formData.businessEmail}
-                    onChange={handleChange}
-                    required
-                    disabled={loading}
-                />
             </div>
 
-            <div className="form-group">
-                <label htmlFor="password">Password</label>
-                <input
-                    type="password"
-                    id="password"
-                    name="password"
-                    value={formData.password}
-                    onChange={handleChange}
-                    required
-                    disabled={loading}
-                />
-            </div>
+            {/* Traditional Email/Password Form */}
+            <form onSubmit={handleSubmit} className="auth-form">
+                {error && (
+                    <div className="auth-error">
+                        {error}
+                    </div>
+                )}
 
-            <button
-                type="submit"
-                className="auth-button"
-                disabled={loading}
-            >
-                {loading ? 'Logging in...' : 'Login'}
-            </button>
-        </form>
+                <div className="form-group">
+                    <label htmlFor="businessEmail">Business Email ID</label>
+                    <input
+                        type="email"
+                        id="businessEmail"
+                        name="businessEmail"
+                        value={formData.businessEmail}
+                        onChange={handleChange}
+                        required
+                        disabled={loading}
+                    />
+                </div>
+
+                <div className="form-group">
+                    <label htmlFor="password">Password</label>
+                    <input
+                        type="password"
+                        id="password"
+                        name="password"
+                        value={formData.password}
+                        onChange={handleChange}
+                        required
+                        disabled={loading}
+                    />
+                </div>
+
+                <button
+                    type="submit"
+                    className="auth-button"
+                    disabled={loading}
+                >
+                    {loading ? 'Logging in...' : 'Login'}
+                </button>
+            </form>
+        </div>
     )
 }
 
