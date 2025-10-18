@@ -1,5 +1,7 @@
 import { restaurantService } from './api.js'
 import { googleOAuthService } from './googleOAuthService.js'
+import { gmailIntegrationService } from './gmailIntegrationService.js'
+import { autoEmailProcessingService } from './autoEmailProcessingService.js'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://your-api-gateway-url.amazonaws.com/prod'
 
@@ -197,6 +199,14 @@ class AuthService {
                         localStorage.setItem('user', JSON.stringify(userData))
                         localStorage.setItem('authMethod', 'google')
 
+                        // Store Gmail tokens for email processing
+                        try {
+                            await gmailIntegrationService.initializeGmailIntegration(userData.email)
+                            console.log('✅ Gmail integration initialized for existing user')
+                        } catch (gmailError) {
+                            console.warn('Failed to initialize Gmail integration:', gmailError)
+                        }
+
                         try {
                             const restaurantData = await restaurantService.getUserRestaurants(userData.email)
                             localStorage.setItem('userRestaurants', JSON.stringify(restaurantData))
@@ -271,54 +281,54 @@ class AuthService {
         try {
             console.log('🔍 Checking if Google user exists:', email)
 
-            const response = await fetch(`${API_BASE_URL}/auth/signup`, {
-                method: 'POST',
+            const response = await fetch(`${API_BASE_URL}/auth/check-user?email=${encodeURIComponent(email)}`, {
+                method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    googleId: 'temp-check-12345',
-                    email: email,
-                    businessEmail: email,
-                    name: 'Temp User',
-                    restaurantName: 'Temp Restaurant',
-                    phoneNumber: '1234567890',
-                    state: 'TempState',
-                    city: 'TempCity',
-                    // This is just for user existence check - include all required fields
-                })
+                }
             })
 
             const data = await response.json()
 
             console.log('📋 User existence check response:', {
                 status: response.status,
-                data: data,
-                errorType: data.errorType
+                data: data
             })
 
-            // If we get a specific error about existing Google account, user exists
-            if (data.errorType === 'GOOGLE_ACCOUNT_EXISTS') {
-                console.log('✅ Existing Google user found')
+            if (!response.ok || !data.success) {
+                console.error('❌ User check failed:', data.message)
                 return {
-                    userExists: true,
-                    user: { authMethod: 'google' }
+                    userExists: false
                 }
             }
 
-            // If we get account link required, user exists but without Google
-            if (data.errorType === 'ACCOUNT_LINK_REQUIRED') {
-                console.log('🔗 Existing user found (needs linking)')
-                return {
-                    userExists: true,
-                    user: { authMethod: 'traditional' }
+            if (data.exists) {
+                // User exists - determine auth method
+                if (data.hasGoogleId) {
+                    console.log('✅ Existing Google user found')
+                    return {
+                        userExists: true,
+                        user: {
+                            authMethod: data.authMethod,
+                            restaurantName: data.restaurantName
+                        }
+                    }
+                } else {
+                    console.log('🔗 Existing user found (needs linking)')
+                    return {
+                        userExists: true,
+                        user: {
+                            authMethod: 'traditional',
+                            restaurantName: data.restaurantName
+                        }
+                    }
                 }
-            }
-
-            // For any other response, user doesn't exist
-            console.log('❌ New user detected')
-            return {
-                userExists: false
+            } else {
+                // User doesn't exist
+                console.log('❌ New user detected')
+                return {
+                    userExists: false
+                }
             }
         } catch (error) {
             console.error('Error checking user existence:', error)
@@ -401,11 +411,15 @@ class AuthService {
             if (response.ok) {
                 console.log('✅ Google signup/linking completed successfully')
 
-                // Store user data
+                // Use email as businessEmail if businessEmail is not provided
+                const businessEmail = userData.businessEmail || userData.email
+                console.log('📧 Using businessEmail:', businessEmail)
+
+                // Store user data FIRST before fetching restaurants
                 const userInfo = {
                     id: userData.googleId,
-                    email: userData.email || userData.businessEmail,
-                    businessEmail: userData.businessEmail,
+                    email: userData.email,
+                    businessEmail: businessEmail,
                     name: userData.name,
                     picture: userData.picture,
                     emailVerified: userData.emailVerified,
@@ -413,12 +427,33 @@ class AuthService {
                     restaurantName: userData.restaurantName
                 }
 
+                // Save to localStorage BEFORE calling getUserRestaurants
                 localStorage.setItem('user', JSON.stringify(userInfo))
                 localStorage.setItem('authMethod', 'google')
 
-                // Fetch user restaurants
+                console.log('✅ User data saved to localStorage:', businessEmail)
+
+                // Store Gmail tokens for email processing
                 try {
-                    const restaurantData = await restaurantService.getUserRestaurants(userInfo.businessEmail)
+                    console.log('🔄 Initializing Gmail integration...')
+                    await gmailIntegrationService.initializeGmailIntegration(businessEmail)
+                    console.log('✅ Gmail integration initialized for new user')
+                } catch (gmailError) {
+                    console.warn('⚠️ Failed to initialize Gmail integration:', gmailError)
+                    // Don't block - continue with signup
+                }
+
+                // Start auto-processing emails immediately (don't wait for it to complete)
+                console.log('🚀 Starting auto email processing for:', businessEmail)
+                autoEmailProcessingService.startAutoProcessing(businessEmail)
+                    .then(() => console.log('✅ Auto email processing completed'))
+                    .catch(err => console.warn('⚠️ Auto email processing had errors:', err))
+
+                // Fetch user restaurants - now localStorage has the email
+                try {
+                    console.log('🔍 Fetching restaurants for:', businessEmail)
+                    const restaurantData = await restaurantService.getUserRestaurants(businessEmail)
+                    console.log('✅ Restaurants fetched:', restaurantData)
                     localStorage.setItem('userRestaurants', JSON.stringify(restaurantData))
 
                     return {

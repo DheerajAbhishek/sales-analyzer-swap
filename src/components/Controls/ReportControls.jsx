@@ -49,7 +49,7 @@ const ReportControls = ({ onGetReport, loading, userRestaurants }) => {
     // Update restaurant options when userRestaurants changes
     useEffect(() => {
         const updateRestaurantOptions = async () => {
-            if (!userRestaurants?.restaurantIds) {
+            if (!userRestaurants?.restaurantIds || userRestaurants.restaurantIds.length === 0) {
                 setRestaurantOptions([])
                 return
             }
@@ -58,22 +58,49 @@ const ReportControls = ({ onGetReport, loading, userRestaurants }) => {
             try {
                 // Get unique restaurants from mappings
                 const restaurantMappings = await userRestaurantMappingService.getUserRestaurantMappings()
-                setRestaurantMappings(restaurantMappings) // Store mappings for later use
 
-                const uniqueRestaurants = new Map()
+                // If mappings exist and have data, use them
+                if (restaurantMappings && restaurantMappings.length > 0) {
+                    console.log('Using restaurant mappings:', restaurantMappings.length)
+                    setRestaurantMappings(restaurantMappings)
 
-                // Create restaurant options from mappings
-                restaurantMappings.forEach(restaurant => {
-                    if (!uniqueRestaurants.has(restaurant.id)) {
-                        uniqueRestaurants.set(restaurant.id, {
-                            value: restaurant.id,
-                            label: restaurant.name,
-                            platforms: restaurant.platforms
-                        })
-                    }
-                })
+                    const uniqueRestaurants = new Map()
 
-                setRestaurantOptions(Array.from(uniqueRestaurants.values()))
+                    // Create restaurant options from mappings
+                    restaurantMappings.forEach(restaurant => {
+                        if (!uniqueRestaurants.has(restaurant.id)) {
+                            uniqueRestaurants.set(restaurant.id, {
+                                value: restaurant.id,
+                                label: restaurant.name,
+                                platforms: restaurant.platforms
+                            })
+                        }
+                    })
+
+                    setRestaurantOptions(Array.from(uniqueRestaurants.values()))
+                } else {
+                    // No mappings found - use raw restaurant IDs from API
+                    console.log('No mappings found, using raw restaurant IDs:', userRestaurants.restaurantIds.length)
+
+                    // Create simple mappings for each restaurant ID
+                    const simpleMappings = userRestaurants.restaurantIds.map(restaurantId => ({
+                        id: restaurantId,
+                        name: `Restaurant ${restaurantId}`, // Use ID as name
+                        platforms: {
+                            [userRestaurantMappingService.guessChannelForId(restaurantId)]: restaurantId
+                        }
+                    }))
+
+                    setRestaurantMappings(simpleMappings)
+
+                    const options = simpleMappings.map(restaurant => ({
+                        value: restaurant.id,
+                        label: restaurant.name,
+                        platforms: restaurant.platforms
+                    }))
+
+                    setRestaurantOptions(options)
+                }
             } catch (error) {
                 console.error('Error updating restaurant options:', error)
                 // Fallback to simple ID-based options

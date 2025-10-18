@@ -58,10 +58,16 @@ const Dashboard = ({ data }) => {
             })
 
             // Extract discount breakdown from Swiggy or Zomato data
-            if ((detail.platform === 'swiggy' || detail.platform === 'zomato') && data.body?.discountBreakdown) {
+            const breakdownData = data.body?.discountBreakdown || data.discountBreakdown
+            if (breakdownData) {
+                // Detect platform from breakdown data or use detail.platform
+                const detectedPlatform = detail.platform === 'auto'
+                    ? (data.body?.platform || data.platform || 'swiggy')
+                    : detail.platform
+
                 discountBreakdownData = {
-                    ...data.body.discountBreakdown,
-                    platform: detail.platform
+                    ...breakdownData,
+                    platform: detectedPlatform
                 }
             }
 
@@ -166,6 +172,7 @@ const Dashboard = ({ data }) => {
                     data={processedData.timeSeriesData}
                 />
             )}
+
         </div>
     )
 }

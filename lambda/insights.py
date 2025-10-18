@@ -306,8 +306,8 @@ def lambda_handler(event, context):
         for key, col_name in found_cols.items():
             if key not in ["order_date", "res_id", "branch_name", "order_source"] and col_name:
                 df.loc[:, col_name] = pd.to_numeric(df[col_name], errors="coerce").fillna(0)
-                # --- Extra Discount Breakdown for Swiggy ---
-        
+
+        # --- Extra Discount Breakdown for Swiggy (ENTIRE FILE) ---
         discount_breakdown = {}
         if file_format == "swiggy" and file_ext != ".csv":
             try:
@@ -361,14 +361,13 @@ def lambda_handler(event, context):
 
             except Exception as e:
                 logger.warning(f"Could not extract Discount Summary for Swiggy: {e}")
-                # --- Extra Discount Breakdown for Zomato ---
+
+        # --- Extra Discount Breakdown for Zomato (ENTIRE FILE) ---
         if file_format == "zomato" and file_ext != ".csv":
             try:
-                # Use the same Order Level sheet already read in df
-                disc_df = read_file(tmp_path, file_ext, skiprows=6, sheet_name="Order Level")
+                # Use the df that's already loaded (contains all dates)
+                disc_df = df.copy()
                 logger.info(f"Columns in Order Level (Zomato): {disc_df.columns.tolist()}")
-
-                disc_df.columns = disc_df.columns.str.strip().str.replace("\n", " ", regex=False)
 
                 # --- ## REFINED ##: Reuse columns found earlier ---
                 # Get promo and other discount column names directly from found_cols
@@ -379,10 +378,8 @@ def lambda_handler(event, context):
                 offer_col = next((c for c in disc_df.columns if "discount construct" in c.lower()), None)
 
                 if offer_col and promo_col and other_discount_col:
-                    # --- Prepare the data ---
+                    # --- Prepare the data (already numeric from earlier conversion) ---
                     disc_df[offer_col] = disc_df[offer_col].fillna("Undefined").astype(str).str.strip()
-                    disc_df[promo_col] = disc_df[promo_col].apply(safe_num)
-                    disc_df[other_discount_col] = disc_df[other_discount_col].apply(safe_num)
 
                     discount_breakdown = {}
 

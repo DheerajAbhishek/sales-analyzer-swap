@@ -56,12 +56,15 @@ const DiscountBreakdownModal = ({ isOpen, onClose, discountBreakdown, isLoading,
     }
 
     const getDiscountAmount = (data) => {
-        if (isNewZomatoFormat) {
-            return data.totalDiscount || 0
+        // Check for Zomato format (totalDiscount is the normalized field)
+        if (data.totalDiscount !== undefined) {
+            return data.totalDiscount
         }
-        if (isZomatoData) {
-            return data.totalDiscountPromo || 0
+        // Fallback to old field name
+        if (data.totalDiscountPromo !== undefined) {
+            return data.totalDiscountPromo
         }
+        // Swiggy format
         return data.discount || 0
     }
 
@@ -169,8 +172,8 @@ const DiscountBreakdownModal = ({ isOpen, onClose, discountBreakdown, isLoading,
                                             <span className="metric-value">{formatValue(discountBreakdown.TOTAL.orders, 'number')}</span>
                                         </div>
                                         <div className="metric">
-                                            <span className="metric-label">{isNewZomatoFormat ? 'Total Discount' : isZomatoData ? 'Total Promo Discount' : 'Total Discount'}</span>
-                                            <span className="metric-value">{formatValue(isNewZomatoFormat ? discountBreakdown.TOTAL.totalDiscount : isZomatoData ? discountBreakdown.TOTAL.totalDiscountPromo : discountBreakdown.TOTAL.discount, 'currency')}</span>
+                                            <span className="metric-label">Total Discount</span>
+                                            <span className="metric-value">{formatValue(discountBreakdown.TOTAL.totalDiscount || discountBreakdown.TOTAL.totalDiscountPromo || discountBreakdown.TOTAL.discount, 'currency')}</span>
                                         </div>
                                     </div>
                                 </div>

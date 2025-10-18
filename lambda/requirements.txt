@@ -1,0 +1,12 @@
+# Python dependencies for Lambda functions
+# Install these packages in your Lambda deployment package or layer
+
+requests==2.31.0
+boto3==1.34.0
+botocore==1.34.0
+
+# For email processing
+email-validator==2.1.0
+
+# Optional: for better JSON handling
+simplejson==3.19.2

@@ -3,7 +3,14 @@ import { API_BASE_URL } from '../utils/constants';
 // Helper function to get user info for API calls
 const getUserInfo = () => {
     const user = localStorage.getItem('user')
-    return user ? JSON.parse(user) : null
+    if (!user) return null
+
+    const parsed = JSON.parse(user)
+    // Ensure businessEmail is set (for Google users, it might only be in 'email')
+    if (!parsed.businessEmail && parsed.email) {
+        parsed.businessEmail = parsed.email
+    }
+    return parsed
 }
 
 // Helper function to get auth headers
@@ -179,6 +186,7 @@ export const expenseService = {
 };
 
 export const restaurantService = {
+    // Cache DISABLED - Always fetch from API for real-time data
     async getUserRestaurants(businessEmail = null) {
         try {
             // Get business email from localStorage if not provided
@@ -188,12 +196,14 @@ export const restaurantService = {
                 throw new Error('Business email not found');
             }
 
+            // Always make API request (no caching)
+            console.log('→ Fetching restaurants from API for:', email);
+
             const response = await fetch(`${API_BASE_URL}/user-restaurants?businessEmail=${encodeURIComponent(email)}`, {
                 method: 'GET',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
-                    // Temporarily removed 'business-email' header to avoid CORS
                 }
             });
 
@@ -203,7 +213,10 @@ export const restaurantService = {
             }
 
             const data = await response.json();
-            return data.body ? JSON.parse(data.body) : data;
+            const result = data.body ? JSON.parse(data.body) : data;
+
+            console.log('✓ Restaurants fetched from API');
+            return result;
         } catch (error) {
             console.error('Error fetching user restaurants:', error);
             throw error;
@@ -212,10 +225,22 @@ export const restaurantService = {
 
     async refreshUserRestaurants() {
         try {
-            const restaurantData = await this.getUserRestaurants();
+            console.log('🔄 Refreshing user restaurants...');
 
-            // Update stored restaurant data
-            localStorage.setItem('userRestaurants', JSON.stringify(restaurantData));
+            // Get email from localStorage
+            let email = null;
+            const userStr = localStorage.getItem('user');
+            if (userStr) {
+                const user = JSON.parse(userStr);
+                email = user.businessEmail || user.email;
+            }
+
+            if (!email) {
+                throw new Error('User email not found in localStorage');
+            }
+
+            console.log('📧 Refreshing for email:', email);
+            const restaurantData = await this.getUserRestaurants(email);
 
             // Dispatch custom event to notify components of the update
             window.dispatchEvent(new CustomEvent('userRestaurantsUpdated', {

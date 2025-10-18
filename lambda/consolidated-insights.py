@@ -65,48 +65,74 @@ def _calculate_final_metrics(data):
     }
 
 def merge_discount_breakdowns(reports):
+    """Merge discount breakdowns across reports. Works for both Swiggy and Zomato structures."""
     seen_hashes = set()
     consolidated = {}
+
     for report in reports:
         file_hashes = report.get("processedFileHashes", [])
         file_hash = file_hashes[0] if file_hashes else None
+
         if not file_hash or file_hash in seen_hashes:
             continue
         seen_hashes.add(file_hash)
+
         breakdown = report.get("discountBreakdown", {})
         for offer, values in breakdown.items():
             if offer == "TOTAL":
                 continue
-            if "totalDiscountPromo" in values:
+
+            # --- Zomato case ---
+            if "totalDiscountPromo" in values or "totalDiscount" in values:
+                key_name = "totalDiscountPromo" if "totalDiscountPromo" in values else "totalDiscount"
                 if offer not in consolidated:
-                    consolidated[offer] = {"orders": 0, "totalDiscountPromo": 0.0, "extractedValue": values.get("extractedValue")}
+                    consolidated[offer] = {
+                        "orders": 0,
+                        "totalDiscount": 0.0,
+                        "offerValue": values.get("extractedValue") or values.get("offerValue")
+                    }
                 consolidated[offer]["orders"] += values.get("orders", 0)
-                consolidated[offer]["totalDiscountPromo"] += values.get("totalDiscountPromo", 0.0)
+                consolidated[offer]["totalDiscount"] += values.get(key_name, 0.0)
+
+            # --- Swiggy case ---
             elif "discount" in values:
                 if offer not in consolidated:
                     consolidated[offer] = {"orders": 0, "discount": 0.0}
                 consolidated[offer]["orders"] += values.get("orders", 0)
                 consolidated[offer]["discount"] += values.get("discount", 0.0)
 
+    # --- Recompute for Zomato offers ---
     for offer, vals in consolidated.items():
-        if "totalDiscountPromo" in vals:
+        if "totalDiscount" in vals:  # Zomato normalized schema
             orders = vals["orders"]
-            total_disc = vals["totalDiscountPromo"]
-            x = total_disc / orders if orders > 0 else 0.0
-            extracted_val = vals.get("extractedValue")
-            swap_share = round((x / extracted_val) * 100, 2) if extracted_val and extracted_val > 0 else None
-            vals["x"] = round(x, 2)
-            vals["Swap_share_percentage"] = swap_share
+            total_disc = vals["totalDiscount"]
+            avg = total_disc / orders if orders > 0 else 0.0
+            offer_val = vals.get("offerValue")
 
-    if any("totalDiscountPromo" in v for v in consolidated.values()):
+            realization = None
+            if offer_val and offer_val > 0:
+                realization = round((avg / offer_val) * 100, 2)
+
+            vals["avgDiscountPerOrder"] = round(avg, 2)
+            vals["valueRealizationPercentage"] = realization
+
+    # --- Add TOTAL ---
+    if any("totalDiscount" in v for v in consolidated.values()):  # Zomato style
         total_orders = sum(v["orders"] for v in consolidated.values())
-        total_discount = sum(v["totalDiscountPromo"] for v in consolidated.values())
-        consolidated["TOTAL"] = {"orders": total_orders, "totalDiscountPromo": round(total_discount, 2)}
-    else:
+        total_discount = sum(v["totalDiscount"] for v in consolidated.values())
+        consolidated["TOTAL"] = {
+            "orders": total_orders,
+            "totalDiscount": round(total_discount, 2)
+        }
+    else:  # Swiggy style
         total_orders = sum(v["orders"] for v in consolidated.values())
         total_discount = sum(v["discount"] for v in consolidated.values())
-        consolidated["TOTAL"] = {"orders": total_orders, "discount": round(total_discount, 2)}
+        consolidated["TOTAL"] = {
+            "orders": total_orders,
+            "discount": round(total_discount, 2)
+        }
 
+    # --- Ordering: offers first, Undefined/Unknown next, TOTAL last ---
     ordered = {}
     for key in sorted([k for k in consolidated if k not in ["Undefined", "Unknown", "TOTAL"]]):
         ordered[key] = consolidated[key]
@@ -115,6 +141,7 @@ def merge_discount_breakdowns(reports):
     if "Unknown" in consolidated:
         ordered["Unknown"] = consolidated["Unknown"]
     ordered["TOTAL"] = consolidated["TOTAL"]
+
     return ordered
 
 # -------------------------------------------------
