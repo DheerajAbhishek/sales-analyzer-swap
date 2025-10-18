@@ -304,24 +304,76 @@ const DashboardPage = () => {
                 throw new Error('No restaurants selected.')
             }
 
-            // Fetch data for all restaurant IDs
-            const fetchPromises = restaurantDetails.map(detail =>
-                reportService.getConsolidatedInsights(detail.id, startDate, endDate, groupBy)
-            )
+            // Fetch data for all restaurant IDs with error handling
+            const apiGroupBy = groupBy === 'total' ? 'day' : groupBy
+            const fetchPromises = restaurantDetails.map(async (detail) => {
+                try {
+                    const result = await reportService.getConsolidatedInsights(detail.id, startDate, endDate, apiGroupBy)
+                    return {
+                        success: true,
+                        data: result,
+                        detail: detail
+                    }
+                } catch (error) {
+                    // Return failed request info instead of throwing
+                    return {
+                        success: false,
+                        error: error.message,
+                        detail: detail
+                    }
+                }
+            })
 
             const results = await Promise.all(fetchPromises)
 
-            const parsedResults = results.map(res => {
+            // Filter successful results
+            const successfulResults = results.filter(result => result.success)
+            const failedResults = results.filter(result => !result.success)
+
+            if (successfulResults.length === 0) {
+                throw new Error('No data available for any selected restaurants')
+            }
+
+            // Parse successful results
+            const parsedResults = successfulResults.map(result => {
+                const res = result.data
                 if (typeof res.body === 'string') return JSON.parse(res.body)
                 return res
             })
 
+            console.log('📦 API Response - Parsed Results:', parsedResults)
+            console.log('📦 Number of successful results:', parsedResults.length)
+            parsedResults.forEach((result, index) => {
+                console.log(`📦 Result ${index}:`, {
+                    hasConsolidatedInsights: !!result.consolidatedInsights,
+                    hasTimeSeriesData: !!result.timeSeriesData,
+                    timeSeriesLength: result.timeSeriesData?.length || 0,
+                    consolidatedInsights: result.consolidatedInsights,
+                    sampleTimeSeries: result.timeSeriesData?.[0]
+                })
+            })
+
+            // Get successful details
+            const successfulDetails = successfulResults.map(result => result.detail)
+
+            // Show notification about failed restaurants if any
+            if (failedResults.length > 0) {
+                const failedRestaurants = failedResults.map(result => result.detail.name)
+                console.info(`Data not available for: ${failedRestaurants.join(', ')}`)
+            }
+
             setDashboardData({
                 results: parsedResults,
-                details: restaurantDetails,
+                details: successfulDetails,
                 selections,
                 groupBy,
-                thresholds
+                thresholds,
+                // Include info about what was excluded
+                excludedChannels: failedResults.map(result => ({
+                    name: result.detail.name,
+                    platform: result.detail.platform,
+                    reason: result.error
+                }))
             })
 
         } catch (err) {
@@ -496,9 +548,27 @@ const DashboardPage = () => {
                         </div>
                     )}
                     {dashboardData && !loading && (
-                        <Dashboard
-                            data={dashboardData}
-                        />
+                        <>
+                            {dashboardData.excludedChannels && dashboardData.excludedChannels.length > 0 && (
+                                <div className="card" style={{ marginBottom: '1rem' }}>
+                                    <div className="status warning" style={{
+                                        backgroundColor: '#fef3c7',
+                                        color: '#92400e',
+                                        border: '1px solid #fbbf24',
+                                        borderRadius: '6px',
+                                        padding: '12px',
+                                        fontSize: '14px'
+                                    }}>
+                                        ⚠️ <strong>Data not available for:</strong> {dashboardData.excludedChannels.map(ch => `${ch.name} (${ch.platform})`).join(', ')}
+                                        <br />
+                                        <small>Showing data only for available restaurants.</small>
+                                    </div>
+                                </div>
+                            )}
+                            <Dashboard
+                                data={dashboardData}
+                            />
+                        </>
                     )}
                     {!dashboardData && !loading && !error && (
                         <div className="card">

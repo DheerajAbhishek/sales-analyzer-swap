@@ -10,7 +10,12 @@ import {
 } from 'chart.js'
 import { Bar } from 'react-chartjs-2'
 import { CHART_COLORS } from '../../utils/constants'
-import { formatValue, formatChartValue, formatWeekPeriod } from '../../utils/helpers'
+import {
+    formatValue,
+    formatChartValue,
+    formatWeekPeriod,
+    formatMonthPeriod,
+} from '../../utils/helpers'
 
 ChartJS.register(
     CategoryScale,
@@ -21,7 +26,7 @@ ChartJS.register(
     Legend
 )
 
-const MetricChart = ({ metric, type, data, periods = [] }) => {
+const MetricChart = ({ metric, type, data, periods = [], groupBy }) => {
     const chartRef = useRef()
 
     const getChartData = () => {
@@ -86,7 +91,9 @@ const MetricChart = ({ metric, type, data, periods = [] }) => {
             }
 
             return {
-                labels: periods.map(period => formatWeekPeriod(period)),
+                labels: periods.map(period =>
+                    groupBy === 'month' ? formatMonthPeriod(period) : formatWeekPeriod(period)
+                ),
                 datasets: datasets
             }
         }
@@ -208,32 +215,60 @@ const MetricChart = ({ metric, type, data, periods = [] }) => {
             return (
                 <div className="chart-values">
                     <div className="chart-values-timeseries">
-                        {periods.map((period, periodIndex) => (
-                            <div key={period} className="chart-period-values">
-                                <div className="chart-period-label">{formatWeekPeriod(period)}</div>
-                                <div className="chart-period-data">
-                                    {chartData.datasets.map((dataset, datasetIndex) => {
-                                        const value = dataset.data[periodIndex]
-                                        const color = dataset.borderColor
+                        {periods.map((period, periodIndex) => {
+                            const totalValue = chartData.datasets.reduce((sum, dataset) => {
+                                return sum + (dataset.data[periodIndex] || 0)
+                            }, 0)
 
-                                        return (
-                                            <div key={dataset.label} className="chart-value-item small">
+                            return (
+                                <div key={period} className="chart-period-values">
+                                    <div className="chart-period-label">
+                                        {groupBy === 'month' ? formatMonthPeriod(period) : formatWeekPeriod(period)}
+                                    </div>
+                                    <div className="chart-period-data">
+                                        {/* Original rendering for channel breakdown */}
+                                        {chartData.datasets.map((dataset) => {
+                                            const value = dataset.data[periodIndex]
+                                            const color = dataset.borderColor
+
+                                            return (
+                                                <div key={dataset.label} className="chart-value-item small">
+                                                    <div
+                                                        className="chart-value-indicator small"
+                                                        style={{ backgroundColor: color }}
+                                                    />
+                                                    <div className="chart-value-content">
+                                                        <span className="chart-value-label small">{dataset.label}</span>
+                                                        <span className="chart-value-number small">
+                                                            {formatValue(value, metric.type)}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            )
+                                        })}
+
+                                        {/* Show total at the end when grouped by month */}
+                                        {groupBy === 'month' && (
+                                            <div className="chart-value-item small total-item">
                                                 <div
                                                     className="chart-value-indicator small"
-                                                    style={{ backgroundColor: color }}
+                                                    style={{ backgroundColor: '#22c55e' }} // Green color
                                                 />
                                                 <div className="chart-value-content">
-                                                    <span className="chart-value-label small">{dataset.label}</span>
-                                                    <span className="chart-value-number small">
-                                                        {formatValue(value, metric.type)}
+                                                    <span className="chart-value-label small total-label">Total</span>
+                                                    <span
+                                                        className="chart-value-number small total-number"
+                                                        style={{ color: '#166534', fontWeight: '600' }} // Darker green, bold
+                                                    >
+                                                        {formatValue(totalValue, metric.type)}
                                                     </span>
                                                 </div>
                                             </div>
-                                        )
-                                    })}
+                                        )}
+                                    </div>
                                 </div>
-                            </div>
-                        ))}
+                            )
+                        })}
                     </div>
                 </div>
             )
