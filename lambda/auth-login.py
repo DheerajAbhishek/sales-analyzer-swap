@@ -60,6 +60,22 @@ def lambda_handler(event, context):
         
         user = response['Item']
         
+        # Check if user has a password hash (for traditional or dual auth users)
+        if 'passwordHash' not in user:
+            return {
+                'statusCode': 401,
+                'headers': {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Headers': 'Content-Type,Authorization',
+                    'Access-Control-Allow-Methods': 'POST,OPTIONS'
+                },
+                'body': json.dumps({
+                    'success': False,
+                    'message': 'This account only supports Google sign-in. Please use "Continue with Google" to sign in.'
+                })
+            }
+        
         # Verify password
         if user['passwordHash'] != password_hash:
             return {

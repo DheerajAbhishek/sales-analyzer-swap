@@ -38,7 +38,7 @@ def lambda_handler(event, context):
         
         # Validation - different requirements for Google vs traditional signup
         if is_google_signup:
-            # Google OAuth signup - password not required
+            # Google OAuth signup - password is now required for dual auth setup
             if not all([google_id, business_email, name, restaurant_name, phone_number, state, city]):
                 return {
                     'statusCode': 400,
@@ -53,6 +53,25 @@ def lambda_handler(event, context):
                         'message': 'All fields are required for Google signup'
                     })
                 }
+            
+            # For Google signup, password is optional but if provided, validate it
+            if password:
+                if len(password) < 8:
+                    return {
+                        'statusCode': 400,
+                        'headers': {
+                            'Content-Type': 'application/json',
+                            'Access-Control-Allow-Origin': '*',
+                            'Access-Control-Allow-Headers': 'Content-Type,Authorization',
+                            'Access-Control-Allow-Methods': 'POST,OPTIONS'
+                        },
+                        'body': json.dumps({
+                            'success': False,
+                            'message': 'Password must be at least 8 characters long'
+                        })
+                    }
+                # Hash the password for Google users who want dual auth
+                password_hash = hashlib.sha256(password.encode()).hexdigest()
         else:
             # Traditional signup - password required
             if not all([restaurant_name, business_email, phone_number, state, city, password]):
@@ -171,15 +190,29 @@ def lambda_handler(event, context):
                         }
                     
                     # User confirmed they want to link - update existing account
+                    update_expression = 'SET googleId = :gid, profilePicture = :pic, authMethod = :auth, updatedAt = :updated, #name = :name, emailVerified = :emailVerified'
+                    expression_values = {
+                        ':gid': google_id,
+                        ':pic': picture,
+                        ':auth': 'dual',  # Changed to 'dual' to indicate both methods
+                        ':updated': datetime.utcnow().isoformat(),
+                        ':name': name,
+                        ':emailVerified': email_verified
+                    }
+                    expression_names = {
+                        '#name': 'name'  # 'name' is a reserved keyword in DynamoDB
+                    }
+                    
+                    # If user provided a password during linking, update it
+                    if password:
+                        update_expression += ', passwordHash = :passwordHash'
+                        expression_values[':passwordHash'] = password_hash
+                    
                     users_table.update_item(
                         Key={'businessEmail': business_email},
-                        UpdateExpression='SET googleId = :gid, profilePicture = :pic, authMethod = :auth, updatedAt = :updated',
-                        ExpressionAttributeValues={
-                            ':gid': google_id,
-                            ':pic': picture,
-                            ':auth': 'linked',  # Changed to 'linked' to indicate both methods
-                            ':updated': datetime.utcnow().isoformat()
-                        }
+                        UpdateExpression=update_expression,
+                        ExpressionAttributeValues=expression_values,
+                        ExpressionAttributeNames=expression_names
                     )
                     
                     return {
@@ -197,7 +230,7 @@ def lambda_handler(event, context):
                                 'businessEmail': business_email,
                                 'userId': existing_user['userId'],
                                 'name': existing_user['restaurantName'],
-                                'authMethod': 'linked'
+                                'authMethod': 'dual'
                             }
                         })
                     }
@@ -249,6 +282,11 @@ def lambda_handler(event, context):
                 'name': name,
                 'emailVerified': email_verified
             })
+            
+            # Add password hash if user provided a password for dual auth
+            if password:
+                user_item['passwordHash'] = password_hash
+                user_item['authMethod'] = 'dual'  # User can use both Google and email/password
         else:
             # Add traditional signup fields
             user_item.update({

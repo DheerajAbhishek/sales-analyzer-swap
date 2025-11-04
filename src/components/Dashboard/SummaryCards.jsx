@@ -30,30 +30,76 @@ const SummaryCards = ({ data, selections, discountBreakdown, thresholds, monthly
         "GST on Order": "gstOnOrder"
     }
 
+    // Calculate percentage of gross sale after GST for each metric
+    const calculatePercentage = (value, grossSaleAfterGST) => {
+        if (!grossSaleAfterGST || grossSaleAfterGST === 0) return 0
+        return (value / grossSaleAfterGST) * 100
+    }
+
     const cardData = [
-        { label: "Gross Sale", value: data.grossSale, type: 'currency' },
-        { label: "Gross Sale After GST", value: data.grossSaleAfterGST, type: 'currency' },
-        { label: "Net Sale", value: data.netSale, type: 'currency' },
-        { label: "NBV", value: data.nbv, type: 'currency' },
-        { label: "No. of Orders", value: data.noOfOrders, type: 'number' },
+        {
+            label: "Gross Sale",
+            value: data.grossSale,
+            type: 'currency'
+            // No percentage - would be confusing to show >100% of gross sale after GST
+        },
+        {
+            label: "Gross Sale After GST",
+            value: data.grossSaleAfterGST,
+            type: 'currency',
+            percentage: 100 // Always 100% of itself
+        },
+        {
+            label: "Net Sale",
+            value: data.netSale,
+            type: 'currency',
+            percentage: calculatePercentage(data.netSale, data.grossSaleAfterGST)
+        },
+        {
+            label: "NBV",
+            value: data.nbv,
+            type: 'currency',
+            percentage: calculatePercentage(data.nbv, data.grossSaleAfterGST)
+        },
+        {
+            label: "No. of Orders",
+            value: data.noOfOrders,
+            type: 'number'
+            // No percentage for order count
+        },
         {
             label: "Discounts",
             value: data.discounts,
             type: 'currency',
             hasBreakdown: true,
-            percentage: data.discountPercent,
+            percentage: data.discountPercent || calculatePercentage(data.discounts, data.grossSaleAfterGST),
             threshold: thresholds?.discount
         },
-        { label: "Commission & Taxes", value: data.commissionAndTaxes, type: 'currency' },
+        {
+            label: "Commission & Taxes",
+            value: data.commissionAndTaxes,
+            type: 'currency',
+            percentage: calculatePercentage(data.commissionAndTaxes, data.grossSaleAfterGST)
+        },
         {
             label: "Ads",
             value: data.ads,
             type: 'currency',
-            percentage: data.adsPercent,
+            percentage: data.adsPercent || calculatePercentage(data.ads, data.grossSaleAfterGST),
             threshold: thresholds?.ads
         },
-        { label: "Packings", value: data.packings, type: 'currency' },
-        { label: "GST on Order", value: data.gstOnOrder, type: 'currency' }
+        {
+            label: "Packings",
+            value: data.packings,
+            type: 'currency',
+            percentage: calculatePercentage(data.packings, data.grossSaleAfterGST)
+        },
+        {
+            label: "GST on Order",
+            value: data.gstOnOrder,
+            type: 'currency',
+            percentage: calculatePercentage(data.gstOnOrder, data.grossSaleAfterGST)
+        }
     ]
 
     const scrollToChart = (label) => {
@@ -152,7 +198,7 @@ const SummaryCards = ({ data, selections, discountBreakdown, thresholds, monthly
                             <div>
                                 <p style={{
                                     fontSize: '0.9em',
-                                    color: getThresholdColor(item.percentage, item.threshold),
+                                    color: item.threshold !== undefined ? getThresholdColor(item.percentage, item.threshold) : '#6b7280',
                                     margin: '4px 0 0 0',
                                     fontWeight: item.threshold !== undefined && isSingleChannelSelected ? '600' : 'normal'
                                 }}>

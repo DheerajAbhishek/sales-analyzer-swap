@@ -12,62 +12,109 @@ const ProfilePage = ({ user, onLogout, onBack }) => {
     const [creatingRestaurant, setCreatingRestaurant] = useState(false)
     const [newRestaurant, setNewRestaurant] = useState({ name: '', platforms: {} })
     const [unusedPlatformIds, setUnusedPlatformIds] = useState([])
+    const [conflicts, setConflicts] = useState([])
+    const [showConflictDialog, setShowConflictDialog] = useState(false)
+    const [conflictResolution, setConflictResolution] = useState(null)
+
+    // Determine back button text based on previous route
+    const getBackButtonText = () => {
+        const previousRoute = localStorage.getItem('previousRoute')
+        if (previousRoute === '/') {
+            return '← Back to Home'
+        } else {
+            return '← Back to Dashboard'
+        }
+    }
 
     useEffect(() => {
-        loadRestaurants()
+        loadRestaurantsOptimized()
+
+        // Safety timeout - ensure loading never takes more than 3 seconds
+        const timeoutId = setTimeout(() => {
+            setLoading(false)
+        }, 3000)
+
+        return () => clearTimeout(timeoutId)
     }, [])
 
-    const loadRestaurants = async () => {
+    const loadRestaurantsOptimized = async () => {
+        const startTime = Date.now()
+        console.log('🚀 ProfilePage: Starting optimized restaurant loading...')
+
         try {
-            setLoading(true)
+            // First, immediately load from localStorage for instant UI
             const userRestaurants = authService.getUserRestaurants()
 
-            // Get all platform IDs from user's account
+            if (!userRestaurants) {
+                console.warn('No user restaurants found')
+                setRestaurants([])
+                setPlatformIds([])
+                setUnusedPlatformIds([])
+                setLoading(false)
+                console.log(`⚡ ProfilePage: Loading completed in ${Date.now() - startTime}ms (no data)`)
+                return
+            }
+
             const allPlatformIds = userRestaurants.restaurantIds || []
             setPlatformIds(allPlatformIds)
 
-            // Try to load existing restaurant mappings from backend
+            // Try to load existing restaurant mappings from localStorage first
+            const localMappings = localStorage.getItem('restaurantMappings')
             let mappings = []
-            try {
-                const response = await restaurantMappingService.getRestaurantMappings()
-                if (response.success) {
-                    mappings = response.data || []
-                    console.log('Loaded mappings from backend:', mappings)
-                    // Save to localStorage as backup
-                    localStorage.setItem('restaurantMappings', JSON.stringify(mappings))
+
+            if (localMappings) {
+                try {
+                    mappings = JSON.parse(localMappings)
+                    console.log('Loaded mappings from localStorage (instant):', mappings)
+
+                    // Set initial state immediately with cached data
+                    setRestaurants(mappings)
+                    updateUnusedPlatformIds(mappings, allPlatformIds)
+                    setLoading(false) // Stop loading immediately
+                    console.log(`⚡ ProfilePage: Loading completed in ${Date.now() - startTime}ms (from cache)`)
+                } catch (parseErr) {
+                    console.error('Failed to parse localStorage mappings:', parseErr)
                 }
-            } catch (err) {
-                console.log('Backend load failed, trying localStorage:', err)
-                // Try to load from localStorage as fallback
-                const localMappings = localStorage.getItem('restaurantMappings')
-                if (localMappings) {
-                    try {
-                        mappings = JSON.parse(localMappings)
-                        console.log('Loaded mappings from localStorage:', mappings)
-                    } catch (parseErr) {
-                        console.error('Failed to parse localStorage mappings:', parseErr)
+            } else {
+                // No cached data, stop loading immediately with empty state
+                setRestaurants([])
+                updateUnusedPlatformIds([], allPlatformIds)
+                setLoading(false)
+                console.log(`⚡ ProfilePage: Loading completed in ${Date.now() - startTime}ms (no cache)`)
+            }
+
+            // Background API call to refresh data (doesn't block UI)
+            setTimeout(async () => {
+                try {
+                    console.log('🔄 Background: Refreshing restaurant mappings from API...')
+                    const response = await restaurantMappingService.getRestaurantMappings()
+                    if (response.success) {
+                        const freshMappings = response.data || []
+                        console.log('✅ Background: Fresh mappings loaded:', freshMappings)
+
+                        // Only update UI if data actually changed
+                        const currentMappingsStr = JSON.stringify(mappings)
+                        const freshMappingsStr = JSON.stringify(freshMappings)
+
+                        if (currentMappingsStr !== freshMappingsStr) {
+                            console.log('📊 Background: Data changed, updating UI')
+                            setRestaurants(freshMappings)
+                            updateUnusedPlatformIds(freshMappings, allPlatformIds)
+                            // Save to localStorage as backup
+                            localStorage.setItem('restaurantMappings', JSON.stringify(freshMappings))
+                        } else {
+                            console.log('📊 Background: Data unchanged')
+                        }
                     }
+                } catch (err) {
+                    console.log('⚠️ Background API refresh failed (not critical):', err)
+                    // Don't show error - user already has cached data
                 }
-            }
+            }, 100) // Small delay to not block initial render
 
-            // If no mappings exist, create default ones
-            if (mappings.length === 0) {
-                mappings = allPlatformIds.map((platformId, index) => ({
-                    id: `restaurant_${index + 1}`,
-                    name: `Restaurant ${index + 1}`,
-                    platforms: {
-                        [guessChannelForId(platformId)]: platformId
-                    },
-                    createdAt: new Date().toISOString()
-                }))
-            }
-
-            setRestaurants(mappings)
-            updateUnusedPlatformIds(mappings, allPlatformIds)
-        } catch (err) {
-            setError('Failed to load restaurants')
-            console.error('Error loading restaurants:', err)
-        } finally {
+        } catch (error) {
+            console.error('Error in optimized restaurant loading:', error)
+            setError('Failed to load profile data')
             setLoading(false)
         }
     }
@@ -92,6 +139,44 @@ const ProfilePage = ({ user, onLogout, onBack }) => {
         })
         const unused = allPlatformIds.filter(id => !usedIds.has(id))
         setUnusedPlatformIds(unused)
+
+        // Detect potential conflicts (restaurants with only one platform ID that might be duplicates)
+        detectPotentialConflicts(currentRestaurants)
+    }
+
+    // Helper function to detect potential conflicts
+    const detectPotentialConflicts = (currentRestaurants) => {
+        const potentialConflicts = []
+
+        // Find restaurants that have only one platform ID and similar names
+        const singlePlatformRestaurants = currentRestaurants.filter(restaurant => {
+            const platformCount = Object.values(restaurant.platforms || {}).filter(id => id).length
+            return platformCount === 1
+        })
+
+        // Group by similar names (simple heuristic)
+        const nameGroups = {}
+        singlePlatformRestaurants.forEach(restaurant => {
+            // Simple name similarity check - remove numbers and spaces, convert to lowercase
+            const normalizedName = restaurant.name.toLowerCase().replace(/\d+/g, '').replace(/\s+/g, '').trim()
+            if (!nameGroups[normalizedName]) {
+                nameGroups[normalizedName] = []
+            }
+            nameGroups[normalizedName].push(restaurant)
+        })
+
+        // Find groups with multiple restaurants (potential conflicts)
+        Object.values(nameGroups).forEach(group => {
+            if (group.length > 1) {
+                potentialConflicts.push({
+                    restaurants: group,
+                    suggestedAction: 'merge',
+                    reason: 'Similar restaurant names with single platform IDs'
+                })
+            }
+        })
+
+        setConflicts(potentialConflicts)
     }
 
     const handleEditRestaurant = (restaurantId) => {
@@ -140,6 +225,58 @@ const ProfilePage = ({ user, onLogout, onBack }) => {
     }
 
     const handlePlatformChange = (restaurantId, channel, platformId) => {
+        // If platformId is being assigned, check if it's currently used by another restaurant
+        if (platformId) {
+            const currentlyUsedBy = restaurants.find(r =>
+                r.id !== restaurantId &&
+                Object.values(r.platforms || {}).includes(platformId)
+            )
+
+            if (currentlyUsedBy) {
+                // Show confirmation dialog for reassignment
+                const confirmMessage = `Platform ID "${platformId}" is currently assigned to "${currentlyUsedBy.name}". Do you want to move it to this restaurant? This will remove it from "${currentlyUsedBy.name}".`
+
+                if (window.confirm(confirmMessage)) {
+                    // Remove the platform ID from the current restaurant
+                    setRestaurants(prev => prev.map(restaurant => {
+                        if (restaurant.id === currentlyUsedBy.id) {
+                            // Remove the platform ID from all channels of the current restaurant
+                            const updatedPlatforms = { ...restaurant.platforms }
+                            Object.keys(updatedPlatforms).forEach(key => {
+                                if (updatedPlatforms[key] === platformId) {
+                                    updatedPlatforms[key] = ''
+                                }
+                            })
+                            return { ...restaurant, platforms: updatedPlatforms }
+                        } else if (restaurant.id === restaurantId) {
+                            // Add the platform ID to the target restaurant
+                            return {
+                                ...restaurant,
+                                platforms: {
+                                    ...restaurant.platforms,
+                                    [channel]: platformId
+                                }
+                            }
+                        }
+                        return restaurant
+                    }))
+
+                    // Check if the restaurant we removed the ID from is now empty and should be deleted
+                    setTimeout(() => {
+                        const updatedCurrentlyUsedBy = restaurants.find(r => r.id === currentlyUsedBy.id)
+                        if (updatedCurrentlyUsedBy) {
+                            const remainingPlatforms = Object.values(updatedCurrentlyUsedBy.platforms || {}).filter(id => id && id.trim())
+                            if (remainingPlatforms.length === 0 && window.confirm(`"${currentlyUsedBy.name}" no longer has any platform IDs. Do you want to delete this restaurant?`)) {
+                                setRestaurants(prev => prev.filter(r => r.id !== currentlyUsedBy.id))
+                            }
+                        }
+                    }, 100)
+                }
+                return // Don't proceed with the normal assignment if user cancelled
+            }
+        }
+
+        // Normal assignment (no conflict)
         setRestaurants(prev => prev.map(restaurant =>
             restaurant.id === restaurantId
                 ? {
@@ -162,6 +299,52 @@ const ProfilePage = ({ user, onLogout, onBack }) => {
         if (!newRestaurant.name.trim()) {
             setError('Restaurant name is required')
             return
+        }
+
+        // Check for conflicts with assigned platform IDs
+        const conflictingAssignments = []
+        Object.entries(newRestaurant.platforms).forEach(([channel, platformId]) => {
+            if (platformId) {
+                const assignedTo = restaurants.find(r =>
+                    Object.values(r.platforms || {}).includes(platformId)
+                )
+                if (assignedTo) {
+                    conflictingAssignments.push({
+                        platformId,
+                        channel,
+                        assignedTo: assignedTo.name,
+                        restaurantId: assignedTo.id
+                    })
+                }
+            }
+        })
+
+        // If there are conflicts, ask for confirmation
+        if (conflictingAssignments.length > 0) {
+            const conflictMessage = `The following platform IDs are already assigned:\n${conflictingAssignments.map(c => `• ${c.platformId} (assigned to ${c.assignedTo})`).join('\n')
+                }\n\nDo you want to move them to this new restaurant?`
+
+            if (!window.confirm(conflictMessage)) {
+                return
+            }
+
+            // Remove platform IDs from existing restaurants
+            setRestaurants(prev => prev.map(restaurant => {
+                const conflictingPlatformIds = conflictingAssignments
+                    .filter(c => c.restaurantId === restaurant.id)
+                    .map(c => c.platformId)
+
+                if (conflictingPlatformIds.length > 0) {
+                    const updatedPlatforms = { ...restaurant.platforms }
+                    Object.keys(updatedPlatforms).forEach(key => {
+                        if (conflictingPlatformIds.includes(updatedPlatforms[key])) {
+                            updatedPlatforms[key] = ''
+                        }
+                    })
+                    return { ...restaurant, platforms: updatedPlatforms }
+                }
+                return restaurant
+            }))
         }
 
         setSaving(true)
@@ -188,6 +371,23 @@ const ProfilePage = ({ user, onLogout, onBack }) => {
             setError(null)
             // Update unused platform IDs
             updateUnusedPlatformIds(updatedRestaurants, platformIds)
+
+            // Check if any restaurants are now empty and should be deleted
+            if (conflictingAssignments.length > 0) {
+                setTimeout(() => {
+                    const emptyRestaurants = restaurants.filter(r => {
+                        const remainingPlatforms = Object.values(r.platforms || {}).filter(id => id && id.trim())
+                        return remainingPlatforms.length === 0
+                    })
+
+                    if (emptyRestaurants.length > 0) {
+                        const emptyNames = emptyRestaurants.map(r => r.name).join(', ')
+                        if (window.confirm(`The following restaurants no longer have any platform IDs: ${emptyNames}. Do you want to delete them?`)) {
+                            setRestaurants(prev => prev.filter(r => !emptyRestaurants.some(empty => empty.id === r.id)))
+                        }
+                    }
+                }, 200)
+            }
         } catch (err) {
             setError('Failed to save restaurant: ' + err.message)
         } finally {
@@ -236,6 +436,36 @@ const ProfilePage = ({ user, onLogout, onBack }) => {
         return usedIds
     }
 
+    const handleConflictResolution = (action, duplicatesToRemove = []) => {
+        if (action === 'merge' && conflictResolution) {
+            // Apply the original platform change
+            setRestaurants(prev => {
+                let updated = prev.map(restaurant =>
+                    restaurant.id === conflictResolution.targetRestaurant.id
+                        ? conflictResolution.targetRestaurant
+                        : restaurant
+                )
+
+                // Remove selected duplicates
+                updated = updated.filter(restaurant =>
+                    !duplicatesToRemove.includes(restaurant.id)
+                )
+
+                return updated
+            })
+
+            setError(null)
+        }
+
+        setShowConflictDialog(false)
+        setConflictResolution(null)
+    }
+
+    const handleCancelConflictResolution = () => {
+        setShowConflictDialog(false)
+        setConflictResolution(null)
+    }
+
     const handleLogout = () => {
         authService.logout()
         if (onLogout) onLogout()
@@ -244,8 +474,8 @@ const ProfilePage = ({ user, onLogout, onBack }) => {
     const channels = [
         { value: 'zomato', label: 'Zomato' },
         { value: 'swiggy', label: 'Swiggy' },
-        { value: 'takeaway', label: 'Takeaway' },
-        { value: 'subs', label: 'Subscriptions' }
+        // { value: 'takeaway', label: 'Takeaway' },
+        // { value: 'subs', label: 'Subscriptions' }
     ]
 
     if (loading) {
@@ -255,12 +485,15 @@ const ProfilePage = ({ user, onLogout, onBack }) => {
                     <div className="profile-header">
                         <h1>Profile</h1>
                         <button className="btn-back" onClick={onBack}>
-                            ← Back to Dashboard
+                            {getBackButtonText()}
                         </button>
                     </div>
                     <div className="loading-state">
                         <div className="loading-spinner"></div>
-                        <p>Loading profile...</p>
+                        <p>Loading your restaurant data...</p>
+                        <small style={{ color: '#666', marginTop: '0.5rem' }}>
+                            This should only take a moment
+                        </small>
                     </div>
                 </div>
             </div>
@@ -273,7 +506,7 @@ const ProfilePage = ({ user, onLogout, onBack }) => {
                 <div className="profile-header">
                     <h1>Profile</h1>
                     <button className="btn-back" onClick={onBack}>
-                        ← Back to Dashboard
+                        {getBackButtonText()}
                     </button>
                 </div>
 
@@ -309,19 +542,43 @@ const ProfilePage = ({ user, onLogout, onBack }) => {
 
                 {/* Restaurants Section */}
                 <div className="profile-section">
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
                         <h2>Your Restaurants ({restaurants.length})</h2>
-                        <button
-                            className="btn-edit"
-                            onClick={handleCreateRestaurant}
-                            disabled={saving || creatingRestaurant}
-                        >
-                            + Add Restaurant
-                        </button>
+                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                            {conflicts.length > 0 && (
+                                <button
+                                    className="btn-edit"
+                                    onClick={() => {
+                                        // Show conflict resolution options for all conflicts
+                                        if (conflicts.length > 0) {
+                                            const firstConflict = conflicts[0]
+                                            setConflictResolution({
+                                                targetRestaurant: firstConflict.restaurants[0],
+                                                potentialDuplicates: firstConflict.restaurants.slice(1),
+                                                channel: 'manual',
+                                                platformId: 'manual-merge'
+                                            })
+                                            setShowConflictDialog(true)
+                                        }
+                                    }}
+                                    disabled={saving}
+                                    style={{ backgroundColor: '#f59e0b', borderColor: '#f59e0b' }}
+                                >
+                                    🔄 Resolve Conflicts ({conflicts.length})
+                                </button>
+                            )}
+                            <button
+                                className="btn-edit"
+                                onClick={handleCreateRestaurant}
+                                disabled={saving || creatingRestaurant}
+                            >
+                                + Create Restaurant Group
+                            </button>
+                        </div>
                     </div>
 
-                    {/* Show unused platform IDs */}
-                    {unusedPlatformIds.length > 0 && (
+                    {/* Show conflicts warning */}
+                    {conflicts.length > 0 && (
                         <div style={{
                             background: '#fef3c7',
                             border: '1px solid #f59e0b',
@@ -329,9 +586,49 @@ const ProfilePage = ({ user, onLogout, onBack }) => {
                             padding: '1rem',
                             marginBottom: '1.5rem'
                         }}>
-                            <strong>Unused Platform IDs:</strong> {unusedPlatformIds.join(', ')}
+                            <strong>⚠️ Potential Duplicate Restaurants Detected:</strong>
                             <br />
-                            <small>These IDs from your uploaded data are not assigned to any restaurant.</small>
+                            {conflicts.map((conflict, index) => (
+                                <div key={index} style={{ marginTop: '0.5rem', fontSize: '0.9rem' }}>
+                                    • {conflict.restaurants.map(r => r.name).join(', ')} might be the same restaurant
+                                </div>
+                            ))}
+                            <small>Consider merging these when updating platform IDs.</small>
+                        </div>
+                    )}
+
+                    {/* Show unassigned restaurant IDs */}
+                    {unusedPlatformIds.length > 0 && (
+                        <div style={{
+                            background: '#e0f2fe',
+                            border: '1px solid #0284c7',
+                            borderRadius: '8px',
+                            padding: '1rem',
+                            marginBottom: '1.5rem'
+                        }}>
+                            <strong>🏪 Unassigned Restaurant IDs ({unusedPlatformIds.length}):</strong>
+                            <div style={{ marginTop: '0.5rem', fontFamily: 'monospace', fontSize: '0.9rem' }}>
+                                {unusedPlatformIds.join(', ')}
+                            </div>
+                            <small style={{ display: 'block', marginTop: '0.5rem' }}>
+                                These restaurant IDs are available in your reports but not organized into restaurant groups.
+                                Click "Add Restaurant" to create organized groups for easier management.
+                            </small>
+                        </div>
+                    )}
+
+                    {/* Show no unassigned IDs message */}
+                    {unusedPlatformIds.length === 0 && restaurants.length > 0 && (
+                        <div style={{
+                            background: '#f0fdf4',
+                            border: '1px solid #16a34a',
+                            borderRadius: '8px',
+                            padding: '1rem',
+                            marginBottom: '1.5rem'
+                        }}>
+                            <strong>✅ All restaurant IDs are organized!</strong>
+                            <br />
+                            <small>All your restaurant IDs have been assigned to restaurant groups.</small>
                         </div>
                     )}
 
@@ -368,7 +665,7 @@ const ProfilePage = ({ user, onLogout, onBack }) => {
                                         autoFocus
                                     />
                                 </div>
-                                {['zomato', 'swiggy', 'takeaway', 'subs'].map(channel => (
+                                {['zomato', 'swiggy'/* , 'takeaway', 'subs' */].map(channel => (
                                     <div key={channel} className="form-group">
                                         <label>{channel.charAt(0).toUpperCase() + channel.slice(1)} ID:</label>
                                         <select
@@ -380,11 +677,18 @@ const ProfilePage = ({ user, onLogout, onBack }) => {
                                             className="form-control"
                                         >
                                             <option value="">Select Platform ID</option>
-                                            {platformIds.filter(platformId => !getUsedPlatformIds().has(platformId)).map(platformId => (
-                                                <option key={platformId} value={platformId}>
-                                                    {platformId}
-                                                </option>
-                                            ))}
+                                            {platformIds.map(platformId => {
+                                                const assignedTo = restaurants.find(r =>
+                                                    Object.values(r.platforms || {}).includes(platformId)
+                                                )
+
+                                                return (
+                                                    <option key={platformId} value={platformId}>
+                                                        {platformId}
+                                                        {assignedTo ? ` (assigned to ${assignedTo.name})` : ' (available)'}
+                                                    </option>
+                                                )
+                                            })}
                                         </select>
                                     </div>
                                 ))}
@@ -394,18 +698,66 @@ const ProfilePage = ({ user, onLogout, onBack }) => {
 
                     {restaurants.length === 0 && !creatingRestaurant ? (
                         <div className="empty-state">
-                            <p>No restaurants configured yet.</p>
-                            <p>Click "Add Restaurant" to start mapping your platform IDs.</p>
+                            <p>No restaurant groups created yet.</p>
+                            <p>Your restaurant IDs are available for direct use in reports.</p>
+                            <p>Create restaurant groups to organize multiple platform IDs or give them meaningful names.</p>
                         </div>
                     ) : (
                         <div className="restaurants-grid">
                             {restaurants.map((restaurant) => {
                                 const isEditing = editingRestaurant === restaurant.id
 
+                                // Check if this restaurant is part of a conflict
+                                const isInConflict = conflicts.some(conflict =>
+                                    conflict.restaurants.some(r => r.id === restaurant.id)
+                                )
+
+                                // Check if this restaurant has only one platform ID (potential for merging)
+                                const platformCount = Object.values(restaurant.platforms || {}).filter(id => id).length
+
                                 return (
-                                    <div key={restaurant.id} className="restaurant-card">
+                                    <div
+                                        key={restaurant.id}
+                                        className="restaurant-card"
+                                        style={{
+                                            border: isInConflict ? '2px solid #f59e0b' : undefined,
+                                            position: 'relative'
+                                        }}
+                                    >
+                                        {isInConflict && (
+                                            <div style={{
+                                                position: 'absolute',
+                                                top: '-8px',
+                                                right: '-8px',
+                                                backgroundColor: '#f59e0b',
+                                                color: 'white',
+                                                borderRadius: '50%',
+                                                width: '24px',
+                                                height: '24px',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                fontSize: '12px',
+                                                fontWeight: 'bold'
+                                            }}>
+                                                ⚠️
+                                            </div>
+                                        )}
+
                                         <div className="restaurant-header">
-                                            <div className="restaurant-id">{restaurant.name}</div>
+                                            <div className="restaurant-id">
+                                                {restaurant.name}
+                                                {platformCount === 1 && (
+                                                    <span style={{
+                                                        marginLeft: '0.5rem',
+                                                        fontSize: '0.75rem',
+                                                        color: '#6b7280',
+                                                        fontWeight: 'normal'
+                                                    }}>
+                                                        (Single Platform)
+                                                    </span>
+                                                )}
+                                            </div>
                                             {!isEditing && (
                                                 <div>
                                                     <button
@@ -443,7 +795,7 @@ const ProfilePage = ({ user, onLogout, onBack }) => {
                                                 )}
                                             </div>
 
-                                            {['zomato', 'swiggy', 'takeaway', 'subs'].map(channel => (
+                                            {['zomato', 'swiggy'/* , 'takeaway', 'subs' */].map(channel => (
                                                 <div key={channel} className="form-group">
                                                     <label>{channel.charAt(0).toUpperCase() + channel.slice(1)} ID:</label>
                                                     {isEditing ? (
@@ -453,14 +805,20 @@ const ProfilePage = ({ user, onLogout, onBack }) => {
                                                             className="form-control"
                                                         >
                                                             <option value="">No Platform ID</option>
-                                                            {platformIds.filter(platformId =>
-                                                                !getUsedPlatformIds(restaurant.id).has(platformId) ||
-                                                                restaurant.platforms[channel] === platformId
-                                                            ).map(platformId => (
-                                                                <option key={platformId} value={platformId}>
-                                                                    {platformId}
-                                                                </option>
-                                                            ))}
+                                                            {platformIds.map(platformId => {
+                                                                const isCurrentlyAssigned = restaurant.platforms[channel] === platformId
+                                                                const assignedTo = restaurants.find(r =>
+                                                                    r.id !== restaurant.id &&
+                                                                    Object.values(r.platforms || {}).includes(platformId)
+                                                                )
+
+                                                                return (
+                                                                    <option key={platformId} value={platformId}>
+                                                                        {platformId}
+                                                                        {assignedTo && !isCurrentlyAssigned ? ` (assigned to ${assignedTo.name})` : ''}
+                                                                    </option>
+                                                                )
+                                                            })}
                                                         </select>
                                                     ) : (
                                                         <div className="display-value">
@@ -494,25 +852,129 @@ const ProfilePage = ({ user, onLogout, onBack }) => {
                             })}
                         </div>
                     )}
-                </div>                {/* Instructions */}
-                <div className="profile-section">
+                </div>                <div className="profile-section">
                     <h2>How to Use</h2>
                     <div className="instructions">
                         <div className="instruction-item">
-                            <strong>Restaurant Name:</strong> Give your restaurants meaningful names that help you identify them easily in reports and dashboards.
+                            <strong>Restaurant IDs:</strong> Your uploaded data contains restaurant IDs (like "19251816"). These are automatically available in your reports and dashboards.
                         </div>
                         <div className="instruction-item">
-                            <strong>Platform IDs:</strong> Map your platform IDs (from uploaded data) to the correct channels (Zomato, Swiggy, Takeaway, Subscriptions). You can assign multiple platform IDs to a single restaurant if it operates on multiple channels.
+                            <strong>Restaurant Groups (Optional):</strong> Create restaurant groups to organize multiple platform IDs under meaningful names. This is helpful if you have the same restaurant on multiple platforms (Zomato, Swiggy).
                         </div>
                         <div className="instruction-item">
-                            <strong>Unused IDs:</strong> Any platform IDs from your uploaded data that aren't assigned to a restaurant will be shown as "unused" - make sure to assign them to get complete reports.
+                            <strong>Unassigned IDs:</strong> Restaurant IDs that aren't assigned to any group are shown above. You can use these directly in reports or organize them into groups for better management.
                         </div>
                         <div className="instruction-item">
-                            <strong>Multiple Locations:</strong> If you have multiple restaurant locations, create separate restaurant entries for each location to track them individually.
+                            <strong>Platform Mapping:</strong> When creating restaurant groups, assign platform IDs to the correct channels (Zomato, Swiggy) to get accurate channel-specific insights.
+                        </div>
+                        <div className="instruction-item">
+                            <strong>Multiple Locations:</strong> If you have multiple restaurant locations, create separate restaurant groups for each location to track them individually.
                         </div>
                     </div>
                 </div>
             </div>
+
+            {/* Conflict Resolution Dialog */}
+            {showConflictDialog && conflictResolution && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    backgroundColor: 'rgba(0,0,0,0.5)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 1000
+                }}>
+                    <div style={{
+                        backgroundColor: 'white',
+                        borderRadius: '12px',
+                        padding: '2rem',
+                        maxWidth: '500px',
+                        width: '90%',
+                        maxHeight: '80vh',
+                        overflow: 'auto',
+                        boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)'
+                    }}>
+                        <h3 style={{ marginTop: 0, color: '#7c3aed' }}>🔄 Merge Duplicate Restaurants?</h3>
+
+                        <p style={{ color: '#6b7280', marginBottom: '1.5rem' }}>
+                            You're adding a <strong>{conflictResolution.channel}</strong> platform ID to <strong>"{conflictResolution.targetRestaurant.name}"</strong>.
+                            <br /><br />
+                            We found potentially duplicate restaurants that might represent the same business:
+                        </p>
+
+                        <div style={{ marginBottom: '1.5rem' }}>
+                            {conflictResolution.potentialDuplicates.map(duplicate => {
+                                const platformIds = Object.values(duplicate.platforms || {}).filter(id => id)
+                                return (
+                                    <div key={duplicate.id} style={{
+                                        border: '1px solid #d1d5db',
+                                        borderRadius: '8px',
+                                        padding: '1rem',
+                                        marginBottom: '0.5rem',
+                                        backgroundColor: '#f9fafb'
+                                    }}>
+                                        <strong>{duplicate.name}</strong>
+                                        <br />
+                                        <small>Platform IDs: {platformIds.join(', ') || 'None'}</small>
+                                    </div>
+                                )
+                            })}
+                        </div>
+
+                        <div style={{
+                            display: 'flex',
+                            gap: '1rem',
+                            flexDirection: window.innerWidth < 480 ? 'column' : 'row'
+                        }}>
+                            <button
+                                style={{
+                                    flex: 1,
+                                    padding: '0.75rem 1rem',
+                                    backgroundColor: '#10b981',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '8px',
+                                    cursor: 'pointer',
+                                    fontWeight: '500'
+                                }}
+                                onClick={() => handleConflictResolution('merge', conflictResolution.potentialDuplicates.map(d => d.id))}
+                            >
+                                ✅ Merge & Delete Duplicates
+                            </button>
+                            <button
+                                style={{
+                                    flex: 1,
+                                    padding: '0.75rem 1rem',
+                                    backgroundColor: '#6b7280',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '8px',
+                                    cursor: 'pointer',
+                                    fontWeight: '500'
+                                }}
+                                onClick={handleCancelConflictResolution}
+                            >
+                                ❌ Keep Separate
+                            </button>
+                        </div>
+
+                        <p style={{
+                            fontSize: '0.875rem',
+                            color: '#6b7280',
+                            marginTop: '1rem',
+                            marginBottom: 0
+                        }}>
+                            <strong>Merge:</strong> Combines platform IDs into one restaurant and removes duplicates.
+                            <br />
+                            <strong>Keep Separate:</strong> Maintains current structure without changes.
+                        </p>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }

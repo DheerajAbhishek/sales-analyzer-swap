@@ -7,7 +7,9 @@ const GoogleSignupForm = ({ googleUserData, onComplete, onCancel, needsAccountLi
         restaurantName: '',
         phoneNumber: '',
         state: '',
-        city: ''
+        city: '',
+        password: '',
+        confirmPassword: ''
     })
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState('')
@@ -34,11 +36,25 @@ const GoogleSignupForm = ({ googleUserData, onComplete, onCancel, needsAccountLi
 
         try {
             // Validate required fields
-            const requiredFields = ['restaurantName', 'phoneNumber', 'state', 'city']
+            const requiredFields = ['restaurantName', 'phoneNumber', 'state', 'city', 'password', 'confirmPassword']
             const missingFields = requiredFields.filter(field => !formData[field].trim())
 
             if (missingFields.length > 0) {
                 setError('All fields are required')
+                setLoading(false)
+                return
+            }
+
+            // Validate password match
+            if (formData.password !== formData.confirmPassword) {
+                setError('Passwords do not match')
+                setLoading(false)
+                return
+            }
+
+            // Validate password strength
+            if (formData.password.length < 8) {
+                setError('Password must be at least 8 characters long')
                 setLoading(false)
                 return
             }
@@ -127,8 +143,9 @@ const GoogleSignupForm = ({ googleUserData, onComplete, onCancel, needsAccountLi
         <div className="google-signup-overlay">
             <div className="google-signup-form">
                 <div className="google-signup-header">
-                    <h2>Complete Your Profile</h2>
-                    <p>Hi {googleUserData.name}! Please provide additional details to complete your account setup.</p>
+                    <h2>Complete Your Account Setup</h2>
+                    <p>Hi {googleUserData.name}! Please provide additional details and set a password to complete your account setup.</p>
+                    <p className="auth-note">You'll be able to sign in using either Google or your email and password.</p>
                 </div>
 
                 <form onSubmit={handleSubmit} className="signup-form">
@@ -188,6 +205,35 @@ const GoogleSignupForm = ({ googleUserData, onComplete, onCancel, needsAccountLi
                                 required
                             />
                         </div>
+                    </div>
+
+                    <div className="form-group">
+                        <label htmlFor="password">Set Password *</label>
+                        <input
+                            type="password"
+                            id="password"
+                            name="password"
+                            value={formData.password}
+                            onChange={handleInputChange}
+                            placeholder="Create a password (min 8 characters)"
+                            disabled={loading}
+                            required
+                        />
+                        <small className="form-help">You can use this password to login with your email later</small>
+                    </div>
+
+                    <div className="form-group">
+                        <label htmlFor="confirmPassword">Confirm Password *</label>
+                        <input
+                            type="password"
+                            id="confirmPassword"
+                            name="confirmPassword"
+                            value={formData.confirmPassword}
+                            onChange={handleInputChange}
+                            placeholder="Confirm your password"
+                            disabled={loading}
+                            required
+                        />
                     </div>
 
                     {error && (

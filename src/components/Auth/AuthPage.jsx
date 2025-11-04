@@ -7,14 +7,25 @@ const AuthPage = ({ onAuthSuccess }) => {
     const location = useLocation()
     const navigate = useNavigate()
     const [isLogin, setIsLogin] = useState(true)
+    const [message, setMessage] = useState('')
 
     useEffect(() => {
         // Set initial state based on URL
         setIsLogin(location.pathname === '/login')
-    }, [location.pathname])
+
+        // Check if we have a message from OAuth callback
+        if (location.state?.message) {
+            setMessage(location.state.message)
+            setIsLogin(false) // Switch to signup tab if redirected from login
+
+            // Clear the location state to prevent message from persisting
+            navigate(location.pathname, { replace: true, state: {} })
+        }
+    }, [location.pathname, location.state, navigate])
 
     const handleTabChange = (isLoginTab) => {
         setIsLogin(isLoginTab)
+        setMessage('') // Clear message when switching tabs
         navigate(isLoginTab ? '/login' : '/signup')
     }
 
@@ -42,6 +53,12 @@ const AuthPage = ({ onAuthSuccess }) => {
                 </div>
 
                 <div className="auth-form-container">
+                    {message && (
+                        <div className="auth-info-message">
+                            {message}
+                        </div>
+                    )}
+
                     {isLogin ? (
                         <LoginForm onSuccess={onAuthSuccess} />
                     ) : (

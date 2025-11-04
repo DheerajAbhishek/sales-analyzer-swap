@@ -178,12 +178,17 @@ class AuthService {
                 console.log('✅ OAuth token exchange successful')
                 console.log('🔍 Checking if Google user exists:', result.user.email)
 
+                // Get the OAuth context (login vs signup)
+                const oauthContext = sessionStorage.getItem('oauth_context') || 'login'
+                console.log('📋 OAuth context:', oauthContext)
+
                 // Check if user already exists
                 const userCheck = await this.verifyGoogleUserExists(result.user.email)
                 console.log('👤 User check result:', userCheck)
 
                 if (userCheck.userExists) {
-                    if (userCheck.user.authMethod === 'google') {
+                    // User exists - proceed with login
+                    if (userCheck.user.authMethod === 'google' || userCheck.user.authMethod === 'dual' || userCheck.user.authMethod === 'linked') {
                         console.log('✅ Existing Google user - logging in directly')
                         // Existing Google user - log them in
                         const userData = {
@@ -193,11 +198,11 @@ class AuthService {
                             name: result.user.name,
                             picture: result.user.picture,
                             emailVerified: result.user.emailVerified,
-                            authMethod: 'google'
+                            authMethod: userCheck.user.authMethod
                         }
 
                         localStorage.setItem('user', JSON.stringify(userData))
-                        localStorage.setItem('authMethod', 'google')
+                        localStorage.setItem('authMethod', userCheck.user.authMethod)
 
                         // Store Gmail tokens for email processing
                         try {
@@ -215,7 +220,7 @@ class AuthService {
                                 success: true,
                                 user: userData,
                                 restaurants: restaurantData,
-                                authMethod: 'google',
+                                authMethod: userCheck.user.authMethod,
                                 isNewUser: false
                             }
                         } catch (restaurantError) {
@@ -224,7 +229,7 @@ class AuthService {
                                 success: true,
                                 user: userData,
                                 restaurants: { restaurantIds: [], objectKeysCount: 0 },
-                                authMethod: 'google',
+                                authMethod: userCheck.user.authMethod,
                                 isNewUser: false
                             }
                         }
@@ -241,22 +246,42 @@ class AuthService {
                                 emailVerified: result.user.emailVerified
                             },
                             authMethod: 'google',
-                            needsAccountLinking: true
+                            needsAccountLinking: userCheck.user.requiresLinking || false
                         }
                     }
                 } else {
-                    console.log('🆕 New user - showing signup form')
-                    return {
-                        success: true,
-                        isNewUser: true,
-                        googleUserData: {
-                            googleId: result.user.id,
-                            email: result.user.email,
-                            name: result.user.name,
-                            picture: result.user.picture,
-                            emailVerified: result.user.emailVerified
-                        },
-                        authMethod: 'google'
+                    // User doesn't exist
+                    if (oauthContext === 'login') {
+                        console.log('🚫 New user tried to login - redirecting to signup page')
+                        // Clear OAuth session data
+                        sessionStorage.removeItem('oauth_context')
+
+                        return {
+                            success: false,
+                            shouldRedirectToSignup: true,
+                            message: 'Account not found. Please sign up first.',
+                            googleUserData: {
+                                googleId: result.user.id,
+                                email: result.user.email,
+                                name: result.user.name,
+                                picture: result.user.picture,
+                                emailVerified: result.user.emailVerified
+                            }
+                        }
+                    } else {
+                        console.log('🆕 New user - showing signup form')
+                        return {
+                            success: true,
+                            isNewUser: true,
+                            googleUserData: {
+                                googleId: result.user.id,
+                                email: result.user.email,
+                                name: result.user.name,
+                                picture: result.user.picture,
+                                emailVerified: result.user.emailVerified
+                            },
+                            authMethod: 'google'
+                        }
                     }
                 }
             } else {
@@ -310,7 +335,8 @@ class AuthService {
                         userExists: true,
                         user: {
                             authMethod: data.authMethod,
-                            restaurantName: data.restaurantName
+                            restaurantName: data.restaurantName,
+                            hasPassword: data.hasPassword || false // Check if user also has password
                         }
                     }
                 } else {
@@ -319,7 +345,8 @@ class AuthService {
                         userExists: true,
                         user: {
                             authMethod: 'traditional',
-                            restaurantName: data.restaurantName
+                            restaurantName: data.restaurantName,
+                            requiresLinking: true
                         }
                     }
                 }
@@ -379,13 +406,41 @@ class AuthService {
     async loginWithGoogle() {
         try {
             console.log('🚀 Initiating Google OAuth login')
-            googleOAuthService.initiateOAuth()
+
+            // First, we need to get the user's email to check if they exist
+            // Since we don't have email before OAuth, we'll use a different approach:
+            // Start OAuth with select_account, then check user existence in callback
+            // If user doesn't exist in callback, redirect to signup page
+
+            googleOAuthService.initiateOAuth(false) // false = login context
+
             return {
                 success: true,
                 message: 'Redirecting to Google...'
             }
         } catch (error) {
             console.error('Failed to initiate Google OAuth:', error)
+            return {
+                success: false,
+                message: 'Failed to start Google authentication'
+            }
+        }
+    }
+
+    // Initiate Google OAuth signup (for new users)
+    async signupWithGoogle() {
+        try {
+            console.log('🚀 Initiating Google OAuth signup')
+
+            // For signup, we need consent to get fresh tokens and permissions
+            googleOAuthService.initiateOAuth(true) // true = new user, use consent
+
+            return {
+                success: true,
+                message: 'Redirecting to Google...'
+            }
+        } catch (error) {
+            console.error('Failed to initiate Google OAuth signup:', error)
             return {
                 success: false,
                 message: 'Failed to start Google authentication'
@@ -438,6 +493,15 @@ class AuthService {
                     console.log('🔄 Initializing Gmail integration...')
                     await gmailIntegrationService.initializeGmailIntegration(businessEmail)
                     console.log('✅ Gmail integration initialized for new user')
+
+                    // Subscribe to Gmail push notifications for real-time processing
+                    console.log('🔔 Subscribing to Gmail watch notifications...')
+                    const watchResult = await gmailIntegrationService.subscribeToGmailWatch(businessEmail)
+                    if (watchResult.success) {
+                        console.log('✅ Gmail watch subscription successful')
+                    } else {
+                        console.warn('⚠️ Gmail watch subscription failed:', watchResult.message)
+                    }
                 } catch (gmailError) {
                     console.warn('⚠️ Failed to initialize Gmail integration:', gmailError)
                     // Don't block - continue with signup
@@ -535,6 +599,25 @@ class AuthService {
 
                 localStorage.setItem('user', JSON.stringify(userInfo))
                 localStorage.setItem('authMethod', 'linked')
+
+                // Initialize Gmail integration and subscribe to watch notifications
+                try {
+                    console.log('🔄 Initializing Gmail integration for linked account...')
+                    await gmailIntegrationService.initializeGmailIntegration(userInfo.businessEmail)
+                    console.log('✅ Gmail integration initialized')
+
+                    // Subscribe to Gmail push notifications
+                    console.log('🔔 Subscribing to Gmail watch notifications...')
+                    const watchResult = await gmailIntegrationService.subscribeToGmailWatch(userInfo.businessEmail)
+                    if (watchResult.success) {
+                        console.log('✅ Gmail watch subscription successful')
+                    } else {
+                        console.warn('⚠️ Gmail watch subscription failed:', watchResult.message)
+                    }
+                } catch (gmailError) {
+                    console.warn('⚠️ Failed to initialize Gmail integration:', gmailError)
+                    // Don't block - continue with linking
+                }
 
                 // Fetch user restaurants
                 try {

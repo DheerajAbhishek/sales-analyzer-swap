@@ -7,11 +7,11 @@ import OAuthCallback from './components/Auth/OAuthCallback.jsx'
 import LandingPage from './components/LandingPage.jsx'
 import Profile from './components/Profile.jsx'
 import ProfilePage from './components/ProfilePage.jsx'
-import GmailIntegrationPanel from './components/Integration/GmailIntegrationPanel.jsx'
 import { reportService } from './services/api'
 import { authService } from './services/authService'
 import { restaurantMetadataService } from './services/restaurantMetadataService'
 import { autoEmailProcessingService } from './services/autoEmailProcessingService'
+import { autoLoadService } from './services/autoLoadService'
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -69,16 +69,43 @@ const ProtectedRoute = ({ children }) => {
 const DashboardPage = () => {
     const [user, setUser] = useState(authService.getCurrentUser())
     const [userRestaurants, setUserRestaurants] = useState(authService.getUserRestaurants())
-    const [dashboardData, setDashboardData] = useState(null)
+    const [dashboardData, setDashboardData] = useState(() => {
+        // Try to load persisted dashboard data
+        try {
+            const saved = localStorage.getItem('dashboardData')
+            return saved ? JSON.parse(saved) : null
+        } catch (error) {
+            console.warn('Failed to load persisted dashboard data:', error)
+            return null
+        }
+    })
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState(null)
     const navigate = useNavigate()
 
     const [showProfile, setShowProfile] = useState(false)
-    const [showGmail, setShowGmail] = useState(false)
     const [emailProcessingStatus, setEmailProcessingStatus] = useState(null)
     const [controlsPanelKey, setControlsPanelKey] = useState(0)
     const [refreshing, setRefreshing] = useState(false)
+    const [autoLoadAttempted, setAutoLoadAttempted] = useState(() => {
+        // Check if auto-load was already attempted in this session
+        return localStorage.getItem('autoLoadAttempted') === 'true'
+    })
+
+    // Function to update dashboard data with persistence
+    const updateDashboardData = (data, isManual = false) => {
+        setDashboardData(data)
+
+        if (data) {
+            // Mark the data as manually fetched if it's from user action
+            const dataToSave = { ...data, isManuallyFetched: isManual }
+            localStorage.setItem('dashboardData', JSON.stringify(dataToSave))
+            console.log(isManual ? '💾 Persisted manual dashboard data' : '💾 Persisted auto-loaded dashboard data')
+        } else {
+            localStorage.removeItem('dashboardData')
+            console.log('🗑️ Cleared persisted dashboard data')
+        }
+    }
 
     // Fetch fresh restaurant data on component mount (no cache)
     useEffect(() => {
@@ -112,6 +139,58 @@ const DashboardPage = () => {
 
         fetchFreshRestaurants()
     }, []) // Run once on mount
+
+    // Auto-load last month data for existing users (not new signups)
+    useEffect(() => {
+        const attemptAutoLoad = async () => {
+            // Don't auto-load if we have persisted manual data
+            if (dashboardData?.isManuallyFetched) {
+                console.log('📋 Found persisted manual data, skipping auto-load')
+                setAutoLoadAttempted(true)
+                localStorage.setItem('autoLoadAttempted', 'true')
+                return
+            }
+
+            // Only try once and only if we have restaurants and haven't attempted yet
+            if (autoLoadAttempted || !userRestaurants?.restaurantIds || userRestaurants.restaurantIds.length === 0) {
+                return
+            }
+
+            // Check if this is from a new signup by looking for auto email processing
+            const userEmail = user?.businessEmail || user?.email
+            const isNewUser = userEmail && autoEmailProcessingService.isProcessing(userEmail)
+
+            // Only auto-load for existing users (not during signup)
+            if (autoLoadService.shouldAutoLoad(userRestaurants, isNewUser)) {
+                console.log('🔄 Attempting to auto-load last month data...')
+                setAutoLoadAttempted(true)
+                localStorage.setItem('autoLoadAttempted', 'true') // Persist across page reloads
+                setLoading(true)
+
+                try {
+                    const userEmail = user?.businessEmail || user?.email
+                    const autoLoadedData = await autoLoadService.loadLastMonthData(userRestaurants)
+
+                    if (autoLoadedData) {
+                        console.log('✅ Auto-loaded dashboard data:', autoLoadedData)
+                        updateDashboardData(autoLoadedData, false) // Auto-loaded data, not manual
+                    } else {
+                        console.log('📭 No data available for auto-load')
+                    }
+                } catch (error) {
+                    console.error('❌ Auto-load failed:', error)
+                    // Don't show error for auto-load failure
+                } finally {
+                    setLoading(false)
+                }
+            } else {
+                setAutoLoadAttempted(true) // Mark as attempted even if skipped
+                localStorage.setItem('autoLoadAttempted', 'true') // Persist across page reloads
+            }
+        }
+
+        attemptAutoLoad()
+    }, [userRestaurants, autoLoadAttempted, user])
 
     // Log user restaurants on component mount for debugging
     useEffect(() => {
@@ -225,6 +304,9 @@ const DashboardPage = () => {
 
     const handleLogout = () => {
         authService.logout()
+        localStorage.removeItem('autoLoadAttempted') // Clear auto-load flag for next login
+        localStorage.removeItem('dashboardData') // Clear persisted dashboard data
+        localStorage.removeItem('previousRoute') // Clear navigation history
         setUser(null)
         setDashboardData(null)
         setError(null)
@@ -232,12 +314,9 @@ const DashboardPage = () => {
     }
 
     const handleProfileClick = () => {
+        // Store current route as previous route for back navigation
+        localStorage.setItem('previousRoute', '/dashboard')
         navigate('/profile')
-    }
-
-    const handleGmailClick = () => {
-        setShowGmail(!showGmail)
-        setShowProfile(false) // Close profile if open
     }
 
     const handleRefreshControlsPanel = async () => {
@@ -277,7 +356,7 @@ const DashboardPage = () => {
     }
 
     const handleGetReport = async (selections) => {
-        const { restaurants, channels, startDate, endDate, groupBy, thresholds } = selections
+        const { restaurants, channels, startDate, endDate, groupBy, thresholds, restaurantInfo } = selections
 
         setLoading(true)
         setError(null)
@@ -289,12 +368,29 @@ const DashboardPage = () => {
             const restaurantDetails = []
 
             restaurants.forEach(restaurantId => {
-                // Get display name from metadata
-                const restaurantData = restaurantMetadataService.getRestaurantData(restaurantId)
+                // Get display name from restaurant info passed from ReportControls
+                // This contains the actual restaurant names from the ProfilePage mappings
+                let restaurantName = restaurantId // Default fallback
+
+                // Try to find restaurant info for this ID
+                if (restaurantInfo) {
+                    // First, check if this restaurant ID was directly selected (for direct platform IDs)
+                    if (restaurantInfo[restaurantId] && restaurantInfo[restaurantId].name) {
+                        restaurantName = restaurantInfo[restaurantId].name
+                    } else {
+                        // Check if this platform ID belongs to any restaurant group
+                        const restaurantInfoEntry = Object.values(restaurantInfo).find(info =>
+                            info.platforms && Object.values(info.platforms).includes(restaurantId)
+                        )
+                        if (restaurantInfoEntry && restaurantInfoEntry.name) {
+                            restaurantName = restaurantInfoEntry.name
+                        }
+                    }
+                }
 
                 restaurantDetails.push({
                     id: restaurantId,
-                    name: restaurantData.name,
+                    name: restaurantName,
                     platform: 'auto', // Platform will be determined by the backend
                     key: restaurantId
                 })
@@ -305,7 +401,7 @@ const DashboardPage = () => {
             }
 
             // Fetch data for all restaurant IDs with error handling
-            const apiGroupBy = groupBy === 'total' ? 'day' : groupBy
+            const apiGroupBy = groupBy === 'total' ? null : groupBy
             const fetchPromises = restaurantDetails.map(async (detail) => {
                 try {
                     const result = await reportService.getConsolidatedInsights(detail.id, startDate, endDate, apiGroupBy)
@@ -362,7 +458,7 @@ const DashboardPage = () => {
                 console.info(`Data not available for: ${failedRestaurants.join(', ')}`)
             }
 
-            setDashboardData({
+            updateDashboardData({
                 results: parsedResults,
                 details: successfulDetails,
                 selections,
@@ -374,7 +470,7 @@ const DashboardPage = () => {
                     platform: result.detail.platform,
                     reason: result.error
                 }))
-            })
+            }, true) // Mark as manually fetched
 
         } catch (err) {
             setError(err.message)
@@ -406,7 +502,7 @@ const DashboardPage = () => {
             <header className="top-navbar">
                 <div className="brand">Sales Insights</div>
                 <div className="nav-actions">
-                    <div className="welcome">Welcome, {user?.restaurantName}</div>
+                    <div className="user-name">{user?.restaurantName}</div>
 
                     {/* 1-Minute Progress Timer */}
                     {emailProcessingStatus?.isProcessing && (
@@ -445,17 +541,6 @@ const DashboardPage = () => {
                         </div>
                     )}
 
-                    <button className="gmail-toggle" onClick={handleGmailClick} style={{
-                        marginRight: '10px',
-                        backgroundColor: showGmail ? '#4285f4' : '#f8f9fa',
-                        color: showGmail ? 'white' : '#333',
-                        border: '1px solid #ddd',
-                        padding: '8px 16px',
-                        borderRadius: '6px',
-                        cursor: 'pointer'
-                    }}>
-                        📧 Gmail
-                    </button>
                     <button onClick={handleRefreshControlsPanel} disabled={refreshing} style={{
                         marginRight: '10px',
                         backgroundColor: '#f8f9fa',
@@ -472,8 +557,23 @@ const DashboardPage = () => {
                         <span style={{
                             display: 'inline-block',
                             animation: refreshing ? 'spin 1s linear infinite' : 'none'
-                        }}>🔄</span>
+                        }}>↻</span>
                         {refreshing ? 'Refreshing...' : 'Refresh'}
+                    </button>
+                    <button
+                        className="home-button"
+                        onClick={() => navigate('/')}
+                        style={{
+                            marginRight: '10px',
+                            backgroundColor: '#f8f9fa',
+                            color: '#333',
+                            border: '1px solid #ddd',
+                            padding: '8px 16px',
+                            borderRadius: '6px',
+                            cursor: 'pointer'
+                        }}
+                    >
+                        Home
                     </button>
                     <button className="profile-toggle" onClick={handleProfileClick}>
                         Profile
@@ -484,42 +584,6 @@ const DashboardPage = () => {
             {showProfile && (
                 <div className="profile-container">
                     <Profile user={user} onLogout={handleLogout} />
-                </div>
-            )}
-
-            {showGmail && (
-                <div className="gmail-container" style={{
-                    position: 'fixed',
-                    top: '60px',
-                    right: '20px',
-                    width: '400px',
-                    maxHeight: '80vh',
-                    overflowY: 'auto',
-                    backgroundColor: 'white',
-                    border: '1px solid #ddd',
-                    borderRadius: '8px',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                    zIndex: 1000,
-                    padding: '0'
-                }}>
-                    <div style={{
-                        padding: '16px',
-                        borderBottom: '1px solid #eee',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        backgroundColor: '#f8f9fa'
-                    }}>
-                        <h3 style={{ margin: 0, color: '#333' }}>📧 Gmail Integration</h3>
-                        <button onClick={() => setShowGmail(false)} style={{
-                            background: 'none',
-                            border: 'none',
-                            fontSize: '18px',
-                            cursor: 'pointer',
-                            color: '#666'
-                        }}>×</button>
-                    </div>
-                    <GmailIntegrationPanel />
                 </div>
             )}
 
@@ -567,6 +631,7 @@ const DashboardPage = () => {
                             )}
                             <Dashboard
                                 data={dashboardData}
+                                user={user}
                             />
                         </>
                     )}
@@ -576,6 +641,20 @@ const DashboardPage = () => {
                             <p style={{ textAlign: 'center', color: 'var(--primary-gray)', fontSize: '1.1rem' }}>
                                 Select your parameters from the controls panel to generate insights
                             </p>
+                            {userRestaurants?.restaurantIds?.length > 0 && autoLoadAttempted && (
+                                <div style={{
+                                    marginTop: '1rem',
+                                    padding: '1rem',
+                                    backgroundColor: '#f8f9fa',
+                                    borderRadius: '8px',
+                                    textAlign: 'center'
+                                }}>
+                                    <p style={{ margin: 0, fontSize: '0.9rem', color: '#666' }}>
+                                        💡 <strong>Tip:</strong> We tried to load your last month's data automatically, but it may not be available yet.
+                                        Use the controls panel to select specific restaurants and date ranges for your reports.
+                                    </p>
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>
@@ -624,11 +703,29 @@ const ProfilePageWithNavigation = () => {
 
     const handleLogout = () => {
         authService.logout()
+        localStorage.removeItem('autoLoadAttempted') // Clear auto-load flag for next login
+        localStorage.removeItem('dashboardData') // Clear persisted dashboard data
+        localStorage.removeItem('previousRoute') // Clear navigation history
         navigate('/')
     }
 
     const handleBack = () => {
-        navigate('/dashboard')
+        // Check where the user came from
+        const previousRoute = localStorage.getItem('previousRoute')
+
+        if (previousRoute === '/') {
+            // User came from landing page
+            navigate('/')
+        } else if (previousRoute === '/dashboard') {
+            // User came from dashboard
+            navigate('/dashboard')
+        } else {
+            // Default to dashboard if no previous route or direct access
+            navigate('/dashboard')
+        }
+
+        // Clear the previous route after navigation
+        localStorage.removeItem('previousRoute')
     }
 
     return <ProfilePage user={user} onLogout={handleLogout} onBack={handleBack} />

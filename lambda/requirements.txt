@@ -10,3 +10,19 @@ email-validator==2.1.0
 
 # Optional: for better JSON handling
 simplejson==3.19.2
+
+# For webhook and HTTP requests (already included above but mentioned for clarity)
+# requests is used for sending webhooks to n8n
+# urllib3 is included with requests
+
+# For date/time handling (built-in Python modules)
+# datetime, timedelta are built-in
+
+# Additional dependencies for insights processing (already available in the Lambda layer)
+# pandas (for data processing) - included in your existing layer
+# openpyxl (for Excel processing) - included in your existing layer
+# hashlib (for file hashing) - built-in Python module
+# re (for regex) - built-in Python module
+# json (for JSON processing) - built-in Python module
+# logging (for logging) - built-in Python module
+# os (for environment variables) - built-in Python module

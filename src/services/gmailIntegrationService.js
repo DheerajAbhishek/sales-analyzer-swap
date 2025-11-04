@@ -296,6 +296,48 @@ class GmailIntegrationService {
     }
 
     /**
+     * Subscribe to Gmail push notifications
+     */
+    async subscribeToGmailWatch(userEmail) {
+        try {
+            console.log('🔔 Subscribing to Gmail watch notifications for:', userEmail)
+
+            const response = await fetch(`${API_BASE_URL}/gmail/watch/subscribe`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    userEmail: userEmail
+                })
+            })
+
+            const data = await response.json()
+
+            if (response.ok && data.success) {
+                console.log('✅ Gmail watch subscription successful')
+                return {
+                    success: true,
+                    historyId: data.historyId,
+                    expiration: data.expiration
+                }
+            } else {
+                console.error('❌ Failed to subscribe to Gmail watch:', data)
+                return {
+                    success: false,
+                    message: data.message || 'Failed to subscribe to Gmail notifications'
+                }
+            }
+        } catch (error) {
+            console.error('Error subscribing to Gmail watch:', error)
+            return {
+                success: false,
+                message: 'Network error during subscription'
+            }
+        }
+    }
+
+    /**
      * Process Gmail authentication callback and initialize integration
      */
     async handleGmailAuthCallback(code, state, userEmail) {

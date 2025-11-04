@@ -57,6 +57,16 @@ const OAuthCallback = ({ onAuthSuccess }) => {
                         onAuthSuccess(result.user)
                         navigate('/dashboard', { replace: true })
                     }
+                } else if (result.shouldRedirectToSignup) {
+                    // New user tried to login - redirect to signup page with message
+                    console.log('🚫 New user tried to login, redirecting to signup...')
+                    navigate('/signup', {
+                        replace: true,
+                        state: {
+                            message: result.message,
+                            googleUserData: result.googleUserData
+                        }
+                    })
                 } else {
                     setError(result.message || 'Authentication failed')
                     setLoading(false)

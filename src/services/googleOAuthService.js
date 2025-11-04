@@ -8,14 +8,20 @@ class GoogleOAuthService {
     }
 
     // Generate OAuth 2.0 authorization URL
-    getAuthUrl() {
+    getAuthUrl(isNewUser = false) {
+        // Smart prompt strategy for better UX:
+        // - For signup: Use 'consent' to ensure fresh permissions and get refresh tokens
+        // - For login: Use 'select_account' to show account picker without forcing consent
+        // - Google will automatically prompt for consent in login flow only if permissions weren't previously granted
+        const prompt = isNewUser ? 'consent' : 'select_account'
+
         const params = new URLSearchParams({
             client_id: this.clientId,
             redirect_uri: this.redirectUri,
             response_type: 'code',
             scope: this.scope,
             access_type: 'offline', // This ensures we get a refresh token
-            prompt: 'consent', // This ensures we always get a refresh token
+            prompt: prompt,
             state: this.generateState() // CSRF protection
         })
 
@@ -23,6 +29,10 @@ class GoogleOAuthService {
 
         // Store state for verification
         sessionStorage.setItem('oauth_state', params.get('state'))
+        // Store context for callback handling
+        sessionStorage.setItem('oauth_context', isNewUser ? 'signup' : 'login')
+
+        console.log(`🔧 OAuth URL generated for ${isNewUser ? 'signup' : 'login'} with ${prompt} prompt`)
 
         return authUrl
     }
@@ -33,8 +43,9 @@ class GoogleOAuthService {
     }
 
     // Initiate OAuth flow
-    initiateOAuth() {
-        const authUrl = this.getAuthUrl()
+    initiateOAuth(isNewUser = false) {
+        const authUrl = this.getAuthUrl(isNewUser)
+        console.log(`🚀 Initiating OAuth flow for ${isNewUser ? 'new' : 'existing'} user with prompt: ${isNewUser ? 'consent' : 'select_account'}`)
         window.location.href = authUrl
     }
 
@@ -121,45 +132,51 @@ class GoogleOAuthService {
         }
     }
 
-    // Exchange authorization code for tokens (SECURE - via backend Lambda)
+    // Exchange authorization code for tokens
     async exchangeCodeForTokens(code) {
-        const apiUrl = import.meta.env.VITE_API_BASE_URL
-        const tokenEndpoint = `${apiUrl}/oauth/exchange-token`
+        const tokenEndpoint = 'https://oauth2.googleapis.com/token'
 
-        console.log('🔄 Token exchange request (via secure backend):')
-        console.log('API URL:', apiUrl)
+        const params = new URLSearchParams({
+            client_id: this.clientId,
+            client_secret: import.meta.env.VITE_GOOGLE_CLIENT_SECRET,
+            code: code,
+            grant_type: 'authorization_code',
+            redirect_uri: this.redirectUri
+        })
+
+        console.log('🔄 Token exchange request:')
+        console.log('Client ID:', this.clientId)
         console.log('Redirect URI:', this.redirectUri)
         console.log('Code length:', code.length)
         console.log('Code preview:', code.substring(0, 20) + '...')
+        console.log('Has client secret:', !!import.meta.env.VITE_GOOGLE_CLIENT_SECRET)
+        console.log('Grant type:', 'authorization_code')
         console.log('Timestamp:', new Date().toISOString())
 
         const response = await fetch(tokenEndpoint, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
+                'Content-Type': 'application/x-www-form-urlencoded',
             },
-            body: JSON.stringify({
-                code: code,
-                redirect_uri: this.redirectUri
-            })
+            body: params
         })
 
         console.log('📡 Token response status:', response.status)
+        console.log('📡 Token response headers:', Object.fromEntries(response.headers.entries()))
 
-        const responseData = await response.json()
-
-        if (!response.ok || !responseData.success) {
-            console.error('❌ Token exchange error response:', responseData)
+        if (!response.ok) {
+            const error = await response.json()
+            console.error('❌ Token exchange error response:', error)
             console.error('💡 Common causes for invalid_grant:')
             console.error('   - Authorization code already used (code reuse)')
             console.error('   - Authorization code expired (>10 minutes old)')
             console.error('   - Clock skew between client/server')
             console.error('   - Redirect URI mismatch')
-            throw new Error(responseData.message || 'Token exchange failed')
+            console.error('   - Invalid client credentials')
+            throw new Error(`Token exchange failed: ${error.error_description || error.error}`)
         }
 
-        console.log('✅ Token exchange successful (client secret kept secure on backend)')
-        return responseData.tokens
+        return await response.json()
     }
 
     // Store tokens securely
@@ -189,33 +206,36 @@ class GoogleOAuthService {
         return Date.now() < tokens.expiresAt
     }
 
-    // Refresh access token using refresh token (SECURE - via backend Lambda)
+    // Refresh access token using refresh token
     async refreshAccessToken() {
         const tokens = this.getStoredTokens()
         if (!tokens || !tokens.refreshToken) {
             throw new Error('No refresh token available')
         }
 
-        const apiUrl = import.meta.env.VITE_API_BASE_URL
-        const tokenEndpoint = `${apiUrl}/oauth/refresh-token`
+        const tokenEndpoint = 'https://oauth2.googleapis.com/token'
+
+        const params = new URLSearchParams({
+            client_id: this.clientId,
+            client_secret: import.meta.env.VITE_GOOGLE_CLIENT_SECRET,
+            refresh_token: tokens.refreshToken,
+            grant_type: 'refresh_token'
+        })
 
         const response = await fetch(tokenEndpoint, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
+                'Content-Type': 'application/x-www-form-urlencoded',
             },
-            body: JSON.stringify({
-                refresh_token: tokens.refreshToken
-            })
+            body: params
         })
 
-        const responseData = await response.json()
-
-        if (!response.ok || !responseData.success) {
-            throw new Error(responseData.message || 'Token refresh failed')
+        if (!response.ok) {
+            const error = await response.json()
+            throw new Error(`Token refresh failed: ${error.error_description || error.error}`)
         }
 
-        const newTokens = responseData.tokens
+        const newTokens = await response.json()
 
         // Update stored tokens
         const updatedTokens = {

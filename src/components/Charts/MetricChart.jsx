@@ -62,8 +62,16 @@ const MetricChart = ({ metric, type, data, periods = [], groupBy }) => {
 
             // Check what platforms exist in the data
             const samplePeriod = Object.keys(data)[0]
+            console.log('🔍 MetricChart timeSeries data:', {
+                metric: metric.key,
+                samplePeriod,
+                allPeriods: Object.keys(data),
+                samplePeriodData: data[samplePeriod]
+            })
+            
             if (samplePeriod && data[samplePeriod]) {
                 const availablePlatforms = Object.keys(data[samplePeriod])
+                console.log('📊 Available platforms for', metric.key, ':', availablePlatforms)
 
                 availablePlatforms.forEach(platform => {
                     let color = CHART_COLORS.platform[platform] || CHART_COLORS.primary
@@ -72,6 +80,8 @@ const MetricChart = ({ metric, type, data, periods = [], groupBy }) => {
                     // Custom labels for better readability
                     if (platform === 'subs') label = 'Subscription'
                     if (platform === 'takeaway') label = 'Takeaway'
+
+                    console.log('🎨 Creating dataset for platform:', platform, 'with color:', color, 'and label:', label)
 
                     datasets.push({
                         label: label,
@@ -90,6 +100,7 @@ const MetricChart = ({ metric, type, data, periods = [], groupBy }) => {
                 })
             }
 
+            console.log('✨ Final datasets for', metric.key, ':', datasets.length, 'datasets')
             return {
                 labels: periods.map(period =>
                     groupBy === 'month' ? formatMonthPeriod(period) : formatWeekPeriod(period)

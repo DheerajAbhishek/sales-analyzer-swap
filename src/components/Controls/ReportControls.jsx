@@ -56,67 +56,113 @@ const ReportControls = ({ onGetReport, loading, userRestaurants }) => {
 
             setOptionsLoading(true)
             try {
-                // Get unique restaurants from mappings
+                // Get restaurant mappings to see if user has organized any restaurants
                 const restaurantMappings = await userRestaurantMappingService.getUserRestaurantMappings()
+                setRestaurantMappings(restaurantMappings)
 
-                // If mappings exist and have data, use them
+                const options = []
+                const assignedPlatformIds = new Set()
+
+                // First, add organized restaurant groups
                 if (restaurantMappings && restaurantMappings.length > 0) {
-                    console.log('Using restaurant mappings:', restaurantMappings.length)
-                    setRestaurantMappings(restaurantMappings)
-
-                    const uniqueRestaurants = new Map()
-
-                    // Create restaurant options from mappings
                     restaurantMappings.forEach(restaurant => {
-                        if (!uniqueRestaurants.has(restaurant.id)) {
-                            uniqueRestaurants.set(restaurant.id, {
-                                value: restaurant.id,
-                                label: restaurant.name,
-                                platforms: restaurant.platforms
-                            })
-                        }
+                        // Add the restaurant group to options
+                        options.push({
+                            value: restaurant.id,
+                            label: restaurant.name,
+                            platforms: restaurant.platforms,
+                            isGroup: true
+                        })
+
+                        // Track which platform IDs are assigned to groups
+                        Object.values(restaurant.platforms || {}).forEach(platformId => {
+                            if (platformId) assignedPlatformIds.add(platformId)
+                        })
                     })
-
-                    setRestaurantOptions(Array.from(uniqueRestaurants.values()))
-                } else {
-                    // No mappings found - use raw restaurant IDs from API
-                    console.log('No mappings found, using raw restaurant IDs:', userRestaurants.restaurantIds.length)
-
-                    // Create simple mappings for each restaurant ID
-                    const simpleMappings = userRestaurants.restaurantIds.map(restaurantId => ({
-                        id: restaurantId,
-                        name: `Restaurant ${restaurantId}`, // Use ID as name
-                        platforms: {
-                            [userRestaurantMappingService.guessChannelForId(restaurantId)]: restaurantId
-                        }
-                    }))
-
-                    setRestaurantMappings(simpleMappings)
-
-                    const options = simpleMappings.map(restaurant => ({
-                        value: restaurant.id,
-                        label: restaurant.name,
-                        platforms: restaurant.platforms
-                    }))
-
-                    setRestaurantOptions(options)
                 }
+
+                // Then, add unassigned platform IDs directly
+                userRestaurants.restaurantIds.forEach(restaurantId => {
+                    if (!assignedPlatformIds.has(restaurantId)) {
+                        options.push({
+                            value: restaurantId,
+                            label: restaurantId, // Show the raw ID for unassigned
+                            platforms: { [userRestaurantMappingService.guessChannelForId(restaurantId)]: restaurantId },
+                            isGroup: false
+                        })
+                    }
+                })
+
+                setRestaurantOptions(options)
+                console.log('Restaurant options created:', options.length, 'total options')
             } catch (error) {
-                console.error('Error updating restaurant options:', error)
-                // Fallback to simple ID-based options
-                const fallbackOptions = userRestaurants.restaurantIds
-                    ?.map(restaurantId => ({
-                        value: restaurantId,
-                        label: restaurantId
-                    })) || []
-                setRestaurantOptions(fallbackOptions)
+                console.error('Error setting up restaurant options:', error)
+                setRestaurantOptions([])
             } finally {
                 setOptionsLoading(false)
             }
         }
 
         updateRestaurantOptions()
-    }, [userRestaurants, selectedRestaurants])
+    }, [userRestaurants])
+
+    // Listen for restaurant mapping changes (when user updates profile)
+    useEffect(() => {
+        const handleStorageChange = (e) => {
+            if (e.key === 'restaurantMappings') {
+                console.log('Restaurant mappings updated, refreshing options...')
+                // Trigger a refresh of restaurant options
+                if (userRestaurants?.restaurantIds) {
+                    const updateRestaurantOptions = async () => {
+                        try {
+                            const restaurantMappings = await userRestaurantMappingService.getUserRestaurantMappings()
+                            setRestaurantMappings(restaurantMappings)
+
+                            const options = []
+                            const assignedPlatformIds = new Set()
+
+                            // First, add organized restaurant groups
+                            if (restaurantMappings && restaurantMappings.length > 0) {
+                                restaurantMappings.forEach(restaurant => {
+                                    options.push({
+                                        value: restaurant.id,
+                                        label: restaurant.name,
+                                        platforms: restaurant.platforms,
+                                        isGroup: true
+                                    })
+
+                                    Object.values(restaurant.platforms || {}).forEach(platformId => {
+                                        if (platformId) assignedPlatformIds.add(platformId)
+                                    })
+                                })
+                            }
+
+                            // Then, add unassigned platform IDs directly
+                            userRestaurants.restaurantIds.forEach(restaurantId => {
+                                if (!assignedPlatformIds.has(restaurantId)) {
+                                    options.push({
+                                        value: restaurantId,
+                                        label: restaurantId,
+                                        platforms: { [userRestaurantMappingService.guessChannelForId(restaurantId)]: restaurantId },
+                                        isGroup: false
+                                    })
+                                }
+                            })
+
+                            setRestaurantOptions(options)
+                            console.log('Restaurant options refreshed:', options.length, 'total options')
+                        } catch (error) {
+                            console.error('Error refreshing restaurant options:', error)
+                        }
+                    }
+                    updateRestaurantOptions()
+                }
+            }
+        }
+
+        window.addEventListener('storage', handleStorageChange)
+        return () => window.removeEventListener('storage', handleStorageChange)
+    }, [userRestaurants])
 
     const loadThresholdSettings = async () => {
         setThresholdLoading(true)
@@ -140,31 +186,100 @@ const ReportControls = ({ onGetReport, loading, userRestaurants }) => {
         setFetchingDates(prev => ({ ...prev, [restaurantId]: true }))
 
         try {
-            const response = await fetch(`${API_BASE_URL}/get-last-date`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ restaurantId })
-            });
-            const data = await response.json();
+            // Get business email from localStorage
+            const user = JSON.parse(localStorage.getItem('user') || '{}')
+            const businessEmail = user.businessEmail || user.email
 
-            console.log(`Restaurant ${restaurantId} response:`, data);
+            let platformIds = [restaurantId] // Default: treat as direct platform ID
 
-            if (data.success && data.data.lastDate) {
+            // Check if this is a restaurant group
+            const restaurant = restaurantMappings.find(r => r.id === restaurantId)
+            if (restaurant) {
+                // This is a restaurant group - get all platform IDs
+                platformIds = Object.values(restaurant.platforms || {}).filter(id => id && id.trim())
+                console.log(`Restaurant group ${restaurant.name} has platform IDs:`, platformIds)
+            } else {
+                console.log(`Using direct platform ID ${restaurantId}`)
+            }
+
+            if (platformIds.length === 0) {
+                throw new Error('No platform IDs found for restaurant')
+            }
+
+            // Make API calls for all platform IDs
+            const datePromises = platformIds.map(async (platformId) => {
+                const requestBody = { restaurantId: platformId }
+                if (businessEmail) {
+                    requestBody.businessEmail = businessEmail
+                }
+
+                try {
+                    const response = await fetch(`${API_BASE_URL}/get-last-date`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(requestBody)
+                    });
+                    const data = await response.json();
+
+                    if (data.success && data.data.lastDate) {
+                        return {
+                            platformId,
+                            date: data.data.lastDate,
+                            totalDates: data.data.totalDatesFound || 0,
+                            success: true
+                        }
+                    } else {
+                        return {
+                            platformId,
+                            success: false,
+                            message: data.data?.message || 'No data available'
+                        }
+                    }
+                } catch (error) {
+                    console.error(`Error fetching last date for ${platformId}:`, error)
+                    return {
+                        platformId,
+                        success: false,
+                        message: 'Error fetching data'
+                    }
+                }
+            })
+
+            const results = await Promise.all(datePromises)
+            console.log(`Restaurant ${restaurantId} results:`, results)
+
+            // Find the most recent date among all successful results
+            const successfulResults = results.filter(r => r.success && r.date)
+
+            if (successfulResults.length > 0) {
+                // Sort by date (most recent first) and get the latest
+                successfulResults.sort((a, b) => new Date(b.date) - new Date(a.date))
+                const mostRecent = successfulResults[0]
+
+                // Calculate total dates across all platforms
+                const totalDatesAcrossAll = successfulResults.reduce((sum, r) => sum + (r.totalDates || 0), 0)
+
                 setRestaurantLastDates(prev => ({
                     ...prev,
                     [restaurantId]: {
-                        date: data.data.lastDate,
+                        date: mostRecent.date,
                         hasData: true,
-                        totalDates: data.data.totalDatesFound || 0,
-                        restaurantId: restaurantId
+                        totalDates: totalDatesAcrossAll,
+                        restaurantId: restaurantId,
+                        platformResults: results, // Store all results (successful and failed)
+                        activePlatforms: successfulResults.length
                     }
                 }))
             } else {
+                // No successful results
+                const failedMessages = results.map(r => `${r.platformId}: ${r.message || 'No data'}`).join('; ')
                 setRestaurantLastDates(prev => ({
                     ...prev,
                     [restaurantId]: {
                         hasData: false,
-                        message: data.data?.message || 'No data available'
+                        message: `No data found for any platform (${failedMessages})`,
+                        platformResults: results,
+                        activePlatforms: 0
                     }
                 }))
             }
@@ -190,11 +305,26 @@ const ReportControls = ({ onGetReport, loading, userRestaurants }) => {
             // Store restaurant info for display
             const restaurant = restaurantMappings.find(r => r.id === restaurantId)
             if (restaurant) {
+                // This is a restaurant group from ProfilePage
                 setSelectedRestaurantInfo(prev => ({
                     ...prev,
                     [restaurantId]: restaurant
                 }))
+            } else {
+                // This is a direct platform ID - create a basic info object
+                setSelectedRestaurantInfo(prev => ({
+                    ...prev,
+                    [restaurantId]: {
+                        id: restaurantId,
+                        name: selectedOption.label, // This will be the ID itself for direct platform IDs
+                        platforms: selectedOption.platforms,
+                        isGroup: selectedOption.isGroup || false
+                    }
+                }))
             }
+
+            // Fetch last available date immediately for this restaurant
+            await fetchLastAvailableDate(restaurantId)
 
             // Update platform IDs based on current channel selection
             updatePlatformIds([...selectedRestaurants, restaurantId], selectedChannels)
@@ -221,22 +351,32 @@ const ReportControls = ({ onGetReport, loading, userRestaurants }) => {
         const platformIds = []
 
         restaurants.forEach(restaurantId => {
+            // Check if this is a restaurant group or direct platform ID
             const restaurant = restaurantMappings.find(r => r.id === restaurantId)
+
             if (restaurant) {
+                // This is a restaurant group - get platform IDs for selected channels
                 channels.forEach(channel => {
                     const platformId = restaurant.platforms[channel]
                     if (platformId && platformId.trim() !== '') {
                         platformIds.push(platformId)
                     }
                 })
+            } else {
+                // This is a direct platform ID - check if it matches selected channels
+                const guessedChannel = userRestaurantMappingService.guessChannelForId(restaurantId)
+                if (channels.includes(guessedChannel)) {
+                    platformIds.push(restaurantId)
+                }
             }
         })
 
+        console.log('Updated platform IDs:', platformIds, 'from restaurants:', restaurants, 'and channels:', channels)
         setSelectedPlatformIds(platformIds)
 
-        // Fetch last available dates for the platform IDs
-        platformIds.forEach(platformId => {
-            fetchLastAvailableDate(platformId)
+        // Fetch last available dates for the restaurants (not platform IDs)
+        restaurants.forEach(restaurantId => {
+            fetchLastAvailableDate(restaurantId)
         })
     }
 
@@ -286,21 +426,52 @@ const ReportControls = ({ onGetReport, loading, userRestaurants }) => {
     }
 
     const handleSelectAllChannels = (checked) => {
-        if (checked) {
-            setSelectedChannels(channels.map(channel => channel.value))
-        } else {
-            setSelectedChannels([])
-        }
+        const newSelectedChannels = checked
+            ? channels.map(channel => channel.value)
+            : []
+
+        setSelectedChannels(newSelectedChannels)
+        updatePlatformIds(selectedRestaurants, newSelectedChannels)
     }
 
     const handleSubmit = () => {
-        if (!validateSelections(selectedPlatformIds, selectedChannels, startDate, endDate)) {
+        // Validate using the actual user selections
+        if (!validateSelections(selectedRestaurants, selectedChannels, startDate, endDate)) {
             alert('Please select at least one restaurant, one channel, and a date range.')
             return
         }
 
+        // Recalculate platform IDs to ensure they're up to date
+        const platformIds = []
+        selectedRestaurants.forEach(restaurantId => {
+            const restaurant = restaurantMappings.find(r => r.id === restaurantId)
+
+            if (restaurant) {
+                // Restaurant group - get platform IDs for selected channels
+                selectedChannels.forEach(channel => {
+                    const platformId = restaurant.platforms[channel]
+                    if (platformId && platformId.trim() !== '') {
+                        platformIds.push(platformId)
+                    }
+                })
+            } else {
+                // Direct platform ID - check if it matches selected channels
+                const guessedChannel = userRestaurantMappingService.guessChannelForId(restaurantId)
+                if (selectedChannels.includes(guessedChannel)) {
+                    platformIds.push(restaurantId)
+                }
+            }
+        })
+
+        if (platformIds.length === 0) {
+            alert('No data available for the selected restaurants and channels. Please check your channel selections.')
+            return
+        }
+
+        console.log('Submitting report with platform IDs:', platformIds)
+
         onGetReport({
-            restaurants: selectedPlatformIds, // Use platform IDs instead of restaurant IDs
+            restaurants: platformIds,
             channels: selectedChannels,
             startDate,
             endDate,
@@ -308,15 +479,16 @@ const ReportControls = ({ onGetReport, loading, userRestaurants }) => {
             thresholds: {
                 discount: discountThreshold,
                 ads: adsThreshold
-            }
+            },
+            restaurantInfo: selectedRestaurantInfo
         })
     }
 
     const channels = [
         { value: 'zomato', label: 'Zomato' },
         { value: 'swiggy', label: 'Swiggy' },
-        { value: 'takeaway', label: 'Takeaway' },
-        { value: 'subs', label: 'Subscriptions' }
+        // { value: 'takeaway', label: 'Takeaway' },
+        // { value: 'subs', label: 'Subscriptions' }
     ]
 
     const groupByOptions = [
@@ -488,10 +660,54 @@ const ReportControls = ({ onGetReport, loading, userRestaurants }) => {
                             const restaurant = selectedRestaurantInfo[restaurantId]
                             const displayName = restaurant?.name || restaurantId
 
+                            // Get last date info
+                            const lastDateInfo = restaurantLastDates[restaurantId]
+                            const isLoading = fetchingDates[restaurantId]
+
                             return (
                                 <div key={restaurantId} className="selected-tag">
                                     <div>
-                                        <span>{displayName}</span>
+                                        <span style={{ fontWeight: '600' }}>{displayName}</span>
+                                        {isLoading && (
+                                            <div style={{ fontSize: '0.8rem', color: '#666', marginTop: '2px' }}>
+                                                Loading last date...
+                                            </div>
+                                        )}
+                                        {!isLoading && lastDateInfo?.hasData && (
+                                            <div style={{ fontSize: '0.8rem', color: '#ffffff', marginTop: '2px' }}>
+                                                {lastDateInfo.activePlatforms > 1 ? (
+                                                    // Show individual platform dates
+                                                    lastDateInfo.platformResults
+                                                        .filter(r => r.success)
+                                                        .map((result, index) => {
+                                                            // Get platform display name
+                                                            const restaurant = restaurantMappings.find(r => r.id === restaurantId)
+                                                            let platformName = result.platformId
+                                                            if (restaurant) {
+                                                                const platformChannel = Object.entries(restaurant.platforms || {})
+                                                                    .find(([channel, id]) => id === result.platformId)?.[0]
+                                                                if (platformChannel) {
+                                                                    platformName = platformChannel.charAt(0).toUpperCase() + platformChannel.slice(1)
+                                                                }
+                                                            }
+
+                                                            return (
+                                                                <div key={result.platformId}>
+                                                                    {platformName}: {result.date} ({result.totalDates} days)
+                                                                </div>
+                                                            )
+                                                        })
+                                                ) : (
+                                                    // Single platform - show simple format
+                                                    `Last data: ${lastDateInfo.date} (${lastDateInfo.totalDates} days)`
+                                                )}
+                                            </div>
+                                        )}
+                                        {!isLoading && lastDateInfo && !lastDateInfo.hasData && (
+                                            <div style={{ fontSize: '0.8rem', color: '#ffffff', marginTop: '2px' }}>
+                                                {lastDateInfo.message || 'No data available'}
+                                            </div>
+                                        )}
                                     </div>
                                     <button
                                         type="button"
@@ -653,14 +869,6 @@ const ReportControls = ({ onGetReport, loading, userRestaurants }) => {
             >
                 {loading ? 'Getting Report...' : 'Get Report'}
             </button>
-
-            <div style={{ marginTop: '1rem', fontSize: '0.85rem', color: 'var(--primary-gray)' }}>
-                <p><strong>Selected:</strong></p>
-                <p>{selectedRestaurants.length} restaurant(s)</p>
-                <p>{selectedChannels.length} channel(s)</p>
-                <p>{selectedPlatformIds.length} platform ID(s) will be queried</p>
-                <p>{startDate && endDate ? 'Date range set' : 'No date range'}</p>
-            </div>
         </div>
     )
 }

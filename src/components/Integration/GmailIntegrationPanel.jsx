@@ -185,8 +185,8 @@ const GmailIntegrationPanel = () => {
                                 id="sender-email"
                                 type="email"
                                 placeholder="e.g., reports@company.com"
-                                value={senderEmail}
-                                onChange={(e) => setSenderEmail(e.target.value)}
+                                value={processing.senderEmail}
+                                onChange={(e) => setProcessing(prev => ({ ...prev, senderEmail: e.target.value }))}
                                 disabled={processing.active}
                             />
                         </div>
@@ -201,7 +201,7 @@ const GmailIntegrationPanel = () => {
                             <button
                                 className="process-button"
                                 onClick={processEmails}
-                                disabled={processing.active || !senderEmail.trim()}
+                                disabled={processing.active || !processing.senderEmail.trim()}
                             >
                                 {processing.active ? (
                                     <>

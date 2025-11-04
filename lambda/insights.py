@@ -5,6 +5,8 @@ import pandas as pd
 import logging
 import re
 import hashlib
+import requests
+from datetime import datetime, timedelta
 from botocore.exceptions import ClientError
 
 # Set up logging
@@ -15,6 +17,7 @@ s3 = boto3.client("s3")
 dynamodb = boto3.resource("dynamodb")
 BUCKET = os.environ.get("BUCKET_NAME")
 JOBS_TABLE_NAME = os.environ.get("JOBS_TABLE_NAME")
+N8N_WEBHOOK_URL = os.environ.get("N8N_WEBHOOK_URL")  # n8n webhook URL for email sending
 
 
 def get_file_hash(file_path):
@@ -62,24 +65,244 @@ def read_file(tmp_path, file_ext, skiprows=0, sheet_name=None):
                              skiprows=skiprows, sheet_name=sheet_name)
 
 
+def _sanitize_email_for_key(email: str) -> str:
+    if not email:
+        return "unknown"
+    e = email.strip().lower()
+    e = e.replace("@", "_at_")
+    e = e.replace(".", "_dot_")
+    import re
+
+    e = re.sub(r"[^a-z0-9_\-]", "_", e)
+    return e
+
+
+def trigger_insights_webhook(business_email, restaurant_id, insights_data):
+    """Trigger webhook immediately after successful insights extraction."""
+    try:
+        trigger_source = insights_data.get("triggerSource", "manual")
+        logger.info(f"🚀 Triggering webhook for restaurant {restaurant_id}, trigger_source: {trigger_source}")
+        
+        # Only send email notifications for real-time processing (history_checker), not initial processing (manual)
+        if trigger_source == "manual":
+            logger.info("⏭️ Skipping email notification for manual/initial processing (trigger_source=manual)")
+            return
+        elif trigger_source == "history_checker":
+            logger.info(f"📧 Sending email notification for real-time processing (trigger_source={trigger_source})")
+        else:
+            logger.info(f"⚠️ Unknown trigger_source: {trigger_source}, treating as manual - skipping email notification")
+            return
+        
+        if not N8N_WEBHOOK_URL:
+            logger.info("⚠️ N8N_WEBHOOK_URL not configured, skipping webhook trigger")
+            return
+        
+        logger.info(f"✅ N8N_WEBHOOK_URL is configured: {N8N_WEBHOOK_URL[:50]}...")
+        
+        # Create comprehensive payload with all insights data
+        # Format the message to match n8n expectation: "platform report for {restaurantId} from {startDate} to {endDate}"
+        message = f"{insights_data['platform']} report for {insights_data['restaurantId']} from {insights_data['startDate']} to {insights_data['endDate']}"
+        
+        payload = {
+            "email": business_email,
+            "message": message,
+            "dateRange": {
+                "startDate": insights_data["startDate"],
+                "endDate": insights_data["endDate"]
+            },
+            "summary": insights_data["summary"],
+            "insights": insights_data
+        }
+        
+        logger.info(f"📤 Sending comprehensive webhook payload with {len(str(payload))} characters of data")
+        
+        try:
+            # Try POST first, then fall back to GET if needed
+            response = requests.post(
+                N8N_WEBHOOK_URL,
+                json=payload,
+                timeout=10
+            )
+            
+            # If POST fails with 404, try GET with basic query parameters
+            if response.status_code == 404:
+                logger.info("📡 POST failed with 404, trying GET with basic query parameters...")
+                
+                # Convert to comprehensive query parameters for GET (maintain compatibility)
+                query_params = {
+                    "email": business_email,
+                    "message": message,
+                    "startDate": insights_data["startDate"],
+                    "endDate": insights_data["endDate"],
+                    "restaurantId": insights_data["restaurantId"],
+                    "platform": insights_data["platform"],
+                    "latestDate": insights_data["latestDate"],
+                    "triggerType": insights_data["triggerType"],
+                    "totalOrders": insights_data["summary"]["totalOrders"],
+                    "grossSale": insights_data["summary"]["grossSale"],
+                    "gstOnOrder": insights_data["summary"]["gstOnOrder"],
+                    "discounts": insights_data["summary"]["discounts"],
+                    "packings": insights_data["summary"]["packings"],
+                    "commissionAndTaxes": insights_data["summary"]["commissionAndTaxes"],
+                    "payout": insights_data["summary"]["payout"],
+                    "ads": insights_data["summary"]["ads"],
+                    "netSale": insights_data["summary"]["netSale"],
+                    "nbv": insights_data["summary"]["nbv"]
+                }
+                
+                # Add discount breakdown as JSON string if available
+                if "discountBreakdown" in insights_data:
+                    query_params["discountBreakdown"] = json.dumps(insights_data["discountBreakdown"])
+                
+                response = requests.get(
+                    N8N_WEBHOOK_URL,
+                    params=query_params,
+                    timeout=10
+                )
+            
+            logger.info(f"📡 Webhook response status: {response.status_code}")
+            if response.status_code == 200:
+                logger.info(f"✅ Insights webhook triggered successfully for {restaurant_id}")
+                logger.info(f"📄 Response content: {response.text[:200]}...")
+            else:
+                logger.error(f"❌ Insights webhook failed with status {response.status_code}")
+                logger.error(f"📄 Response content: {response.text}")
+        except Exception as e:
+            logger.error(f"❌ Error calling insights webhook: {e}")
+    
+    except Exception as e:
+        logger.error(f"Error in trigger_insights_webhook: {e}")
+
+
+def check_and_trigger_weekly_insights(business_email, restaurant_id, latest_date):
+    """Check if we have a complete week and trigger weekly insights if so."""
+    try:
+        logger.info(f"🔍 Starting weekly insights check for {restaurant_id}, latest_date={latest_date}")
+        
+        # Note: Weekly insights are always sent regardless of trigger source
+        # because they are aggregate reports, not individual file notifications
+        
+        if not N8N_WEBHOOK_URL:
+            logger.info("⚠️ N8N_WEBHOOK_URL not configured, skipping weekly insights trigger")
+            return
+        
+        logger.info(f"✅ N8N_WEBHOOK_URL is configured: {N8N_WEBHOOK_URL[:50]}...")
+        
+        # Calculate the Monday of the week for latest_date
+        if isinstance(latest_date, str):
+            date_obj = datetime.strptime(latest_date, '%Y-%m-%d').date()
+        else:
+            date_obj = latest_date
+        
+        # Get Monday of the week
+        days_since_monday = date_obj.weekday()  # Monday is 0
+        monday_of_week = date_obj - timedelta(days=days_since_monday)
+        
+        logger.info(f"🔍 Latest date: {latest_date}, Monday of week: {monday_of_week}, days since Monday: {days_since_monday}")
+        
+        # Check if we have data for all 7 days of the week
+        user_folder = _sanitize_email_for_key(business_email)
+        days_with_data = 0
+        
+        logger.info(f"🔍 Checking week data for user_folder: {user_folder}, restaurant: {restaurant_id}")
+        
+        for i in range(7):
+            check_date = monday_of_week + timedelta(days=i)
+            insights_key = f"users/{user_folder}/daily-insights/{restaurant_id}/{check_date.strftime('%Y-%m-%d')}.json"
+            
+            try:
+                s3.head_object(Bucket=BUCKET, Key=insights_key)
+                days_with_data += 1
+                logger.info(f"✅ Found data for {check_date} ({insights_key})")
+            except ClientError as e:
+                if e.response['Error']['Code'] == 'NoSuchKey':
+                    logger.info(f"❌ No data for {check_date} ({insights_key})")
+                else:
+                    logger.error(f"Error checking {insights_key}: {e}")
+        
+        logger.info(f"📊 Week starting {monday_of_week}: {days_with_data}/7 days have data")
+        
+        # If we have data for at least 4 days of the week, trigger weekly insights
+        if days_with_data >= 4:
+            logger.info(f"✅ Week has sufficient data ({days_with_data} days), checking if weekly insights already exist...")
+            
+            # Check if weekly insights already exist for this week
+            weekly_insights_key = f"users/{user_folder}/weekly-insights/{restaurant_id}/{monday_of_week.strftime('%Y-%m-%d')}.json"
+            
+            try:
+                s3.head_object(Bucket=BUCKET, Key=weekly_insights_key)
+                logger.info(f"⚠️ Weekly insights already exist for week {monday_of_week} at {weekly_insights_key}")
+                return
+            except ClientError as e:
+                error_code = e.response.get('Error', {}).get('Code', '')
+                if error_code in ['NoSuchKey', '404']:
+                    logger.info(f"✅ No existing weekly insights found (error: {error_code}), proceeding to trigger...")
+                else:
+                    logger.error(f"❌ Unexpected error checking weekly insights: {e}")
+                    return
+            except Exception as e:
+                logger.error(f"❌ General error checking weekly insights: {e}")
+                return
+            
+            # Trigger weekly insights
+            logger.info(f"🚀 Triggering weekly insights for restaurant {restaurant_id}, week {monday_of_week}")
+            
+            # Create message format for weekly insights
+            week_end_date = monday_of_week + timedelta(days=6)
+            message = f"weekly report for {restaurant_id} from {monday_of_week.strftime('%Y-%m-%d')} to {week_end_date.strftime('%Y-%m-%d')}"
+            
+            # Direct webhook call to n8n
+            insights_data = {
+                "restaurantId": restaurant_id,
+                "weekStartDate": monday_of_week.strftime('%Y-%m-%d'),
+                "weekEndDate": week_end_date.strftime('%Y-%m-%d'),
+                "daysWithData": days_with_data,
+                "triggerType": "auto_weekly_check"
+            }
+            
+            payload = {
+                "email": business_email,
+                "message": message,
+                "dateRange": {
+                    "startDate": monday_of_week.strftime('%Y-%m-%d'),
+                    "endDate": week_end_date.strftime('%Y-%m-%d')
+                },
+                "insights": insights_data
+            }
+            
+            logger.info(f"📤 Sending webhook payload: {json.dumps(payload, indent=2)}")
+            
+            try:
+                response = requests.post(
+                    N8N_WEBHOOK_URL,
+                    json=payload,
+                    timeout=10
+                )
+                logger.info(f"📡 Webhook response status: {response.status_code}")
+                if response.status_code == 200:
+                    logger.info(f"✅ Weekly insights webhook triggered successfully for {restaurant_id}")
+                    logger.info(f"📄 Response content: {response.text[:200]}...")
+                else:
+                    logger.error(f"❌ Weekly insights webhook failed with status {response.status_code}")
+                    logger.error(f"📄 Response content: {response.text}")
+            except Exception as e:
+                logger.error(f"❌ Error calling weekly insights webhook: {e}")
+        else:
+            logger.info(f"⏳ Week not ready for insights - only {days_with_data}/7 days have data (need ≥4)")
+    
+    except Exception as e:
+        logger.error(f"Error in check_and_trigger_weekly_insights: {e}")
+
+
 def lambda_handler(event, context):
     job_id = event.get("requestContext", {}).get("jobId")
-
-    def _sanitize_email_for_key(email: str) -> str:
-        if not email:
-            return "unknown"
-        e = email.strip().lower()
-        e = e.replace("@", "_at_")
-        e = e.replace(".", "_dot_")
-        import re
-
-        e = re.sub(r"[^a-z0-9_\-]", "_", e)
-        return e
 
     try:
         # ---------------- File Processing ----------------
         params = event.get("queryStringParameters") or {}
         filename_from_event = params.get("filename")
+        # Extract trigger_source to determine if this is initial or real-time processing
+        trigger_source = params.get("trigger_source", "manual")
         # businessEmail may be passed as a query param or in request body
         business_email = params.get("businessEmail") or params.get("business_email")
         if not business_email:
@@ -87,10 +310,16 @@ def lambda_handler(event, context):
             try:
                 body = json.loads(event.get("body") or "{}")
                 business_email = body.get("businessEmail") or body.get("business_email")
+                # Also check for trigger_source in body
+                if not trigger_source or trigger_source == "manual":
+                    trigger_source = body.get("trigger_source", "manual")
             except Exception:
                 business_email = None
 
+        logger.info(f"🔍 Business email extracted: {business_email}")
+        logger.info(f"🔍 Trigger source: {trigger_source}")
         user_folder = _sanitize_email_for_key(business_email) if business_email else None
+        logger.info(f"🔍 User folder: {user_folder}")
 
         if not filename_from_event:
             return {
@@ -222,8 +451,7 @@ def lambda_handler(event, context):
                 "discount_promo": r"Restaurant discount.*Promo.*",
                 "discount_other": r"Restaurant discount.*BOGO.*others",
                 "gst_on_order": r"Total GST collected from customers",
-                "commission": r"Service fee\b",
-                "payment_fee": r"Payment mechanism fee.*",
+                "service_and_payment_fee": r"Service fee & payment mechanism fee",
                 "tax_on_service": r"Taxes on service.*",
                 "tds_amount": r"TDS 194O amount.*",
             }
@@ -290,9 +518,30 @@ def lambda_handler(event, context):
 
         # --- Per-day aggregation ---
         date_col = found_cols["order_date"]
+        logger.info(f"📅 Date column found: {date_col}")
+        logger.info(f"📅 Sample date values before conversion: {df[date_col].head().tolist() if date_col else 'No date column found'}")
+        
+        if not date_col:
+            logger.error(f"❌ No date column found for format {file_format}. Available columns: {df.columns.tolist()}")
+            return {
+                "statusCode": 400,
+                "body": json.dumps({"error": f"No date column found for {file_format} format"}),
+            }
+        
         df[date_col] = pd.to_datetime(df[date_col], errors="coerce")
+        logger.info(f"📅 Rows before dropping invalid dates: {len(df)}")
         df.dropna(subset=[date_col], inplace=True)
+        logger.info(f"📅 Rows after dropping invalid dates: {len(df)}")
+        
+        if len(df) == 0:
+            logger.error("❌ No valid date data found in file")
+            return {
+                "statusCode": 400,
+                "body": json.dumps({"error": "No valid date data found in file"}),
+            }
+        
         df[date_col] = df[date_col].dt.date
+        logger.info(f"📅 Date range in file: {min(df[date_col])} to {max(df[date_col])}")
 
         # Takeaway: keep only POS rows
         if file_format == "takeaway" and found_cols.get("order_source"):
@@ -445,8 +694,15 @@ def lambda_handler(event, context):
         total_ads_accum = 0.0
         total_nbv = 0.0
         total_net_sale = 0.0
+        
+        # Track the latest date for weekly insights check
+        latest_processed_date = None
 
         for report_date, day_df in df.groupby(date_col):
+            # Always track the latest date, even if we skip processing
+            if latest_processed_date is None or report_date > latest_processed_date:
+                latest_processed_date = report_date
+                
             if user_folder:
                 insights_key = f"users/{user_folder}/daily-insights/{restaurant_id}/{report_date.strftime('%Y-%m-%d')}.json"
             else:
@@ -468,6 +724,7 @@ def lambda_handler(event, context):
 
             processed_hashes = existing_insight.get("processedFileHashes", [])
             if file_hash in processed_hashes:
+                logger.info(f"📝 File already processed for {report_date}, skipping (but tracking date)")
                 continue
 
             # More precise replacement logic: only replace if SAME platform AND SAME restaurant ID
@@ -494,8 +751,7 @@ def lambda_handler(event, context):
                 )
                 packings = day_df[found_cols["packaging_charge"]].sum()
                 comm_taxes = (
-                    day_df[found_cols["commission"]].sum()
-                    + day_df[found_cols["payment_fee"]].sum()
+                    day_df[found_cols["service_and_payment_fee"]].sum()
                     + day_df[found_cols["tax_on_service"]].sum()
                     + day_df[found_cols["tds_amount"]].sum()
                 )
@@ -596,6 +852,46 @@ def lambda_handler(event, context):
                 ContentType="application/json",
             )
 
+        # ---------------- Calculate Date Range for Response ----------------
+        start_date = min(df[date_col]).isoformat()
+        end_date = max(df[date_col]).isoformat()
+
+        # ---------------- Trigger Webhook for Any Successful Processing ----------------
+        logger.info(f"🔍 Checking webhook trigger: business_email={business_email}, restaurant_id={restaurant_id}, latest_date={latest_processed_date}")
+        if business_email and restaurant_id and latest_processed_date:
+            logger.info(f"🚀 Triggering webhook for successful insights extraction")
+            
+            # Prepare comprehensive insights data for webhook
+            webhook_insights = {
+                "restaurantId": restaurant_id,
+                "platform": file_format,
+                "latestDate": latest_processed_date.strftime('%Y-%m-%d') if hasattr(latest_processed_date, 'strftime') else str(latest_processed_date),
+                "startDate": start_date,
+                "endDate": end_date,
+                "triggerType": "immediate_after_processing",
+                "triggerSource": trigger_source,  # Add trigger source to determine if email should be sent
+                "summary": {
+                    "totalOrders": total_orders,
+                    "grossSale": round(total_gross_sale, 2),
+                    "gstOnOrder": round(total_gst, 2),
+                    "discounts": round(total_discounts, 2),
+                    "packings": round(total_packings, 2),
+                    "commissionAndTaxes": round(total_comm_taxes, 2),
+                    "payout": round(total_payout, 2),
+                    "ads": round(total_ads_accum, 2),
+                    "netSale": round(total_net_sale, 2),
+                    "nbv": round(total_nbv, 2),
+                }
+            }
+            
+            # Add discount breakdown if available
+            if discount_breakdown:
+                webhook_insights["discountBreakdown"] = discount_breakdown
+            
+            trigger_insights_webhook(business_email, restaurant_id, webhook_insights)
+        else:
+            logger.info(f"⚠️ Skipping webhook trigger - missing required data: business_email={bool(business_email)}, restaurant_id={bool(restaurant_id)}, latest_date={bool(latest_processed_date)}")
+
         # ---------------- DynamoDB Job Tracking ----------------
         if job_id:
             jobs_table = dynamodb.Table(JOBS_TABLE_NAME)
@@ -621,9 +917,6 @@ def lambda_handler(event, context):
                 logger.info(f"Job {job_id} completed.")
 
         # ---------------- Success Response with Summary ----------------
-        start_date = min(df[date_col]).isoformat()
-        end_date = max(df[date_col]).isoformat()
-
         success_response = {
             "message": f"{file_format} report for {restaurant_id} from {start_date} to {end_date}.",
             "dateRange": {"startDate": start_date, "endDate": end_date},

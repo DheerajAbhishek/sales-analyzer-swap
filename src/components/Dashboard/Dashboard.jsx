@@ -2,15 +2,31 @@ import React, { useState, useEffect } from 'react'
 import SummaryCards from './SummaryCards.jsx'
 import ChartsGrid from '../Charts/ChartsGrid.jsx'
 import ExpensesSection from '../PnL/ExpensesSection.jsx'
+import MissingDatesIndicator from './MissingDatesIndicator.jsx'
 import { isFullMonthSelection } from '../../utils/helpers'
 
-const Dashboard = ({ data }) => {
+const Dashboard = ({ data, user }) => {
     const { results, details, selections, groupBy, thresholds } = data
     const [processedData, setProcessedData] = useState(null)
     const [monthlyData, setMonthlyData] = useState(null)
     const [showPnL, setShowPnL] = useState(false)
 
     useEffect(() => {
+        console.log('🔍 RAW API DATA:', { 
+            groupBy, 
+            results: results,
+            details: details,
+            selections: selections,
+            resultsLength: results?.length,
+            detailsLength: details?.length
+        })
+        
+        // Log each result individually to see the structure
+        results?.forEach((result, index) => {
+            console.log(`📦 Result ${index}:`, result)
+            console.log(`📋 Detail ${index}:`, details[index])
+        })
+        
         if (groupBy === 'total') {
             const processed = processTotalSummary(results, details)
             setProcessedData(processed)
@@ -39,59 +55,79 @@ const Dashboard = ({ data }) => {
     }, [data])
 
     const processTotalSummary = (results, details) => {
-        let individualRestaurantData = []
-        let combinedData = null
+        const individualRestaurantData = []
+        const combinedData = {
+            noOfOrders: 0, grossSale: 0, gstOnOrder: 0, discounts: 0, packings: 0,
+            ads: 0, commissionAndTaxes: 0, payout: 0, netSale: 0, nbv: 0
+        }
         let discountBreakdownData = null
 
-        const keysToSum = [
-            "noOfOrders", "grossSale", "gstOnOrder", "discounts", "packings",
-            "ads", "commissionAndTaxes", "payout", "netSale", "nbv"
-        ]
+        // Get selected channels from selections to map to results
+        const selectedChannels = selections.channels || []
+        console.log('🎯 Selected channels:', selectedChannels)
 
-        results.forEach((data, index) => {
-            const insights = data.body?.consolidatedInsights || data.consolidatedInsights || {}
-            if (Object.keys(insights).length === 0) return
-
+        // Process each API result and selected channel
+        selectedChannels.forEach((channel, index) => {
+            const apiResult = results[index]
             const detail = details[index]
+            
+            // Check if this result has data
+            if (!apiResult || apiResult.message || !apiResult.consolidatedInsights) {
+                console.log(`⚠️ No data for ${channel} - adding zero values`)
+                
+                // Add zero values for channels with no data
+                individualRestaurantData.push({
+                    name: `${detail?.name || 'Restaurant'} (${channel})`,
+                    platform: channel,
+                    metrics: {
+                        noOfOrders: 0, grossSale: 0, gstOnOrder: 0, discounts: 0, packings: 0,
+                        ads: 0, commissionAndTaxes: 0, payout: 0, netSale: 0, nbv: 0,
+                        grossSaleAfterGST: 0, commissionPercent: 0, discountPercent: 0, adsPercent: 0
+                    }
+                })
+                return
+            }
 
-            // Calculate percentages for individual restaurant using gross sale after GST
-            const restaurantMetrics = { ...insights }
-            const grossSaleAfterGST = restaurantMetrics.grossSale - (restaurantMetrics.gstOnOrder || 0)
-            restaurantMetrics.grossSaleAfterGST = grossSaleAfterGST
-            restaurantMetrics.commissionPercent = restaurantMetrics.nbv > 0 ? (restaurantMetrics.commissionAndTaxes / restaurantMetrics.nbv * 100) : 0
-            restaurantMetrics.discountPercent = grossSaleAfterGST > 0 ? (restaurantMetrics.discounts / grossSaleAfterGST * 100) : 0
-            restaurantMetrics.adsPercent = grossSaleAfterGST > 0 ? (restaurantMetrics.ads / grossSaleAfterGST * 100) : 0
+            const insights = apiResult.consolidatedInsights
+            console.log(`✅ Found data for ${channel}:`, insights)
 
+            // Add this channel's data to individual results
+            const grossSaleAfterGST = insights.grossSale - (insights.gstOnOrder || 0)
             individualRestaurantData.push({
-                name: `${detail.name} (${detail.platform})`,
-                metrics: restaurantMetrics,
-                platform: detail.platform
+                name: `${detail.name} (${channel})`,
+                platform: channel,
+                metrics: {
+                    ...insights,
+                    grossSaleAfterGST,
+                    commissionPercent: insights.nbv > 0 ? (insights.commissionAndTaxes / insights.nbv * 100) : 0,
+                    discountPercent: grossSaleAfterGST > 0 ? (insights.discounts / grossSaleAfterGST * 100) : 0,
+                    adsPercent: grossSaleAfterGST > 0 ? (insights.ads / grossSaleAfterGST * 100) : 0
+                }
             })
 
-            // Extract discount breakdown from Swiggy or Zomato data
-            if ((detail.platform === 'swiggy' || detail.platform === 'zomato') && data.body?.discountBreakdown) {
-                discountBreakdownData = {
-                    ...data.body.discountBreakdown,
-                    platform: detail.platform
-                }
-            }
-
-            if (!combinedData) {
-                combinedData = {}
-                keysToSum.forEach(k => combinedData[k] = 0)
-            }
-            keysToSum.forEach(key => {
+            // Add to combined totals (only for channels with data)
+            Object.keys(combinedData).forEach(key => {
                 combinedData[key] += (insights[key] || 0)
             })
+
+            // Get discount breakdown if available
+            if (apiResult.discountBreakdown) {
+                discountBreakdownData = {
+                    ...apiResult.discountBreakdown,
+                    platform: channel
+                }
+            }
         })
 
-        if (!combinedData) return null
-
-        // Calculate percentages and derived values
-        combinedData.grossSaleAfterGST = combinedData.grossSale - (combinedData.gstOnOrder || 0)
+        // Calculate combined percentages
+        const combinedGrossSaleAfterGST = combinedData.grossSale - combinedData.gstOnOrder
+        combinedData.grossSaleAfterGST = combinedGrossSaleAfterGST
         combinedData.commissionPercent = combinedData.nbv > 0 ? (combinedData.commissionAndTaxes / combinedData.nbv * 100) : 0
-        combinedData.discountPercent = combinedData.grossSaleAfterGST > 0 ? (combinedData.discounts / combinedData.grossSaleAfterGST * 100) : 0
-        combinedData.adsPercent = combinedData.grossSaleAfterGST > 0 ? (combinedData.ads / combinedData.grossSaleAfterGST * 100) : 0
+        combinedData.discountPercent = combinedGrossSaleAfterGST > 0 ? (combinedData.discounts / combinedGrossSaleAfterGST * 100) : 0
+        combinedData.adsPercent = combinedGrossSaleAfterGST > 0 ? (combinedData.ads / combinedGrossSaleAfterGST * 100) : 0
+
+        console.log('📊 Final individual data:', individualRestaurantData)
+        console.log('📊 Final combined data:', combinedData)
 
         return {
             type: 'total',
@@ -172,18 +208,9 @@ const Dashboard = ({ data }) => {
 
     const processTimeSeries = (results, details) => {
         const timeSeries = {}
-        console.log('🔍 Processing Time Series Data:', { results, details, groupBy })
-
         results.forEach((data, index) => {
             const platform = details[index].platform
             const timeData = data.body?.timeSeriesData || data.timeSeriesData || []
-
-            console.log(`📊 Restaurant ${index}:`, {
-                platform,
-                timeDataLength: timeData.length,
-                samplePeriod: timeData[0]
-            })
-
             timeData.forEach(periodData => {
                 let period = periodData.period
                 if (groupBy === 'month') {
@@ -192,34 +219,18 @@ const Dashboard = ({ data }) => {
 
                 if (!timeSeries[period]) timeSeries[period] = {}
 
-                // For 'auto' platform, try to detect actual platform from data
-                let actualPlatform = platform
-                if (platform === 'auto') {
-                    // Check which platform key exists in periodData
-                    const availablePlatforms = ['zomato', 'swiggy', 'takeaway', 'subs']
-                    const detectedPlatform = availablePlatforms.find(p => periodData[p])
-                    if (detectedPlatform) {
-                        actualPlatform = detectedPlatform
-                        console.log(`✅ Detected platform: ${detectedPlatform} for period ${period}`)
-                    }
-                }
-
-                const platformData = periodData[actualPlatform] || {}
-                console.log(`📈 Period ${period}, Platform ${actualPlatform}:`, platformData)
-
-                if (!timeSeries[period][actualPlatform]) {
-                    timeSeries[period][actualPlatform] = platformData
+                const platformData = periodData[platform] || {}
+                if (!timeSeries[period][platform]) {
+                    timeSeries[period][platform] = platformData
                 } else {
                     for (const key in platformData) {
                         if (typeof platformData[key] === 'number') {
-                            timeSeries[period][actualPlatform][key] += platformData[key]
+                            timeSeries[period][platform][key] += platformData[key]
                         }
                     }
                 }
             })
         })
-
-        console.log('✨ Final Time Series:', timeSeries)
 
         return {
             type: 'timeSeries',
@@ -263,7 +274,11 @@ const Dashboard = ({ data }) => {
 
                 // Accumulate restaurant-wise data
                 if (!restaurantData[platform]) {
-                    restaurantData[platform] = { ...summary.combinedData }
+                    restaurantData[platform] = {
+                        noOfOrders: 0, grossSale: 0, gstOnOrder: 0, discounts: 0,
+                        packings: 0, ads: 0, commissionAndTaxes: 0, payout: 0,
+                        netSale: 0, nbv: 0
+                    }
                 }
                 Object.keys(restaurantData[platform]).forEach(key => {
                     if (typeof metrics[key] === 'number') {
@@ -313,7 +328,37 @@ const Dashboard = ({ data }) => {
             : null
 
     const { startDate, endDate } = selections
-    const title = `${groupBy.charAt(0).toUpperCase() + groupBy.slice(1)} Report (${startDate} to ${endDate})`
+
+    // Generate restaurant names prefix for title
+    let restaurantPrefix = ''
+    let fullRestaurantList = ''
+    let shouldShowHover = false
+
+    if (details && details.length > 0) {
+        // Create display names that include both name and ID when available
+        const displayNames = details.map(detail => {
+            const hasRealName = detail.name && !detail.name.startsWith('Restaurant ')
+            if (hasRealName) {
+                return `${detail.name} (${detail.id})`
+            } else {
+                return detail.id
+            }
+        })
+
+        // Create full list for hover tooltip
+        fullRestaurantList = displayNames.join(', ')
+
+        if (displayNames.length === 1) {
+            restaurantPrefix = `${displayNames[0]} - `
+        } else if (displayNames.length <= 2) {
+            restaurantPrefix = `${displayNames.join(', ')} - `
+        } else {
+            restaurantPrefix = `${displayNames.slice(0, 2).join(', ')} & ${displayNames.length - 2} more - `
+            shouldShowHover = true
+        }
+    }
+
+    const title = `${restaurantPrefix}${groupBy.charAt(0).toUpperCase() + groupBy.slice(1)} Report (${startDate} to ${endDate})`
 
     if (!totalSummary) {
         return (
@@ -327,7 +372,26 @@ const Dashboard = ({ data }) => {
 
     return (
         <div className="card">
-            <h1 className="dashboard-title">{title}</h1>
+            <h1 className="dashboard-title" title={shouldShowHover ? `All restaurants: ${fullRestaurantList}` : undefined}>
+                {title}
+            </h1>
+
+            {/* Show missing dates indicator for any data type */}
+            {processedData && selections?.startDate && selections?.endDate && (
+                <>
+                    {console.log('🚀 Rendering MissingDatesIndicator with:', {
+                        type: processedData.type,
+                        timeSeriesData: processedData.timeSeriesData,
+                        selections
+                    })}
+                    <MissingDatesIndicator
+                        timeSeriesData={processedData.timeSeriesData}
+                        selections={selections}
+                        dataType={processedData.type}
+                        user={user}
+                    />
+                </>
+            )}
 
             {totalSummary.combinedData && (
                 <>
@@ -360,11 +424,20 @@ const Dashboard = ({ data }) => {
 
                     {/* Show time series charts for monthly or weekly grouping */}
                     {processedData.type === 'timeSeries' && (
-                        <ChartsGrid
-                            type="timeSeries"
-                            data={processedData.timeSeriesData}
-                            groupBy={groupBy}
-                        />
+                        <>
+                            {console.log('🚀 Passing to ChartsGrid:', {
+                                type: 'timeSeries',
+                                data: processedData.timeSeriesData,
+                                groupBy: groupBy,
+                                samplePeriod: Object.keys(processedData.timeSeriesData)[0],
+                                sampleData: processedData.timeSeriesData[Object.keys(processedData.timeSeriesData)[0]]
+                            })}
+                            <ChartsGrid
+                                type="timeSeries"
+                                data={processedData.timeSeriesData}
+                                groupBy={groupBy}
+                            />
+                        </>
                     )}
                 </>
             )}
