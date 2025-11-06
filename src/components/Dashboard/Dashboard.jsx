@@ -12,21 +12,21 @@ const Dashboard = ({ data, user }) => {
     const [showPnL, setShowPnL] = useState(false)
 
     useEffect(() => {
-        console.log('🔍 RAW API DATA:', { 
-            groupBy, 
+        console.log('🔍 RAW API DATA:', {
+            groupBy,
             results: results,
             details: details,
             selections: selections,
             resultsLength: results?.length,
             detailsLength: details?.length
         })
-        
+
         // Log each result individually to see the structure
         results?.forEach((result, index) => {
             console.log(`📦 Result ${index}:`, result)
             console.log(`📋 Detail ${index}:`, details[index])
         })
-        
+
         if (groupBy === 'total') {
             const processed = processTotalSummary(results, details)
             setProcessedData(processed)
@@ -66,25 +66,35 @@ const Dashboard = ({ data, user }) => {
         const selectedChannels = selections.channels || []
         console.log('🎯 Selected channels:', selectedChannels)
 
+        // Determine if we should show zero values for missing channels
+        const shouldShowZeroValues = selectedChannels.length > 1
+        console.log('🔍 Should show zero values for missing channels:', shouldShowZeroValues)
+
         // Process each API result and selected channel
         selectedChannels.forEach((channel, index) => {
             const apiResult = results[index]
             const detail = details[index]
-            
+
             // Check if this result has data
             if (!apiResult || apiResult.message || !apiResult.consolidatedInsights) {
-                console.log(`⚠️ No data for ${channel} - adding zero values`)
-                
-                // Add zero values for channels with no data
-                individualRestaurantData.push({
-                    name: `${detail?.name || 'Restaurant'} (${channel})`,
-                    platform: channel,
-                    metrics: {
-                        noOfOrders: 0, grossSale: 0, gstOnOrder: 0, discounts: 0, packings: 0,
-                        ads: 0, commissionAndTaxes: 0, payout: 0, netSale: 0, nbv: 0,
-                        grossSaleAfterGST: 0, commissionPercent: 0, discountPercent: 0, adsPercent: 0
-                    }
-                })
+                console.log(`⚠️ No data for ${channel}`)
+
+                if (shouldShowZeroValues) {
+                    // When multiple channels are selected, show zero values for missing channels
+                    console.log(`📊 Adding zero values for ${channel} (multiple channels selected)`)
+                    individualRestaurantData.push({
+                        name: `${detail?.name || 'Restaurant'} (${channel})`,
+                        platform: channel,
+                        metrics: {
+                            noOfOrders: 0, grossSale: 0, gstOnOrder: 0, discounts: 0, packings: 0,
+                            ads: 0, commissionAndTaxes: 0, payout: 0, netSale: 0, nbv: 0,
+                            grossSaleAfterGST: 0, commissionPercent: 0, discountPercent: 0, adsPercent: 0
+                        }
+                    })
+                } else {
+                    // When only one channel is selected, skip channels with no data
+                    console.log(`🚫 Skipping ${channel} (single channel selected, no data)`)
+                }
                 return
             }
 
@@ -208,9 +218,45 @@ const Dashboard = ({ data, user }) => {
 
     const processTimeSeries = (results, details) => {
         const timeSeries = {}
+        const selectedChannels = selections.channels || []
+
+        // Determine if we should show zero values for missing channels
+        const shouldShowZeroValues = selectedChannels.length > 1
+        console.log('🔍 Should show zero values for missing channels:', shouldShowZeroValues)
+
         results.forEach((data, index) => {
+            const channel = selectedChannels[index]
             const platform = details[index].platform
+
+            // Skip results that don't have data
+            if (!data || data.message || !data.timeSeriesData) {
+                console.log(`⚠️ No time series data for ${channel}`)
+
+                if (shouldShowZeroValues) {
+                    // When multiple channels selected, we'll add zero values later
+                    console.log(`📊 Will add zero values for ${channel} (multiple channels selected)`)
+                } else {
+                    console.log(`🚫 Skipping ${channel} (single channel selected, no data)`)
+                }
+                return
+            }
+
             const timeData = data.body?.timeSeriesData || data.timeSeriesData || []
+
+            // Only process if we have actual time data
+            if (timeData.length === 0) {
+                console.log(`⚠️ No time series data for platform ${platform}`)
+
+                if (shouldShowZeroValues) {
+                    console.log(`📊 Will add zero values for ${platform} (multiple channels selected)`)
+                } else {
+                    console.log(`🚫 Skipping platform ${platform} (single channel selected, empty data)`)
+                }
+                return
+            }
+
+            console.log(`✅ Processing time series for platform: ${platform}`)
+
             timeData.forEach(periodData => {
                 let period = periodData.period
                 if (groupBy === 'month') {
@@ -220,18 +266,48 @@ const Dashboard = ({ data, user }) => {
                 if (!timeSeries[period]) timeSeries[period] = {}
 
                 const platformData = periodData[platform] || {}
-                if (!timeSeries[period][platform]) {
-                    timeSeries[period][platform] = platformData
-                } else {
-                    for (const key in platformData) {
-                        if (typeof platformData[key] === 'number') {
-                            timeSeries[period][platform][key] += platformData[key]
+
+                // Add platform data (with or without meaningful values based on shouldShowZeroValues)
+                const hasData = Object.values(platformData).some(value =>
+                    typeof value === 'number' && value > 0
+                )
+
+                if (hasData || shouldShowZeroValues) {
+                    if (!timeSeries[period][platform]) {
+                        timeSeries[period][platform] = platformData
+                    } else {
+                        for (const key in platformData) {
+                            if (typeof platformData[key] === 'number') {
+                                timeSeries[period][platform][key] += platformData[key]
+                            }
                         }
                     }
                 }
             })
         })
 
+        // If multiple channels are selected, ensure all periods have all platforms (with zeros if needed)
+        if (shouldShowZeroValues && Object.keys(timeSeries).length > 0) {
+            const allPlatforms = [...new Set(details.map(d => d.platform))]
+            const allPeriods = Object.keys(timeSeries)
+
+            console.log('📊 Ensuring all platforms appear in all periods:', allPlatforms)
+
+            allPeriods.forEach(period => {
+                allPlatforms.forEach(platform => {
+                    if (!timeSeries[period][platform]) {
+                        console.log(`📊 Adding zero values for ${platform} in period ${period}`)
+                        timeSeries[period][platform] = {
+                            noOfOrders: 0, grossSale: 0, gstOnOrder: 0, discounts: 0,
+                            packings: 0, ads: 0, commissionAndTaxes: 0, payout: 0,
+                            netSale: 0, nbv: 0
+                        }
+                    }
+                })
+            })
+        }
+
+        console.log('📊 Final time series data:', timeSeries)
         return {
             type: 'timeSeries',
             timeSeriesData: timeSeries
@@ -259,20 +335,40 @@ const Dashboard = ({ data, user }) => {
             individualData: []
         }
 
+        const selectedChannels = selections.channels || []
+        const shouldShowZeroValues = selectedChannels.length > 1
+        console.log('🔍 Summary calculation - should show zero values:', shouldShowZeroValues)
+
         // Initialize restaurant-wise data
         const restaurantData = {}
 
         // Sum up all metrics for each period
         Object.values(timeSeriesData).forEach(periodData => {
             Object.entries(periodData).forEach(([platform, metrics]) => {
-                // Add to combined totals
-                Object.keys(summary.combinedData).forEach(key => {
-                    if (typeof metrics[key] === 'number') {
-                        summary.combinedData[key] += metrics[key]
-                    }
-                })
+                // Check if platform has meaningful data
+                const hasData = Object.values(metrics).some(value =>
+                    typeof value === 'number' && value > 0
+                )
 
-                // Accumulate restaurant-wise data
+                if (!hasData && !shouldShowZeroValues) {
+                    console.log(`⚠️ Skipping platform ${platform} - no meaningful data (single channel mode)`)
+                    return
+                }
+
+                if (!hasData && shouldShowZeroValues) {
+                    console.log(`📊 Including platform ${platform} with zero values (multiple channels mode)`)
+                }
+
+                // Add to combined totals (only meaningful values contribute to totals)
+                if (hasData) {
+                    Object.keys(summary.combinedData).forEach(key => {
+                        if (typeof metrics[key] === 'number') {
+                            summary.combinedData[key] += metrics[key]
+                        }
+                    })
+                }
+
+                // Accumulate restaurant-wise data (include zeros when shouldShowZeroValues is true)
                 if (!restaurantData[platform]) {
                     restaurantData[platform] = {
                         noOfOrders: 0, grossSale: 0, gstOnOrder: 0, discounts: 0,
@@ -301,7 +397,7 @@ const Dashboard = ({ data, user }) => {
             ? (summary.combinedData.ads / grossSaleAfterGST * 100)
             : 0
 
-        // Process individual restaurant data
+        // Process individual restaurant data (only platforms with actual data)
         Object.entries(restaurantData).forEach(([platform, metrics]) => {
             const grossSaleAfterGST = metrics.grossSale - (metrics.gstOnOrder || 0)
             summary.individualData.push({
@@ -317,6 +413,7 @@ const Dashboard = ({ data, user }) => {
             })
         })
 
+        console.log('📊 Summary from time series (only platforms with data):', summary)
         return summary
     }
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate, Link } from 'react-router-dom'
 import LoginForm from './LoginForm'
 import SignupForm from './SignupForm'
 
@@ -76,6 +76,13 @@ const AuthPage = ({ onAuthSuccess }) => {
                             {isLogin ? 'Sign up' : 'Login'}
                         </button>
                     </p>
+                    <div className="auth-legal-links">
+                        <Link to="/privacy">Privacy Policy</Link>
+                        <span>•</span>
+                        <Link to="/terms">Terms of Service</Link>
+                        <span>•</span>
+                        <a href="mailto:admin@swapnow.in">Contact</a>
+                    </div>
                 </div>
             </div>
         </div>

@@ -15,7 +15,7 @@ const SignupForm = ({ onSuccess }) => {
 
     return (
         <div className="auth-form-wrapper">
-            {/* Google Sign-In Section */}
+            {/* Google Sign-Up Section */}
             <div className="google-signin-section">
                 <GoogleSignupButton
                     onSuccess={handleGoogleSuccess}

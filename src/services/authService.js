@@ -145,9 +145,12 @@ class AuthService {
     }
 
     logout() {
+        console.log('🚪 AuthService: logout() called - clearing localStorage')
+        console.trace('Logout call stack:')
         localStorage.removeItem('user')
         localStorage.removeItem('token')
         localStorage.removeItem('userRestaurants')
+        localStorage.removeItem('authMethod')
     }
 
     getCurrentUser() {
@@ -159,102 +162,70 @@ class AuthService {
         return localStorage.getItem('token')
     }
 
-    isAuthenticated() {
-        return !!this.getToken()
-    }
-
     getUserRestaurants() {
         const restaurants = localStorage.getItem('userRestaurants')
         return restaurants ? JSON.parse(restaurants) : { restaurantIds: [], objectKeysCount: 0 }
     }
 
-    // Google OAuth Methods
+    // Google OAuth Methods - SIMPLIFIED
     async handleGoogleCallback(code, state) {
         try {
             console.log('🚀 Starting Google OAuth callback handling')
+
             const result = await googleOAuthService.handleCallback(code, state)
 
             if (result.success) {
                 console.log('✅ OAuth token exchange successful')
-                console.log('🔍 Checking if Google user exists:', result.user.email)
+                console.log('🔍 Context:', result.context)
+                console.log('� User email:', result.user.email)
 
-                // Get the OAuth context (login vs signup)
-                const oauthContext = sessionStorage.getItem('oauth_context') || 'login'
-                console.log('📋 OAuth context:', oauthContext)
-
-                // Check if user already exists
+                // Check if user exists in our database
                 const userCheck = await this.verifyGoogleUserExists(result.user.email)
                 console.log('👤 User check result:', userCheck)
 
                 if (userCheck.userExists) {
                     // User exists - proceed with login
-                    if (userCheck.user.authMethod === 'google' || userCheck.user.authMethod === 'dual' || userCheck.user.authMethod === 'linked') {
-                        console.log('✅ Existing Google user - logging in directly')
-                        // Existing Google user - log them in
-                        const userData = {
-                            id: result.user.id,
-                            email: result.user.email,
-                            businessEmail: result.user.email,
-                            name: result.user.name,
-                            picture: result.user.picture,
-                            emailVerified: result.user.emailVerified,
-                            authMethod: userCheck.user.authMethod
-                        }
+                    console.log('✅ Existing user - logging in directly')
 
-                        localStorage.setItem('user', JSON.stringify(userData))
-                        localStorage.setItem('authMethod', userCheck.user.authMethod)
+                    const userData = {
+                        id: result.user.id,
+                        email: result.user.email,
+                        businessEmail: result.user.email,
+                        name: result.user.name,
+                        picture: result.user.picture,
+                        emailVerified: result.user.emailVerified,
+                        authMethod: userCheck.user.authMethod
+                    }
 
-                        // Store Gmail tokens for email processing
-                        try {
-                            await gmailIntegrationService.initializeGmailIntegration(userData.email)
-                            console.log('✅ Gmail integration initialized for existing user')
-                        } catch (gmailError) {
-                            console.warn('Failed to initialize Gmail integration:', gmailError)
-                        }
+                    localStorage.setItem('user', JSON.stringify(userData))
+                    localStorage.setItem('authMethod', userCheck.user.authMethod)
 
-                        try {
-                            const restaurantData = await restaurantService.getUserRestaurants(userData.email)
-                            localStorage.setItem('userRestaurants', JSON.stringify(restaurantData))
+                    try {
+                        const restaurantData = await restaurantService.getUserRestaurants(userData.email)
+                        localStorage.setItem('userRestaurants', JSON.stringify(restaurantData))
 
-                            return {
-                                success: true,
-                                user: userData,
-                                restaurants: restaurantData,
-                                authMethod: userCheck.user.authMethod,
-                                isNewUser: false
-                            }
-                        } catch (restaurantError) {
-                            console.warn('Failed to fetch user restaurants:', restaurantError)
-                            return {
-                                success: true,
-                                user: userData,
-                                restaurants: { restaurantIds: [], objectKeysCount: 0 },
-                                authMethod: userCheck.user.authMethod,
-                                isNewUser: false
-                            }
-                        }
-                    } else {
-                        console.log('🔗 Existing traditional user - need account linking')
                         return {
                             success: true,
-                            isNewUser: true,
-                            googleUserData: {
-                                googleId: result.user.id,
-                                email: result.user.email,
-                                name: result.user.name,
-                                picture: result.user.picture,
-                                emailVerified: result.user.emailVerified
-                            },
-                            authMethod: 'google',
-                            needsAccountLinking: userCheck.user.requiresLinking || false
+                            user: userData,
+                            restaurants: restaurantData,
+                            authMethod: userCheck.user.authMethod,
+                            isNewUser: false
+                        }
+                    } catch (restaurantError) {
+                        console.warn('Failed to fetch user restaurants:', restaurantError)
+                        return {
+                            success: true,
+                            user: userData,
+                            restaurants: { restaurantIds: [], objectKeysCount: 0 },
+                            authMethod: userCheck.user.authMethod,
+                            isNewUser: false
                         }
                     }
                 } else {
                     // User doesn't exist
-                    if (oauthContext === 'login') {
-                        console.log('🚫 New user tried to login - redirecting to signup page')
-                        // Clear OAuth session data
-                        sessionStorage.removeItem('oauth_context')
+                    if (result.context === 'login') {
+                        console.log('� New user detected during LOGIN - redirecting to signup')
+                        googleOAuthService.clearTokens()
 
                         return {
                             success: false,
@@ -269,7 +240,8 @@ class AuthService {
                             }
                         }
                     } else {
-                        console.log('🆕 New user - showing signup form')
+                        // This is signup - proceed to signup form
+                        console.log('🆕 New user signup - showing signup form')
                         return {
                             success: true,
                             isNewUser: true,
@@ -285,12 +257,7 @@ class AuthService {
                     }
                 }
             } else {
-                console.warn('❌ OAuth token exchange failed, trying fallback approach')
-
-                // OAuth failed, but we can still try to get user email from the URL or other means
-                // and do user existence check for a more graceful experience
-
-                // For now, return the OAuth error
+                console.warn('❌ OAuth token exchange failed')
                 return {
                     success: false,
                     message: result.error || 'Google authentication failed'
@@ -370,7 +337,7 @@ class AuthService {
         return localStorage.getItem('authMethod') || 'traditional'
     }
 
-    // Verify Google authentication status
+    // Verify Google authentication status - SIMPLIFIED
     async verifyGoogleAuth() {
         try {
             const user = this.getCurrentUser()
@@ -378,9 +345,7 @@ class AuthService {
                 return { success: false, message: 'No user found' }
             }
 
-            // For Google auth, we don't need to verify a token with our backend
-            // since Google tokens are managed separately
-            // Just fetch user restaurants if user exists
+            // Fetch user restaurants
             try {
                 const restaurantData = await restaurantService.getUserRestaurants(user.email)
                 return {
@@ -402,24 +367,24 @@ class AuthService {
         }
     }
 
-    // Initiate Google OAuth login
+    // Initiate Google OAuth login - SIMPLIFIED
     async loginWithGoogle() {
         try {
-            console.log('🚀 Initiating Google OAuth login')
+            console.log('🚀 Starting Google OAuth login')
 
-            // First, we need to get the user's email to check if they exist
-            // Since we don't have email before OAuth, we'll use a different approach:
-            // Start OAuth with select_account, then check user existence in callback
-            // If user doesn't exist in callback, redirect to signup page
+            // Clear previous session data
+            sessionStorage.removeItem('oauth_context')
+            sessionStorage.setItem('oauth_context', 'login')
 
-            googleOAuthService.initiateOAuth(false) // false = login context
+            // Start OAuth flow for login
+            googleOAuthService.initiateOAuth(false) // isNewUser = false
 
             return {
                 success: true,
-                message: 'Redirecting to Google...'
+                message: 'Redirecting to Google for authentication...'
             }
         } catch (error) {
-            console.error('Failed to initiate Google OAuth:', error)
+            console.error('Failed to initiate Google OAuth login:', error)
             return {
                 success: false,
                 message: 'Failed to start Google authentication'
@@ -427,17 +392,21 @@ class AuthService {
         }
     }
 
-    // Initiate Google OAuth signup (for new users)
+    // Initiate Google OAuth signup - SIMPLIFIED
     async signupWithGoogle() {
         try {
-            console.log('🚀 Initiating Google OAuth signup')
+            console.log('🚀 Starting Google OAuth signup')
 
-            // For signup, we need consent to get fresh tokens and permissions
-            googleOAuthService.initiateOAuth(true) // true = new user, use consent
+            // Clear previous session data
+            sessionStorage.removeItem('oauth_context')
+            sessionStorage.setItem('oauth_context', 'signup')
+
+            // Start OAuth flow for signup
+            googleOAuthService.initiateOAuth(true) // isNewUser = true
 
             return {
                 success: true,
-                message: 'Redirecting to Google...'
+                message: 'Redirecting to Google for authentication...'
             }
         } catch (error) {
             console.error('Failed to initiate Google OAuth signup:', error)

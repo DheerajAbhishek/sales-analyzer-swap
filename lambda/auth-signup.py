@@ -251,9 +251,13 @@ def lambda_handler(event, context):
                     })
                 }
         
-        # Hash the password (only for traditional signup)
+        # Hash the password
         password_hash = None
         if not is_google_signup:
+            # Traditional signup - password required
+            password_hash = hashlib.sha256(password.encode()).hexdigest()
+        elif is_google_signup and password:
+            # Google signup with password for dual auth
             password_hash = hashlib.sha256(password.encode()).hexdigest()
         
         # Generate unique user ID

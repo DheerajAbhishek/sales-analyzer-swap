@@ -7,6 +7,10 @@ import OAuthCallback from './components/Auth/OAuthCallback.jsx'
 import LandingPage from './components/LandingPage.jsx'
 import Profile from './components/Profile.jsx'
 import ProfilePage from './components/ProfilePage.jsx'
+import PrivacyPolicy from './components/Legal/PrivacyPolicy.jsx'
+import TermsOfService from './components/Legal/TermsOfService.jsx'
+import MobileNavigation from './components/MobileNavigation.jsx'
+import CollapsibleControlsPanel from './components/CollapsibleControlsPanel.jsx'
 import { reportService } from './services/api'
 import { authService } from './services/authService'
 import { restaurantMetadataService } from './services/restaurantMetadataService'
@@ -21,33 +25,68 @@ const ProtectedRoute = ({ children }) => {
 
     useEffect(() => {
         const checkAuth = async () => {
+            // First, do a quick check from localStorage to avoid unnecessary API calls
+            const currentUser = authService.getCurrentUser()
             const authMethod = authService.getAuthMethod()
 
-            if (authMethod === 'google') {
-                // For Google OAuth, verify the authentication
-                const result = await authService.verifyGoogleAuth()
-                if (result.success) {
-                    setUser(result.user)
-                    setUserRestaurants(result.restaurants)
-                    console.log('Google user restaurants available:', result.restaurants)
-                } else {
-                    authService.logout()
-                }
-            } else {
-                // For traditional auth, verify the token
-                const token = authService.getToken()
-                if (token) {
-                    const result = await authService.verifyToken(token)
-                    if (result.success) {
-                        setUser(result.user)
-                        setUserRestaurants(result.restaurants)
-                        console.log('User restaurants available:', result.restaurants)
-                    } else {
-                        authService.logout()
-                    }
-                }
+            console.log('ProtectedRoute: Current user:', currentUser ? 'Found' : 'Not found')
+            console.log('ProtectedRoute: Auth method:', authMethod)
+
+            if (!currentUser) {
+                console.log('ProtectedRoute: No user in localStorage, redirecting to login')
+                setIsCheckingAuth(false)
+                return
             }
-            setIsCheckingAuth(false)
+
+            // User exists in localStorage, set them immediately for better UX
+            setUser(currentUser)
+            const cachedRestaurants = authService.getUserRestaurants()
+            setUserRestaurants(cachedRestaurants)
+            setIsCheckingAuth(false) // Stop loading immediately
+
+            // Perform background verification (don't block UI)
+            console.log(`ProtectedRoute: User found with authMethod: ${authMethod}, performing background verification`)
+
+            try {
+                // Check if user has Google-related data (indicates OAuth user)
+                const hasGoogleData = currentUser.picture || currentUser.emailVerified !== undefined
+                const isGoogleUser = authMethod === 'google' || authMethod === 'linked' || hasGoogleData
+
+                console.log(`ProtectedRoute: isGoogleUser: ${isGoogleUser}, hasGoogleData: ${hasGoogleData}`)
+
+                if (isGoogleUser) {
+                    // For Google OAuth users, we mainly rely on localStorage
+                    // These users don't have traditional auth tokens
+                    console.log('ProtectedRoute: Google/linked user verified from localStorage')
+                } else if (authMethod === 'traditional') {
+                    // For traditional auth, verify the token in background
+                    const token = authService.getToken()
+                    if (token) {
+                        const result = await authService.verifyToken(token)
+                        if (!result.success) {
+                            console.log('ProtectedRoute: Token verification failed, logging out')
+                            authService.logout()
+                            setUser(null)
+                            setUserRestaurants(null)
+                        } else {
+                            // Update with fresh data if verification succeeds
+                            setUser(result.user)
+                            setUserRestaurants(result.restaurants)
+                        }
+                    } else {
+                        console.log('ProtectedRoute: No token found for traditional auth, logging out')
+                        authService.logout()
+                        setUser(null)
+                        setUserRestaurants(null)
+                    }
+                } else {
+                    // Unknown auth method, but user exists in localStorage
+                    console.log(`ProtectedRoute: Unknown authMethod '${authMethod}', but user exists - keeping logged in`)
+                }
+            } catch (error) {
+                console.warn('ProtectedRoute: Background verification failed, but keeping user logged in:', error)
+                // Don't log out on network errors - keep user logged in
+            }
         }
 
         checkAuth()
@@ -83,6 +122,9 @@ const DashboardPage = () => {
     const [error, setError] = useState(null)
     const navigate = useNavigate()
 
+    // Mobile detection state
+    const [isMobile, setIsMobile] = useState(window.innerWidth <= 1024)
+
     const [showProfile, setShowProfile] = useState(false)
     const [emailProcessingStatus, setEmailProcessingStatus] = useState(null)
     const [controlsPanelKey, setControlsPanelKey] = useState(0)
@@ -91,6 +133,16 @@ const DashboardPage = () => {
         // Check if auto-load was already attempted in this session
         return localStorage.getItem('autoLoadAttempted') === 'true'
     })
+
+    // Handle window resize for mobile detection
+    useEffect(() => {
+        const handleResize = () => {
+            setIsMobile(window.innerWidth <= 1024)
+        }
+
+        window.addEventListener('resize', handleResize)
+        return () => window.removeEventListener('resize', handleResize)
+    }, [])
 
     // Function to update dashboard data with persistence
     const updateDashboardData = (data, isManual = false) => {
@@ -499,19 +551,21 @@ const DashboardPage = () => {
 
     return (
         <>
-            <header className="top-navbar">
-                <div className="brand">Sales Insights</div>
-                <div className="nav-actions">
-                    <div className="user-name">{user?.restaurantName}</div>
-
-                    {/* 1-Minute Progress Timer */}
+            {isMobile ? (
+                // Mobile Navigation
+                <MobileNavigation
+                    user={user}
+                    onProfileClick={handleProfileClick}
+                    onHomeClick={() => navigate('/')}
+                    onLogout={handleLogout}
+                >
+                    {/* Email Processing Status in Mobile */}
                     {emailProcessingStatus?.isProcessing && (
                         <div style={{
-                            marginRight: '10px',
+                            padding: '1rem',
                             display: 'flex',
                             flexDirection: 'column',
-                            gap: '4px',
-                            minWidth: '200px'
+                            gap: '4px'
                         }}>
                             <div style={{
                                 fontSize: '12px',
@@ -541,45 +595,114 @@ const DashboardPage = () => {
                         </div>
                     )}
 
-                    <button onClick={handleRefreshControlsPanel} disabled={refreshing} style={{
-                        marginRight: '10px',
-                        backgroundColor: '#f8f9fa',
-                        color: '#333',
-                        border: '1px solid #ddd',
-                        padding: '8px 16px',
-                        borderRadius: '6px',
-                        cursor: refreshing ? 'not-allowed' : 'pointer',
-                        opacity: refreshing ? 0.7 : 1,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px'
-                    }} title="Refresh controls panel">
-                        <span style={{
-                            display: 'inline-block',
-                            animation: refreshing ? 'spin 1s linear infinite' : 'none'
-                        }}>↻</span>
-                        {refreshing ? 'Refreshing...' : 'Refresh'}
-                    </button>
-                    <button
-                        className="home-button"
-                        onClick={() => navigate('/')}
-                        style={{
+                    {/* Refresh Button in Mobile */}
+                    <div style={{ padding: '0 1rem 1rem' }}>
+                        <button onClick={handleRefreshControlsPanel} disabled={refreshing} style={{
+                            width: '100%',
+                            backgroundColor: '#f8f9fa',
+                            color: '#333',
+                            border: '1px solid #ddd',
+                            padding: '12px 16px',
+                            borderRadius: '6px',
+                            cursor: refreshing ? 'not-allowed' : 'pointer',
+                            opacity: refreshing ? 0.7 : 1,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '6px'
+                        }}>
+                            <span style={{
+                                display: 'inline-block',
+                                animation: refreshing ? 'spin 1s linear infinite' : 'none'
+                            }}>↻</span>
+                            {refreshing ? 'Refreshing...' : 'Refresh Controls'}
+                        </button>
+                    </div>
+                </MobileNavigation>
+            ) : (
+                // Desktop Navigation
+                <header className="top-navbar">
+                    <div className="brand">Sales Insights</div>
+                    <div className="nav-actions">
+                        <div className="user-name">{user?.restaurantName}</div>
+
+                        {/* 1-Minute Progress Timer */}
+                        {emailProcessingStatus?.isProcessing && (
+                            <div style={{
+                                marginRight: '10px',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '4px',
+                                minWidth: '200px'
+                            }}>
+                                <div style={{
+                                    fontSize: '12px',
+                                    color: '#666',
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center'
+                                }}>
+                                    <span>Processing emails...</span>
+                                    <span>{Math.round((emailProcessingStatus.progress || 0) * 100)}%</span>
+                                </div>
+                                <div style={{
+                                    width: '100%',
+                                    height: '6px',
+                                    backgroundColor: '#e0e0e0',
+                                    borderRadius: '3px',
+                                    overflow: 'hidden'
+                                }}>
+                                    <div style={{
+                                        width: `${(emailProcessingStatus.progress || 0) * 100}%`,
+                                        height: '100%',
+                                        backgroundColor: '#4285f4',
+                                        transition: 'width 0.5s linear',
+                                        borderRadius: '3px'
+                                    }}></div>
+                                </div>
+                            </div>
+                        )}
+
+                        <button onClick={handleRefreshControlsPanel} disabled={refreshing} style={{
                             marginRight: '10px',
                             backgroundColor: '#f8f9fa',
                             color: '#333',
                             border: '1px solid #ddd',
                             padding: '8px 16px',
                             borderRadius: '6px',
-                            cursor: 'pointer'
-                        }}
-                    >
-                        Home
-                    </button>
-                    <button className="profile-toggle" onClick={handleProfileClick}>
-                        Profile
-                    </button>
-                </div>
-            </header>
+                            cursor: refreshing ? 'not-allowed' : 'pointer',
+                            opacity: refreshing ? 0.7 : 1,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px'
+                        }} title="Refresh controls panel">
+                            <span style={{
+                                display: 'inline-block',
+                                animation: refreshing ? 'spin 1s linear infinite' : 'none'
+                            }}>↻</span>
+                            {refreshing ? 'Refreshing...' : 'Refresh'}
+                        </button>
+                        <button
+                            className="home-button"
+                            onClick={() => navigate('/')}
+                            style={{
+                                marginRight: '10px',
+                                backgroundColor: '#f8f9fa',
+                                color: '#333',
+                                border: '1px solid #ddd',
+                                padding: '8px 16px',
+                                borderRadius: '6px',
+                                cursor: 'pointer'
+                            }}
+                        >
+                            Home
+                        </button>
+                        <button className="profile-toggle" onClick={handleProfileClick}>
+                            Profile
+                        </button>
+                    </div>
+                </header>
+            )}
 
             {showProfile && (
                 <div className="profile-container">
@@ -589,12 +712,26 @@ const DashboardPage = () => {
 
             <div className="main-layout">
                 <div className="controls-column">
-                    <ControlsPanel
-                        key={controlsPanelKey}
-                        onGetReport={handleGetReport}
-                        loading={loading}
-                        userRestaurants={userRestaurants}
-                    />
+                    {isMobile ? (
+                        <CollapsibleControlsPanel
+                            title="Report Controls"
+                            defaultExpanded={false}
+                        >
+                            <ControlsPanel
+                                key={controlsPanelKey}
+                                onGetReport={handleGetReport}
+                                loading={loading}
+                                userRestaurants={userRestaurants}
+                            />
+                        </CollapsibleControlsPanel>
+                    ) : (
+                        <ControlsPanel
+                            key={controlsPanelKey}
+                            onGetReport={handleGetReport}
+                            loading={loading}
+                            userRestaurants={userRestaurants}
+                        />
+                    )}
                 </div>
                 <div className="dashboard-column">
                     {error && (
@@ -668,7 +805,13 @@ const OAuthCallbackWithNavigation = () => {
     const navigate = useNavigate()
 
     const handleAuthSuccess = (userData) => {
-        navigate('/dashboard')
+        console.log('✅ Existing user login successful, calling onAuthSuccess and navigating to dashboard')
+        console.log('👤 User data being passed:', userData)
+
+        // Small delay to ensure localStorage is fully updated before navigation
+        setTimeout(() => {
+            navigate('/dashboard')
+        }, 100)
     }
 
     return <OAuthCallback onAuthSuccess={handleAuthSuccess} />
@@ -757,6 +900,8 @@ function App() {
                         </ProtectedRoute>
                     }
                 />
+                <Route path="/privacy" element={<PrivacyPolicy />} />
+                <Route path="/terms" element={<TermsOfService />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
         </Router>

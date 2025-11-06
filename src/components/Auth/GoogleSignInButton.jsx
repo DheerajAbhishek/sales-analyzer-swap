@@ -6,9 +6,9 @@ const GoogleSignInButton = ({ onSuccess, onError, disabled = false }) => {
         try {
             const result = await authService.loginWithGoogle()
             if (result.success) {
-                // The function will redirect to Google, so onSuccess will be called
-                // from the callback page
-                console.log('Redirecting to Google OAuth...')
+                // OAuth flow initiated - will redirect to Google
+                console.log('🔄 Redirecting to Google OAuth...')
+                // Note: onSuccess will be called by OAuthCallback component after successful auth
             } else {
                 onError(result.message || 'Failed to initiate Google sign-in')
             }

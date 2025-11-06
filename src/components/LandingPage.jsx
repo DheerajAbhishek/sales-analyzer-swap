@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { authService } from '../services/authService'
 
 const LandingPage = ({ onGetStarted }) => {
@@ -226,6 +227,16 @@ const LandingPage = ({ onGetStarted }) => {
                                     </div>
                                 </div>
                             </div>
+                            <div className="demo-button-container">
+                                <a
+                                    href="https://calendly.com/dheerajabhishek111/30min"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="btn demo-button"
+                                >
+                                    📞 Book a Free Demo
+                                </a>
+                            </div>
                         </div>
                     </div>
                 </section>
@@ -237,7 +248,7 @@ const LandingPage = ({ onGetStarted }) => {
                             <div className="feature-card">
                                 <div className="feature-icon">
                                     <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor">
-                                        <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>
+                                        <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z" />
                                     </svg>
                                 </div>
                                 <h3>Automated Analytics</h3>
@@ -246,7 +257,7 @@ const LandingPage = ({ onGetStarted }) => {
                             <div className="feature-card">
                                 <div className="feature-icon">
                                     <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor">
-                                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
                                     </svg>
                                 </div>
                                 <h3>Discount & Ad Tracking</h3>
@@ -255,7 +266,7 @@ const LandingPage = ({ onGetStarted }) => {
                             <div className="feature-card">
                                 <div className="feature-icon">
                                     <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor">
-                                        <path d="M17 2H7c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-5 7H9v5h3V9zm4 5h-3V9h3v5z"/>
+                                        <path d="M17 2H7c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-5 7H9v5h3V9zm4 5h-3V9h3v5z" />
                                     </svg>
                                 </div>
                                 <h3>Multi-Channel Integration</h3>
@@ -264,7 +275,7 @@ const LandingPage = ({ onGetStarted }) => {
                             <div className="feature-card">
                                 <div className="feature-icon">
                                     <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor">
-                                        <path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z"/>
+                                        <path d="M16 6l2.29 2.29-4.88 4.88-4-4L2 16.59 3.41 18l6-6 4 4 6.3-6.29L22 12V6z" />
                                     </svg>
                                 </div>
                                 <h3>Performance Insights</h3>
@@ -273,7 +284,7 @@ const LandingPage = ({ onGetStarted }) => {
                             <div className="feature-card">
                                 <div className="feature-icon">
                                     <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor">
-                                        <path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/>
+                                        <path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z" />
                                     </svg>
                                 </div>
                                 <h3>Automated Reporting</h3>
@@ -282,7 +293,7 @@ const LandingPage = ({ onGetStarted }) => {
                             <div className="feature-card">
                                 <div className="feature-icon">
                                     <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor">
-                                        <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/>
+                                        <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z" />
                                     </svg>
                                 </div>
                                 <h3>Secure & Reliable</h3>
@@ -401,9 +412,9 @@ const LandingPage = ({ onGetStarted }) => {
                     <div className="footer-content">
                         <p>&copy; 2025 Restalytics. All rights reserved.</p>
                         <div className="footer-links">
-                            <a href="#privacy">Privacy Policy</a>
-                            <a href="#terms">Terms of Service</a>
-                            <a href="#contact">Contact</a>
+                            <Link to="/privacy">Privacy Policy</Link>
+                            <Link to="/terms">Terms of Service</Link>
+                            <a href="mailto:admin@swapnow.in">Contact</a>
                         </div>
                     </div>
                 </div>
