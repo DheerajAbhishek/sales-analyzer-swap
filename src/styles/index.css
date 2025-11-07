@@ -2917,23 +2917,9 @@ textarea:focus-visible {
 /* Modern Landing Page Styles */
 .landing-page {
     min-height: 100vh;
-    background: var(--gradient-hero);
+    background: #ffffff;
     position: relative;
     overflow-x: hidden;
-}
-
-.landing-page::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background:
-        radial-gradient(circle at 20% 20%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
-        radial-gradient(circle at 80% 80%, rgba(255, 107, 107, 0.3) 0%, transparent 50%),
-        radial-gradient(circle at 40% 40%, rgba(139, 92, 246, 0.2) 0%, transparent 50%);
-    pointer-events: none;
 }
 
 /* Glass Morphism Navigation */
@@ -2941,16 +2927,14 @@ textarea:focus-visible {
     background: rgba(255, 255, 255, 0.8);
     backdrop-filter: blur(20px) saturate(180%);
     border: 2px solid #000000;
-    border-radius: 20px;
+    border-radius: 46px;
     position: fixed;
     top: 1rem;
     left: 1rem;
     right: 1rem;
     z-index: 1000;
     transition: all 0.3s var(--ease-out);
-    box-shadow:
-        0 8px 32px rgba(0, 0, 0, 0.12),
-        0 4px 16px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), 0 4px 16px rgba(0, 0, 0, 0.08);
 }
 
 .landing-nav.scrolled {
@@ -2984,6 +2968,7 @@ textarea:focus-visible {
     height: 40px;
     width: auto;
     filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+    border-radius: 50px;
 }
 
 .nav-actions {
@@ -3087,7 +3072,7 @@ textarea:focus-visible {
     border: 2px solid #6366f1;
     color: #4338ca;
     padding: 0.5rem 1.5rem;
-    border-radius: 12px;
+    border-radius: 50px;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.3s ease;
@@ -3110,7 +3095,7 @@ textarea:focus-visible {
     color: white;
     border: 2px solid #8b5cf6;
     padding: 0.5rem 1.5rem;
-    border-radius: 12px;
+    border-radius: 50px;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.3s ease;
@@ -5155,6 +5140,7 @@ textarea:focus-visible {
 
 .profile-container {
     max-width: 1200px;
+    width: 100% !important;
     margin: 0 auto;
     background: var(--bg-primary);
     border-radius: 24px;
@@ -5536,45 +5522,296 @@ textarea:focus-visible {
 /* Responsive Design for Profile Page */
 @media (max-width: 768px) {
     .profile-page {
-        padding: 1rem;
+        padding: 0.5rem !important;
+        box-sizing: border-box;
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
     }
 
     .profile-container {
-        border-radius: 16px;
+        border-radius: 12px !important;
+        width: 100% !important;
+        max-width: calc(100vw - 1rem) !important;
+        margin: 0 auto !important;
+        box-sizing: border-box;
+        position: relative;
+        left: 0;
+        right: 0;
     }
 
     .profile-header {
-        padding: 1.5rem 1rem;
+        padding: 1.5rem 1rem !important;
         flex-direction: column;
         gap: 1rem;
         text-align: center;
+        box-sizing: border-box;
     }
 
     .profile-header h1 {
-        font-size: 2rem;
+        font-size: 1.75rem;
     }
 
     .profile-section {
-        padding: 1.5rem;
+        padding: 1rem !important;
+        box-sizing: border-box;
+        width: 100%;
+    }
+
+    .profile-section h2 {
+        font-size: 1.25rem;
+        text-align: left;
+        margin-left: 0;
     }
 
     .restaurants-grid {
         grid-template-columns: 1fr;
-        gap: 1.5rem;
+        gap: 1rem;
+        width: 100%;
+    }
+
+    .user-info-card {
+        padding: 1rem !important;
+        box-sizing: border-box;
+        width: 100%;
     }
 
     .user-info-row {
         flex-direction: column;
         align-items: flex-start;
-        gap: 0.5rem;
+        gap: 0.25rem !important;
+        padding: 0.4rem 0 !important;
+        box-sizing: border-box;
+        width: 100%;
+    }
+
+    .user-info-row label {
+        flex: none;
+        font-size: 0.85rem;
+        margin-bottom: 0.15rem;
+        text-align: left;
     }
 
     .user-info-row span {
         text-align: left;
+        font-size: 0.9rem;
+        word-break: break-word;
+        width: 100%;
+    }
+
+    .user-actions {
+        margin-top: 0.75rem !important;
+        padding-top: 0.75rem !important;
+        display: flex;
+        justify-content: center;
+        width: 100%;
+    }
+
+    .btn-logout {
+        width: 100%;
+        text-align: center;
+    }
+
+    .restaurant-card {
+        padding: 1rem;
+    }
+
+    .restaurant-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.75rem;
     }
 
     .restaurant-actions {
         flex-direction: column;
+        width: 100%;
+        gap: 0.5rem;
+    }
+
+    .restaurant-actions button {
+        width: 100%;
+    }
+
+    .restaurant-content {
+        padding: 0;
+        box-sizing: border-box;
+    }
+
+    .form-group {
+        margin-bottom: 1rem;
+    }
+
+    .form-group label {
+        font-size: 0.9rem;
+    }
+
+    .form-control {
+        font-size: 0.95rem;
+        padding: 0.625rem;
+        box-sizing: border-box;
+        width: 100%;
+    }
+
+    /* Button groups in profile section */
+    .profile-section>div[style*="display: flex"] {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+    }
+
+    .profile-section>div[style*="display: flex"]>div {
+        width: 100% !important;
+    }
+
+    .btn-edit {
+        width: 100%;
+        margin-bottom: 0.5rem;
+        box-sizing: border-box;
+    }
+
+    /* Alert boxes */
+    .profile-section>div[style*="background"] {
+        padding: 0.75rem !important;
+        font-size: 0.9rem;
+        box-sizing: border-box;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+    }
+
+    /* Empty state */
+    .empty-state {
+        padding: 1.5rem 1rem;
+    }
+
+    .empty-state p {
+        font-size: 0.95rem;
+    }
+
+    /* Action buttons at bottom of new restaurant form */
+    .restaurant-content>div[style*="justifyContent: flex-end"] {
+        flex-direction: column-reverse !important;
+    }
+
+    .restaurant-content>div[style*="justifyContent: flex-end"] button {
+        width: 100% !important;
+    }
+}
+
+/* Extra small devices (phones in portrait, less than 576px) */
+@media (max-width: 576px) {
+    .profile-page {
+        padding: 0.25rem !important;
+        box-sizing: border-box;
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+    }
+
+    .profile-container {
+        border-radius: 8px !important;
+        min-height: 100vh;
+        width: 100% !important;
+        max-width: calc(100vw - 0.5rem) !important;
+        margin: 0 auto !important;
+        box-sizing: border-box;
+        position: relative;
+        left: 0;
+        right: 0;
+    }
+
+    .profile-header {
+        padding: 1rem !important;
+        border-radius: 0;
+        box-sizing: border-box;
+    }
+
+    .profile-header h1 {
+        font-size: 1.5rem;
+    }
+
+    .btn-back {
+        padding: 0.5rem 1rem;
+        font-size: 0.875rem;
+    }
+
+    .profile-section {
+        padding: 0.75rem !important;
+        box-sizing: border-box;
+        width: 100%;
+    }
+
+    .profile-section h2 {
+        font-size: 1.1rem;
+        text-align: left;
+        margin-left: 0;
+    }
+
+    .user-info-card {
+        padding: 0.75rem !important;
+        border-radius: 12px;
+        box-sizing: border-box;
+        width: 100%;
+    }
+
+    .user-info-row {
+        gap: 0.15rem !important;
+        padding: 0.35rem 0 !important;
+        box-sizing: border-box;
+        width: 100%;
+    }
+
+    .user-info-row label {
+        font-size: 0.8rem;
+        margin-bottom: 0.1rem;
+        text-align: left;
+    }
+
+    .user-info-row span {
+        font-size: 0.85rem;
+        text-align: left;
+        width: 100%;
+    }
+
+    .user-actions {
+        margin-top: 0.75rem !important;
+        padding-top: 0.75rem !important;
+        display: flex;
+        justify-content: center;
+        width: 100%;
+    }
+
+    .restaurants-grid {
+        gap: 0.75rem;
+    }
+
+    .restaurant-card {
+        padding: 0.75rem;
+        border-radius: 12px;
+    }
+
+    .restaurant-id {
+        font-size: 0.85rem;
+        padding: 0.25rem 0.5rem;
+    }
+
+    .platform-chip {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+    }
+
+    /* Info boxes with smaller text */
+    .profile-section>div[style*="background"] {
+        padding: 0.5rem !important;
+        font-size: 0.85rem;
+    }
+
+    .profile-section>div[style*="background"] strong {
+        font-size: 0.9rem;
+    }
+
+    .profile-section>div[style*="background"] small {
+        font-size: 0.8rem;
     }
 }
 

@@ -11,7 +11,7 @@ import PrivacyPolicy from './components/Legal/PrivacyPolicy.jsx'
 import TermsOfService from './components/Legal/TermsOfService.jsx'
 import MobileNavigation from './components/MobileNavigation.jsx'
 import CollapsibleControlsPanel from './components/CollapsibleControlsPanel.jsx'
-import { reportService } from './services/api'
+import { reportService, restaurantService } from './services/api'
 import { authService } from './services/authService'
 import { restaurantMetadataService } from './services/restaurantMetadataService'
 import { autoEmailProcessingService } from './services/autoEmailProcessingService'
@@ -164,7 +164,6 @@ const DashboardPage = () => {
         const fetchFreshRestaurants = async () => {
             try {
                 console.log('Dashboard: Fetching fresh user restaurants from API...')
-                const { restaurantService } = await import('./services/api')
 
                 // Get email from user state or localStorage
                 const email = user?.businessEmail || user?.email;
@@ -386,7 +385,6 @@ const DashboardPage = () => {
             }
 
             console.log('📥 Fetching fresh restaurants for:', email)
-            const { restaurantService } = await import('./services/api')
             const freshData = await restaurantService.getUserRestaurants(email)
 
             console.log('✅ Fresh restaurants loaded:', freshData)
@@ -535,7 +533,6 @@ const DashboardPage = () => {
         try {
             setLoading(true)
             console.log('🔄 Manually refreshing user restaurants...')
-            const { restaurantService } = await import('./services/api')
             const freshData = await restaurantService.refreshUserRestaurants()
             console.log('✓ Restaurants refreshed successfully:', freshData)
             setUserRestaurants(freshData)
@@ -833,10 +830,14 @@ const LandingPageWithNavigation = () => {
     const navigate = useNavigate()
 
     const handleGetStarted = () => {
+        navigate('/signup')
+    }
+
+    const handleLogin = () => {
         navigate('/login')
     }
 
-    return <LandingPage onGetStarted={handleGetStarted} />
+    return <LandingPage onGetStarted={handleGetStarted} onLogin={handleLogin} />
 }
 
 // Profile Page Component with Navigation

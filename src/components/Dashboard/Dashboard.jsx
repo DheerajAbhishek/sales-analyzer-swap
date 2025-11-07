@@ -154,42 +154,54 @@ const Dashboard = ({ data, user }) => {
             "ads", "commissionAndTaxes", "payout", "netSale", "nbv"
         ]
 
-        console.log('Processing monthly data from results:', results)
+        console.log('🔍 processMonthlyData - Starting with groupBy:', groupBy)
+        console.log('🔍 processMonthlyData - Number of results:', results?.length)
 
         results.forEach((data, index) => {
-            // Log the data being processed
-            console.log('Processing result:', index, data)
+            console.log(`🔍 processMonthlyData - Processing result ${index}:`, data)
 
             const timeSeriesData = data.body?.timeSeriesData || data.timeSeriesData || []
-            console.log('Time series data:', timeSeriesData)
+            console.log(`🔍 processMonthlyData - TimeSeriesData length for result ${index}:`, timeSeriesData?.length)
+            console.log(`🔍 processMonthlyData - TimeSeriesData sample:`, timeSeriesData?.[0])
 
-            if (groupBy === 'total') {
-                // For total view, process from time series data
-                timeSeriesData.forEach(periodData => {
+            // Always process from timeSeriesData when available (for all groupBy modes)
+            if (timeSeriesData && timeSeriesData.length > 0) {
+                console.log(`✅ Processing ${timeSeriesData.length} periods from timeSeriesData`)
+
+                timeSeriesData.forEach((periodData, periodIndex) => {
                     const period = periodData.period
                     const monthKey = period.substring(0, 7) // Gets YYYY-MM
+
+                    console.log(`📅 Period ${periodIndex}: ${period} -> Month: ${monthKey}`)
+                    console.log(`📊 Period data:`, periodData)
 
                     if (!monthlyData[monthKey]) {
                         monthlyData[monthKey] = {}
                         keysToSum.forEach(key => monthlyData[monthKey][key] = 0)
+                        console.log(`🆕 Created new month entry: ${monthKey}`)
                     }
 
                     // Sum data from all platforms for this period
                     const platforms = ['zomato', 'swiggy', 'takeaway', 'subs']
                     platforms.forEach(platform => {
                         const platformData = periodData[platform] || {}
+                        console.log(`🔍 Platform ${platform} data:`, platformData)
+
                         keysToSum.forEach(key => {
                             if (platformData[key] && typeof platformData[key] === 'number') {
+                                const oldValue = monthlyData[monthKey][key]
                                 monthlyData[monthKey][key] += platformData[key]
+                                console.log(`➕ Adding ${platform}.${key}: ${oldValue} + ${platformData[key]} = ${monthlyData[monthKey][key]}`)
                             }
                         })
                     })
                 })
-            } else {
-                // For weekly/monthly view, process from consolidated insights
+            } else if (groupBy === 'total') {
+                // Fallback for total view if timeSeriesData is not available
+                // (This shouldn't normally happen, but kept for safety)
                 const insights = data.body?.consolidatedInsights || data.consolidatedInsights || {}
                 if (Object.keys(insights).length > 0) {
-                    const yearMonth = selections.startDate.substring(0, 7)  // Use the selected month
+                    const yearMonth = selections.startDate.substring(0, 7)
                     if (!monthlyData[yearMonth]) {
                         monthlyData[yearMonth] = {}
                         keysToSum.forEach(key => monthlyData[yearMonth][key] = 0)
@@ -203,6 +215,8 @@ const Dashboard = ({ data, user }) => {
             }
         })
 
+        console.log('🎯 Final monthlyData before calculating derived metrics:', monthlyData)
+
         // Calculate derived metrics for each month
         Object.keys(monthlyData).forEach(month => {
             const data = monthlyData[month]
@@ -210,8 +224,10 @@ const Dashboard = ({ data, user }) => {
             data.commissionPercent = data.nbv > 0 ? (data.commissionAndTaxes / data.nbv * 100) : 0
             data.discountPercent = data.grossSaleAfterGST > 0 ? (data.discounts / data.grossSaleAfterGST * 100) : 0
             data.adsPercent = data.grossSaleAfterGST > 0 ? (data.ads / data.grossSaleAfterGST * 100) : 0
+            console.log(`📊 Final month ${month} data:`, data)
         })
 
+        console.log('✅ Returning monthlyData:', monthlyData)
         // Return monthly data regardless of the number of months
         return monthlyData
     }
@@ -222,22 +238,24 @@ const Dashboard = ({ data, user }) => {
 
         // Determine if we should show zero values for missing channels
         const shouldShowZeroValues = selectedChannels.length > 1
-        console.log('🔍 Should show zero values for missing channels:', shouldShowZeroValues)
+        console.log('🔍 processTimeSeries - Should show zero values for missing channels:', shouldShowZeroValues)
+        console.log('🔍 processTimeSeries - Processing', results.length, 'results')
 
         results.forEach((data, index) => {
             const channel = selectedChannels[index]
-            const platform = details[index].platform
+
+            console.log(`🔍 Processing result ${index}:`, {
+                channel,
+                hasData: !!data,
+                hasMessage: !!data?.message,
+                hasTimeSeriesData: !!data?.timeSeriesData,
+                timeSeriesLength: data?.timeSeriesData?.length || 0,
+                fullData: data
+            })
 
             // Skip results that don't have data
             if (!data || data.message || !data.timeSeriesData) {
                 console.log(`⚠️ No time series data for ${channel}`)
-
-                if (shouldShowZeroValues) {
-                    // When multiple channels selected, we'll add zero values later
-                    console.log(`📊 Will add zero values for ${channel} (multiple channels selected)`)
-                } else {
-                    console.log(`🚫 Skipping ${channel} (single channel selected, no data)`)
-                }
                 return
             }
 
@@ -245,69 +263,60 @@ const Dashboard = ({ data, user }) => {
 
             // Only process if we have actual time data
             if (timeData.length === 0) {
-                console.log(`⚠️ No time series data for platform ${platform}`)
-
-                if (shouldShowZeroValues) {
-                    console.log(`📊 Will add zero values for ${platform} (multiple channels selected)`)
-                } else {
-                    console.log(`🚫 Skipping platform ${platform} (single channel selected, empty data)`)
-                }
+                console.log(`⚠️ Empty time series data for ${channel}`)
                 return
             }
 
-            console.log(`✅ Processing time series for platform: ${platform}`)
+            console.log(`✅ Processing ${timeData.length} periods for channel: ${channel}`)
+            console.log(`📊 Sample period data (first period):`, timeData[0])
 
-            timeData.forEach(periodData => {
+            timeData.forEach((periodData, periodIndex) => {
                 let period = periodData.period
                 if (groupBy === 'month') {
                     period = period.substring(0, 7) // "YYYY-MM-DD" -> "YYYY-MM"
                 }
 
-                if (!timeSeries[period]) timeSeries[period] = {}
+                if (!timeSeries[period]) {
+                    timeSeries[period] = {}
+                    console.log(`📅 Created new period: ${period}`)
+                }
 
-                const platformData = periodData[platform] || {}
+                // Extract all platform keys from the period data (excluding 'period' key)
+                const platformKeys = Object.keys(periodData).filter(k => k !== 'period')
 
-                // Add platform data (with or without meaningful values based on shouldShowZeroValues)
-                const hasData = Object.values(platformData).some(value =>
-                    typeof value === 'number' && value > 0
-                )
+                if (periodIndex === 0) {
+                    console.log(`🔍 Period ${period} has platforms:`, platformKeys)
+                }
 
-                if (hasData || shouldShowZeroValues) {
+                // Process each platform in this period
+                platformKeys.forEach(platform => {
+                    const platformData = periodData[platform]
+
+                    if (periodIndex === 0) {
+                        console.log(`🔍 Platform ${platform} data:`, platformData)
+                    }
+
+                    // Add or merge platform data
                     if (!timeSeries[period][platform]) {
                         timeSeries[period][platform] = platformData
                     } else {
+                        // Merge if somehow we have duplicate platform data
                         for (const key in platformData) {
                             if (typeof platformData[key] === 'number') {
-                                timeSeries[period][platform][key] += platformData[key]
+                                timeSeries[period][platform][key] = (timeSeries[period][platform][key] || 0) + platformData[key]
+                            } else {
+                                timeSeries[period][platform][key] = platformData[key]
                             }
-                        }
-                    }
-                }
-            })
-        })
-
-        // If multiple channels are selected, ensure all periods have all platforms (with zeros if needed)
-        if (shouldShowZeroValues && Object.keys(timeSeries).length > 0) {
-            const allPlatforms = [...new Set(details.map(d => d.platform))]
-            const allPeriods = Object.keys(timeSeries)
-
-            console.log('📊 Ensuring all platforms appear in all periods:', allPlatforms)
-
-            allPeriods.forEach(period => {
-                allPlatforms.forEach(platform => {
-                    if (!timeSeries[period][platform]) {
-                        console.log(`📊 Adding zero values for ${platform} in period ${period}`)
-                        timeSeries[period][platform] = {
-                            noOfOrders: 0, grossSale: 0, gstOnOrder: 0, discounts: 0,
-                            packings: 0, ads: 0, commissionAndTaxes: 0, payout: 0,
-                            netSale: 0, nbv: 0
                         }
                     }
                 })
             })
-        }
+        })
 
         console.log('📊 Final time series data:', timeSeries)
+        console.log('📊 Number of periods:', Object.keys(timeSeries).length)
+        console.log('📊 Sample period structure:', timeSeries[Object.keys(timeSeries)[0]])
+
         return {
             type: 'timeSeries',
             timeSeriesData: timeSeries

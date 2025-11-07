@@ -66,12 +66,14 @@ const MetricChart = ({ metric, type, data, periods = [], groupBy }) => {
                 metric: metric.key,
                 samplePeriod,
                 allPeriods: Object.keys(data),
-                samplePeriodData: data[samplePeriod]
+                samplePeriodData: data[samplePeriod],
+                fullData: data
             })
-            
+
             if (samplePeriod && data[samplePeriod]) {
-                const availablePlatforms = Object.keys(data[samplePeriod])
+                const availablePlatforms = Object.keys(data[samplePeriod]).filter(k => k !== 'period')
                 console.log('📊 Available platforms for', metric.key, ':', availablePlatforms)
+                console.log('📊 Sample period object keys:', Object.keys(data[samplePeriod]))
 
                 availablePlatforms.forEach(platform => {
                     let color = CHART_COLORS.platform[platform] || CHART_COLORS.primary

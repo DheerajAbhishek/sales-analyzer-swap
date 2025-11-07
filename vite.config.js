@@ -11,15 +11,6 @@ export default defineConfig({
     },
     build: {
         outDir: 'dist',
-        sourcemap: false, // Disable for production
-        rollupOptions: {
-            output: {
-                manualChunks: {
-                    vendor: ['react', 'react-dom'],
-                    charts: ['chart.js', 'react-chartjs-2'],
-                    utils: ['flatpickr', 'react-select']
-                }
-            }
-        }
+        sourcemap: false // Disable for production
     }
 })

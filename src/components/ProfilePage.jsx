@@ -636,22 +636,6 @@ const ProfilePage = ({ user, onLogout, onBack }) => {
                         <div className="restaurant-card" style={{ border: '2px dashed var(--primary-purple)' }}>
                             <div className="restaurant-header">
                                 <div className="restaurant-id">New Restaurant</div>
-                                <div>
-                                    <button
-                                        className="btn-save"
-                                        onClick={handleSaveNewRestaurant}
-                                        disabled={!newRestaurant.name.trim()}
-                                        style={{ marginRight: '0.5rem' }}
-                                    >
-                                        Save
-                                    </button>
-                                    <button
-                                        className="btn-cancel"
-                                        onClick={handleCancelNewRestaurant}
-                                    >
-                                        Cancel
-                                    </button>
-                                </div>
                             </div>
                             <div className="restaurant-content">
                                 <div className="form-group">
@@ -692,6 +676,21 @@ const ProfilePage = ({ user, onLogout, onBack }) => {
                                         </select>
                                     </div>
                                 ))}
+                                <div style={{ marginTop: '1rem', display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                                    <button
+                                        className="btn-save"
+                                        onClick={handleSaveNewRestaurant}
+                                        disabled={!newRestaurant.name.trim()}
+                                    >
+                                        Save
+                                    </button>
+                                    <button
+                                        className="btn-cancel"
+                                        onClick={handleCancelNewRestaurant}
+                                    >
+                                        Cancel
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     )}
