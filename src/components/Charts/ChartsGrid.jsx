@@ -1,43 +1,43 @@
-import React from 'react'
-import MetricChart from './MetricChart.jsx'
-import { METRICS_CONFIG } from '../../utils/constants'
+import React from "react";
+import MetricChart from "./MetricChart.jsx";
+import { METRICS_CONFIG } from "../../utils/constants";
 
 const ChartsGrid = ({ type, data, groupBy }) => {
-    if (type === 'comparison') {
-        return (
-            <div className="charts-grid">
-                {METRICS_CONFIG.map(metric => (
-                    <MetricChart
-                        key={metric.key}
-                        metric={metric}
-                        type="comparison"
-                        data={data}
-                    />
-                ))}
-            </div>
-        )
-    }
+  if (type === "comparison") {
+    return (
+      <div className="charts-grid">
+        {METRICS_CONFIG.map((metric) => (
+          <MetricChart
+            key={metric.key}
+            metric={metric}
+            type="comparison"
+            data={data}
+          />
+        ))}
+      </div>
+    );
+  }
 
-    if (type === 'timeSeries') {
-        const periods = Object.keys(data).sort()
+  if (type === "timeSeries") {
+    const periods = Object.keys(data).sort();
 
-        return (
-            <div className="charts-grid">
-                {METRICS_CONFIG.map(metric => (
-                    <MetricChart
-                        key={metric.key}
-                        metric={metric}
-                        type="timeSeries"
-                        data={data}
-                        periods={periods}
-                        groupBy={groupBy}
-                    />
-                ))}
-            </div>
-        )
-    }
+    return (
+      <div className="charts-grid">
+        {METRICS_CONFIG.map((metric) => (
+          <MetricChart
+            key={metric.key}
+            metric={metric}
+            type="timeSeries"
+            data={data}
+            periods={periods}
+            groupBy={groupBy}
+          />
+        ))}
+      </div>
+    );
+  }
 
-    return null
-}
+  return null;
+};
 
-export default ChartsGrid
+export default ChartsGrid;

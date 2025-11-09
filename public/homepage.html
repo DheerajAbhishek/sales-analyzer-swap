@@ -1,593 +1,693 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>restalytics.ai </title>
-    <meta name="description"
-        content="Comprehensive analytics and automated reporting platform for restaurant businesses. Transform your sales data into actionable insights with AI-powered analytics.">
-    <meta name="keywords"
-        content="restaurant analytics, sales intelligence, food business insights, automated reporting, restaurant management software">
-    <meta name="author" content="Swap Dietetics Private Limited">
-    <link rel="canonical" href="https://www.restalytics.ai">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>restalytics.ai</title>
+    <meta
+      name="description"
+      content="Comprehensive analytics and automated reporting platform for restaurant businesses. Transform your sales data into actionable insights with AI-powered analytics."
+    />
+    <meta
+      name="keywords"
+      content="restaurant analytics, sales intelligence, food business insights, automated reporting, restaurant management software"
+    />
+    <meta name="author" content="Swap Dietetics Private Limited" />
+    <link rel="canonical" href="https://www.restalytics.ai" />
 
     <!-- Open Graph Meta Tags -->
-    <meta property="og:title" content="Restalytics - Restaurant Analytics Platform">
-    <meta property="og:description"
-        content="Transform your restaurant sales data into actionable insights with automated analytics and intelligent reporting.">
-    <meta property="og:type" content="website">
-    <meta property="og:url" content="https://www.restalytics.ai">
-    <meta property="og:site_name" content="Restalytics">
+    <meta
+      property="og:title"
+      content="Restalytics - Restaurant Analytics Platform"
+    />
+    <meta
+      property="og:description"
+      content="Transform your restaurant sales data into actionable insights with automated analytics and intelligent reporting."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://www.restalytics.ai" />
+    <meta property="og:site_name" content="Restalytics" />
 
     <!-- Twitter Card Meta Tags -->
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Restalytics - Restaurant Analytics Platform">
-    <meta name="twitter:description"
-        content="Transform your restaurant sales data into actionable insights with automated analytics and intelligent reporting.">
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta
+      name="twitter:title"
+      content="Restalytics - Restaurant Analytics Platform"
+    />
+    <meta
+      name="twitter:description"
+      content="Transform your restaurant sales data into actionable insights with automated analytics and intelligent reporting."
+    />
 
     <!-- Favicon -->
-    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
 
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            line-height: 1.6;
-            color: #1a1a1a;
-            background-color: #ffffff;
-        }
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu,
+          Cantarell, sans-serif;
+        line-height: 1.6;
+        color: #1a1a1a;
+        background-color: #ffffff;
+      }
 
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 0 20px;
-        }
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 20px;
+      }
 
-        /* Header */
-        header {
-            background: #ffffff;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            z-index: 1000;
-        }
+      /* Header */
+      header {
+        background: #ffffff;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 1000;
+      }
 
-        nav {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 1rem 0;
-        }
+      nav {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem 0;
+      }
 
-        .logo {
-            font-size: 1.8rem;
-            font-weight: bold;
-            color: #1a1a1a;
-            text-decoration: none;
-        }
+      .logo {
+        font-size: 1.8rem;
+        font-weight: bold;
+        color: #1a1a1a;
+        text-decoration: none;
+      }
 
+      .nav-links {
+        display: flex;
+        list-style: none;
+        gap: 2rem;
+      }
+
+      .nav-links a {
+        text-decoration: none;
+        color: #1a1a1a;
+        font-weight: 500;
+        transition: color 0.3s ease;
+      }
+
+      .nav-links a:hover {
+        color: #6c757d;
+      }
+
+      .cta-btn {
+        background: #1a1a1a;
+        color: white;
+        padding: 0.7rem 1.5rem;
+        border: none;
+        border-radius: 5px;
+        text-decoration: none;
+        font-weight: 600;
+        transition: background 0.3s ease;
+      }
+
+      .cta-btn:hover {
+        background: #2d2d2d;
+      }
+
+      /* Hero Section */
+      .hero {
+        padding: 120px 0 80px;
+        background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+        text-align: center;
+      }
+
+      .hero h1 {
+        font-size: 3.5rem;
+        font-weight: bold;
+        margin-bottom: 1rem;
+        color: #1a1a1a;
+      }
+
+      .hero p {
+        font-size: 1.3rem;
+        color: #6c757d;
+        margin-bottom: 2rem;
+        max-width: 600px;
+        margin-left: auto;
+        margin-right: auto;
+      }
+
+      /* Features Section */
+      .features {
+        padding: 80px 0;
+        background: #ffffff;
+      }
+
+      .section-title {
+        text-align: center;
+        font-size: 2.5rem;
+        font-weight: bold;
+        margin-bottom: 3rem;
+        color: #1a1a1a;
+      }
+
+      .features-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 2rem;
+        margin-top: 3rem;
+      }
+
+      .feature-card {
+        background: #f8f9fa;
+        padding: 2rem;
+        border-radius: 10px;
+        text-align: center;
+        transition:
+          transform 0.3s ease,
+          box-shadow 0.3s ease;
+      }
+
+      .feature-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+      }
+
+      .feature-icon {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+        display: block;
+      }
+
+      .feature-card h3 {
+        font-size: 1.5rem;
+        margin-bottom: 1rem;
+        color: #1a1a1a;
+      }
+
+      .feature-card p {
+        color: #6c757d;
+        line-height: 1.6;
+      }
+
+      /* Data Usage Section */
+      .data-usage {
+        padding: 80px 0;
+        background: #f8f9fa;
+      }
+
+      .data-content {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 4rem;
+        align-items: center;
+      }
+
+      .data-text h2 {
+        font-size: 2.5rem;
+        margin-bottom: 1.5rem;
+        color: #1a1a1a;
+      }
+
+      .data-text p {
+        font-size: 1.1rem;
+        color: #6c757d;
+        margin-bottom: 1.5rem;
+        line-height: 1.7;
+      }
+
+      .data-list {
+        list-style: none;
+        margin: 2rem 0;
+      }
+
+      .data-list li {
+        padding: 0.5rem 0;
+        color: #6c757d;
+        position: relative;
+        padding-left: 2rem;
+      }
+
+      .data-list li:before {
+        content: "✓";
+        position: absolute;
+        left: 0;
+        color: #28a745;
+        font-weight: bold;
+      }
+
+      /* Security Section */
+      .security {
+        padding: 80px 0;
+        background: #ffffff;
+      }
+
+      .security-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 2rem;
+        margin-top: 3rem;
+      }
+
+      .security-item {
+        text-align: center;
+        padding: 1.5rem;
+      }
+
+      .security-item h4 {
+        font-size: 1.3rem;
+        margin-bottom: 1rem;
+        color: #1a1a1a;
+      }
+
+      .security-item p {
+        color: #6c757d;
+      }
+
+      /* Company Info */
+      .company-info {
+        padding: 80px 0;
+        background: #1a1a1a;
+        color: white;
+        text-align: center;
+      }
+
+      .company-info h2 {
+        font-size: 2.5rem;
+        margin-bottom: 1.5rem;
+      }
+
+      .company-info p {
+        font-size: 1.1rem;
+        color: #cccccc;
+        margin-bottom: 1rem;
+        max-width: 800px;
+        margin-left: auto;
+        margin-right: auto;
+      }
+
+      .contact-info {
+        margin-top: 2rem;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 2rem;
+        max-width: 600px;
+        margin-left: auto;
+        margin-right: auto;
+      }
+
+      .contact-item {
+        text-align: center;
+      }
+
+      .contact-item h4 {
+        margin-bottom: 0.5rem;
+        color: white;
+      }
+
+      .contact-item a {
+        color: #cccccc;
+        text-decoration: none;
+      }
+
+      .contact-item a:hover {
+        color: white;
+      }
+
+      /* Footer */
+      footer {
+        background: #2d2d2d;
+        color: #cccccc;
+        padding: 40px 0;
+        text-align: center;
+      }
+
+      .footer-links {
+        display: flex;
+        justify-content: center;
+        gap: 2rem;
+        margin-bottom: 1rem;
+      }
+
+      .footer-links a {
+        color: #cccccc;
+        text-decoration: none;
+        transition: color 0.3s ease;
+      }
+
+      .footer-links a:hover {
+        color: white;
+      }
+
+      /* Responsive Design */
+      @media (max-width: 768px) {
         .nav-links {
-            display: flex;
-            list-style: none;
-            gap: 2rem;
-        }
-
-        .nav-links a {
-            text-decoration: none;
-            color: #1a1a1a;
-            font-weight: 500;
-            transition: color 0.3s ease;
-        }
-
-        .nav-links a:hover {
-            color: #6c757d;
-        }
-
-        .cta-btn {
-            background: #1a1a1a;
-            color: white;
-            padding: 0.7rem 1.5rem;
-            border: none;
-            border-radius: 5px;
-            text-decoration: none;
-            font-weight: 600;
-            transition: background 0.3s ease;
-        }
-
-        .cta-btn:hover {
-            background: #2d2d2d;
-        }
-
-        /* Hero Section */
-        .hero {
-            padding: 120px 0 80px;
-            background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
-            text-align: center;
+          display: none;
         }
 
         .hero h1 {
-            font-size: 3.5rem;
-            font-weight: bold;
-            margin-bottom: 1rem;
-            color: #1a1a1a;
+          font-size: 2.5rem;
         }
 
         .hero p {
-            font-size: 1.3rem;
-            color: #6c757d;
-            margin-bottom: 2rem;
-            max-width: 600px;
-            margin-left: auto;
-            margin-right: auto;
-        }
-
-        /* Features Section */
-        .features {
-            padding: 80px 0;
-            background: #ffffff;
-        }
-
-        .section-title {
-            text-align: center;
-            font-size: 2.5rem;
-            font-weight: bold;
-            margin-bottom: 3rem;
-            color: #1a1a1a;
-        }
-
-        .features-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 2rem;
-            margin-top: 3rem;
-        }
-
-        .feature-card {
-            background: #f8f9fa;
-            padding: 2rem;
-            border-radius: 10px;
-            text-align: center;
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-        }
-
-        .feature-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-        }
-
-        .feature-icon {
-            font-size: 3rem;
-            margin-bottom: 1rem;
-            display: block;
-        }
-
-        .feature-card h3 {
-            font-size: 1.5rem;
-            margin-bottom: 1rem;
-            color: #1a1a1a;
-        }
-
-        .feature-card p {
-            color: #6c757d;
-            line-height: 1.6;
-        }
-
-        /* Data Usage Section */
-        .data-usage {
-            padding: 80px 0;
-            background: #f8f9fa;
+          font-size: 1.1rem;
         }
 
         .data-content {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 4rem;
-            align-items: center;
-        }
-
-        .data-text h2 {
-            font-size: 2.5rem;
-            margin-bottom: 1.5rem;
-            color: #1a1a1a;
-        }
-
-        .data-text p {
-            font-size: 1.1rem;
-            color: #6c757d;
-            margin-bottom: 1.5rem;
-            line-height: 1.7;
-        }
-
-        .data-list {
-            list-style: none;
-            margin: 2rem 0;
-        }
-
-        .data-list li {
-            padding: 0.5rem 0;
-            color: #6c757d;
-            position: relative;
-            padding-left: 2rem;
-        }
-
-        .data-list li:before {
-            content: "✓";
-            position: absolute;
-            left: 0;
-            color: #28a745;
-            font-weight: bold;
-        }
-
-        /* Security Section */
-        .security {
-            padding: 80px 0;
-            background: #ffffff;
-        }
-
-        .security-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 2rem;
-            margin-top: 3rem;
-        }
-
-        .security-item {
-            text-align: center;
-            padding: 1.5rem;
-        }
-
-        .security-item h4 {
-            font-size: 1.3rem;
-            margin-bottom: 1rem;
-            color: #1a1a1a;
-        }
-
-        .security-item p {
-            color: #6c757d;
-        }
-
-        /* Company Info */
-        .company-info {
-            padding: 80px 0;
-            background: #1a1a1a;
-            color: white;
-            text-align: center;
-        }
-
-        .company-info h2 {
-            font-size: 2.5rem;
-            margin-bottom: 1.5rem;
-        }
-
-        .company-info p {
-            font-size: 1.1rem;
-            color: #cccccc;
-            margin-bottom: 1rem;
-            max-width: 800px;
-            margin-left: auto;
-            margin-right: auto;
-        }
-
-        .contact-info {
-            margin-top: 2rem;
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 2rem;
-            max-width: 600px;
-            margin-left: auto;
-            margin-right: auto;
-        }
-
-        .contact-item {
-            text-align: center;
-        }
-
-        .contact-item h4 {
-            margin-bottom: 0.5rem;
-            color: white;
-        }
-
-        .contact-item a {
-            color: #cccccc;
-            text-decoration: none;
-        }
-
-        .contact-item a:hover {
-            color: white;
-        }
-
-        /* Footer */
-        footer {
-            background: #2d2d2d;
-            color: #cccccc;
-            padding: 40px 0;
-            text-align: center;
+          grid-template-columns: 1fr;
+          gap: 2rem;
         }
 
         .footer-links {
-            display: flex;
-            justify-content: center;
-            gap: 2rem;
-            margin-bottom: 1rem;
+          flex-direction: column;
+          gap: 1rem;
         }
+      }
 
-        .footer-links a {
-            color: #cccccc;
-            text-decoration: none;
-            transition: color 0.3s ease;
-        }
+      /* Accessibility */
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+      }
 
-        .footer-links a:hover {
-            color: white;
-        }
-
-        /* Responsive Design */
-        @media (max-width: 768px) {
-            .nav-links {
-                display: none;
-            }
-
-            .hero h1 {
-                font-size: 2.5rem;
-            }
-
-            .hero p {
-                font-size: 1.1rem;
-            }
-
-            .data-content {
-                grid-template-columns: 1fr;
-                gap: 2rem;
-            }
-
-            .footer-links {
-                flex-direction: column;
-                gap: 1rem;
-            }
-        }
-
-        /* Accessibility */
-        .sr-only {
-            position: absolute;
-            width: 1px;
-            height: 1px;
-            padding: 0;
-            margin: -1px;
-            overflow: hidden;
-            clip: rect(0, 0, 0, 0);
-            white-space: nowrap;
-            border: 0;
-        }
-
-        /* Focus styles for keyboard navigation */
-        a:focus,
-        button:focus {
-            outline: 2px solid #007bff;
-            outline-offset: 2px;
-        }
+      /* Focus styles for keyboard navigation */
+      a:focus,
+      button:focus {
+        outline: 2px solid #007bff;
+        outline-offset: 2px;
+      }
     </style>
-</head>
+  </head>
 
-<body>
+  <body>
     <header>
-        <nav class="container">
-            <a href="/" class="logo">Restalytics</a>
-            <ul class="nav-links">
-                <li><a href="#features">Features</a></li>
-                <li><a href="#data-usage">Data Usage</a></li>
-                <li><a href="#security">Security</a></li>
-                <li><a href="#contact">Contact</a></li>
-            </ul>
-            <a href="#contact" class="cta-btn">Get Started</a>
-        </nav>
+      <nav class="container">
+        <a href="/" class="logo">Restalytics</a>
+        <ul class="nav-links">
+          <li><a href="#features">Features</a></li>
+          <li><a href="#data-usage">Data Usage</a></li>
+          <li><a href="#security">Security</a></li>
+          <li><a href="#contact">Contact</a></li>
+        </ul>
+        <a href="#contact" class="cta-btn">Get Started</a>
+      </nav>
     </header>
 
     <main>
-        <section class="hero">
-            <div class="container">
-                <h1>Restaurant Analytics Made Simple</h1>
-                <p>Transform your restaurant sales data into actionable insights with automated analytics, intelligent
-                    reporting, and real-time business intelligence.</p>
-                <a href="#features" class="cta-btn">Learn More</a>
-            </div>
-        </section>
+      <section class="hero">
+        <div class="container">
+          <h1>Restaurant Analytics Made Simple</h1>
+          <p>
+            Transform your restaurant sales data into actionable insights with
+            automated analytics, intelligent reporting, and real-time business
+            intelligence.
+          </p>
+          <a href="#features" class="cta-btn">Learn More</a>
+        </div>
+      </section>
 
-        <section id="features" class="features">
-            <div class="container">
-                <h2 class="section-title">Powerful Features for Restaurant Success</h2>
-                <div class="features-grid">
-                    <div class="feature-card">
-                        <span class="feature-icon">📊</span>
-                        <h3>Automated Analytics</h3>
-                        <p>Automatically process and analyze your sales data from multiple platforms including Zomato,
-                            Swiggy, and POS systems to generate comprehensive insights.</p>
-                    </div>
-                    <div class="feature-card">
-                        <span class="feature-icon">📈</span>
-                        <h3>Real-time Dashboards</h3>
-                        <p>Monitor your restaurant performance with live dashboards featuring interactive charts, trend
-                            analysis, and key performance indicators.</p>
-                    </div>
-                    <div class="feature-card">
-                        <span class="feature-icon">📧</span>
-                        <h3>Email Integration</h3>
-                        <p>Seamlessly extract and process sales reports from email attachments with automated Gmail
-                            integration and data processing.</p>
-                    </div>
-                    <div class="feature-card">
-                        <span class="feature-icon">💰</span>
-                        <h3>P&L Analysis</h3>
-                        <p>Comprehensive profit and loss tracking with expense management, percentage calculations, and
-                            detailed financial reporting.</p>
-                    </div>
-                    <div class="feature-card">
-                        <span class="feature-icon">🏪</span>
-                        <h3>Multi-Restaurant Support</h3>
-                        <p>Manage analytics for multiple restaurant locations and delivery channels from a single
-                            unified platform.</p>
-                    </div>
-                    <div class="feature-card">
-                        <span class="feature-icon">📱</span>
-                        <h3>Mobile Responsive</h3>
-                        <p>Access your analytics anywhere with our fully responsive design that works perfectly on
-                            desktop, tablet, and mobile devices.</p>
-                    </div>
+      <section id="features" class="features">
+        <div class="container">
+          <h2 class="section-title">
+            Powerful Features for Restaurant Success
+          </h2>
+          <div class="features-grid">
+            <div class="feature-card">
+              <span class="feature-icon">📊</span>
+              <h3>Automated Analytics</h3>
+              <p>
+                Automatically process and analyze your sales data from multiple
+                platforms including Zomato, Swiggy, and POS systems to generate
+                comprehensive insights.
+              </p>
+            </div>
+            <div class="feature-card">
+              <span class="feature-icon">📈</span>
+              <h3>Real-time Dashboards</h3>
+              <p>
+                Monitor your restaurant performance with live dashboards
+                featuring interactive charts, trend analysis, and key
+                performance indicators.
+              </p>
+            </div>
+            <div class="feature-card">
+              <span class="feature-icon">📧</span>
+              <h3>Email Integration</h3>
+              <p>
+                Seamlessly extract and process sales reports from email
+                attachments with automated Gmail integration and data
+                processing.
+              </p>
+            </div>
+            <div class="feature-card">
+              <span class="feature-icon">💰</span>
+              <h3>P&L Analysis</h3>
+              <p>
+                Comprehensive profit and loss tracking with expense management,
+                percentage calculations, and detailed financial reporting.
+              </p>
+            </div>
+            <div class="feature-card">
+              <span class="feature-icon">🏪</span>
+              <h3>Multi-Restaurant Support</h3>
+              <p>
+                Manage analytics for multiple restaurant locations and delivery
+                channels from a single unified platform.
+              </p>
+            </div>
+            <div class="feature-card">
+              <span class="feature-icon">📱</span>
+              <h3>Mobile Responsive</h3>
+              <p>
+                Access your analytics anywhere with our fully responsive design
+                that works perfectly on desktop, tablet, and mobile devices.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="data-usage" class="data-usage">
+        <div class="container">
+          <div class="data-content">
+            <div class="data-text">
+              <h2>How We Use Your Data</h2>
+              <p>
+                Restalytics is designed with transparency and data security at
+                its core. We only access and process the data necessary to
+                provide you with valuable business insights.
+              </p>
+              <ul class="data-list">
+                <li>
+                  Process sales reports and transaction data for analytics
+                </li>
+                <li>
+                  Extract business-relevant emails from your Gmail (with
+                  explicit permission)
+                </li>
+                <li>
+                  Generate automated reports and insights for your restaurant
+                </li>
+                <li>
+                  Provide real-time dashboard analytics and visualizations
+                </li>
+                <li>
+                  Send you weekly business insights and performance summaries
+                </li>
+              </ul>
+              <p>
+                <strong
+                  >We never share, sell, or misuse your business data.</strong
+                >
+                All data processing is performed solely to provide our analytics
+                services to help you make better business decisions.
+              </p>
+            </div>
+            <div class="data-visual">
+              <div
+                style="
+                  background: white;
+                  padding: 2rem;
+                  border-radius: 10px;
+                  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+                "
+              >
+                <h3 style="margin-bottom: 1rem; color: #1a1a1a">
+                  Data Sources We Support
+                </h3>
+                <div style="text-align: left">
+                  <p style="margin: 0.5rem 0; color: #6c757d">
+                    ✓ Email reports from Zomato, Swiggy
+                  </p>
+                  <p style="margin: 0.5rem 0; color: #6c757d">
+                    ✓ CSV/Excel file uploads
+                  </p>
+                  <p style="margin: 0.5rem 0; color: #6c757d">
+                    ✓ POS system integrations
+                  </p>
+                  <p style="margin: 0.5rem 0; color: #6c757d">
+                    ✓ Payment processor reports
+                  </p>
+                  <p style="margin: 0.5rem 0; color: #6c757d">
+                    ✓ Manual data entry and corrections
+                  </p>
                 </div>
+              </div>
             </div>
-        </section>
+          </div>
+        </div>
+      </section>
 
-        <section id="data-usage" class="data-usage">
-            <div class="container">
-                <div class="data-content">
-                    <div class="data-text">
-                        <h2>How We Use Your Data</h2>
-                        <p>Restalytics is designed with transparency and data security at its core. We only access and
-                            process the data necessary to provide you with valuable business insights.</p>
-                        <ul class="data-list">
-                            <li>Process sales reports and transaction data for analytics</li>
-                            <li>Extract business-relevant emails from your Gmail (with explicit permission)</li>
-                            <li>Generate automated reports and insights for your restaurant</li>
-                            <li>Provide real-time dashboard analytics and visualizations</li>
-                            <li>Send you weekly business insights and performance summaries</li>
-                        </ul>
-                        <p><strong>We never share, sell, or misuse your business data.</strong> All data processing is
-                            performed solely to provide our analytics services to help you make better business
-                            decisions.</p>
-                    </div>
-                    <div class="data-visual">
-                        <div
-                            style="background: white; padding: 2rem; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.1);">
-                            <h3 style="margin-bottom: 1rem; color: #1a1a1a;">Data Sources We Support</h3>
-                            <div style="text-align: left;">
-                                <p style="margin: 0.5rem 0; color: #6c757d;">✓ Email reports from Zomato, Swiggy</p>
-                                <p style="margin: 0.5rem 0; color: #6c757d;">✓ CSV/Excel file uploads</p>
-                                <p style="margin: 0.5rem 0; color: #6c757d;">✓ POS system integrations</p>
-                                <p style="margin: 0.5rem 0; color: #6c757d;">✓ Payment processor reports</p>
-                                <p style="margin: 0.5rem 0; color: #6c757d;">✓ Manual data entry and corrections</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+      <section id="security" class="security">
+        <div class="container">
+          <h2 class="section-title">Enterprise-Grade Security</h2>
+          <p
+            style="
+              text-align: center;
+              font-size: 1.2rem;
+              color: #6c757d;
+              margin-bottom: 3rem;
+            "
+          >
+            Your data is protected with industry-leading security measures and
+            compliance standards.
+          </p>
+          <div class="security-grid">
+            <div class="security-item">
+              <h4>🔒 End-to-End Encryption</h4>
+              <p>
+                All data is encrypted in transit (TLS/SSL) and at rest (AES-256)
+                using enterprise-grade security protocols.
+              </p>
             </div>
-        </section>
-
-        <section id="security" class="security">
-            <div class="container">
-                <h2 class="section-title">Enterprise-Grade Security</h2>
-                <p style="text-align: center; font-size: 1.2rem; color: #6c757d; margin-bottom: 3rem;">Your data is
-                    protected with industry-leading security measures and compliance standards.</p>
-                <div class="security-grid">
-                    <div class="security-item">
-                        <h4>🔒 End-to-End Encryption</h4>
-                        <p>All data is encrypted in transit (TLS/SSL) and at rest (AES-256) using enterprise-grade
-                            security protocols.</p>
-                    </div>
-                    <div class="security-item">
-                        <h4>☁️ AWS Infrastructure</h4>
-                        <p>Hosted on secure AWS servers in Asia Pacific (Mumbai) region with 99.9% uptime and disaster
-                            recovery.</p>
-                    </div>
-                    <div class="security-item">
-                        <h4>🔐 OAuth Authentication</h4>
-                        <p>Secure Google OAuth integration ensures we never store your email passwords or credentials.
-                        </p>
-                    </div>
-                    <div class="security-item">
-                        <h4>🛡️ Data Protection</h4>
-                        <p>Compliant with Indian data protection laws with automatic data deletion and retention
-                            policies.</p>
-                    </div>
-                </div>
+            <div class="security-item">
+              <h4>☁️ AWS Infrastructure</h4>
+              <p>
+                Hosted on secure AWS servers in Asia Pacific (Mumbai) region
+                with 99.9% uptime and disaster recovery.
+              </p>
             </div>
-        </section>
-
-        <section id="contact" class="company-info">
-            <div class="container">
-                <h2>About Swap Dietetics Private Limited</h2>
-                <p>We are a registered Indian technology company specializing in analytics and automation solutions for
-                    the food and restaurant industry. Based in Hyderabad, Telangana, we're committed to helping
-                    restaurant businesses make data-driven decisions through innovative technology.</p>
-                <p>Restalytics is our flagship product designed specifically for restaurant owners, managers, and
-                    franchisees who want to understand their business performance better and optimize their operations.
-                </p>
-
-                <div class="contact-info">
-                    <div class="contact-item">
-                        <h4>General Support</h4>
-                        <a href="mailto:admin@swapnow.in">admin@swapnow.in</a>
-                    </div>
-                    <div class="contact-item">
-                        <h4>Business Inquiries</h4>
-                        <a href="mailto:business@restalytics.ai">business@restalytics.ai</a>
-                    </div>
-                    <div class="contact-item">
-                        <h4>Privacy & Legal</h4>
-                        <a href="mailto:legal@restalytics.ai">legal@restalytics.ai</a>
-                    </div>
-                </div>
+            <div class="security-item">
+              <h4>🔐 OAuth Authentication</h4>
+              <p>
+                Secure Google OAuth integration ensures we never store your
+                email passwords or credentials.
+              </p>
             </div>
-        </section>
+            <div class="security-item">
+              <h4>🛡️ Data Protection</h4>
+              <p>
+                Compliant with Indian data protection laws with automatic data
+                deletion and retention policies.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="contact" class="company-info">
+        <div class="container">
+          <h2>About Swap Dietetics Private Limited</h2>
+          <p>
+            We are a registered Indian technology company specializing in
+            analytics and automation solutions for the food and restaurant
+            industry. Based in Hyderabad, Telangana, we're committed to helping
+            restaurant businesses make data-driven decisions through innovative
+            technology.
+          </p>
+          <p>
+            Restalytics is our flagship product designed specifically for
+            restaurant owners, managers, and franchisees who want to understand
+            their business performance better and optimize their operations.
+          </p>
+
+          <div class="contact-info">
+            <div class="contact-item">
+              <h4>General Support</h4>
+              <a href="mailto:support@restalytics.ai">support@restalytics.ai</a>
+            </div>
+            <div class="contact-item">
+              <h4>Business Inquiries</h4>
+              <a href="mailto:business@restalytics.ai"
+                >business@restalytics.ai</a
+              >
+            </div>
+            <div class="contact-item">
+              <h4>Privacy & Legal</h4>
+              <a href="mailto:legal@restalytics.ai">legal@restalytics.ai</a>
+            </div>
+          </div>
+        </div>
+      </section>
     </main>
 
     <footer>
-        <div class="container">
-            <div class="footer-links">
-                <a href="https://www.restalytics.ai/privacy">Privacy Policy</a>
-                <a href="https://www.restalytics.ai/terms">Terms of Service</a>
-                <a href="mailto:admin@swapnow.in">Contact Support</a>
-                <a href="mailto:business@restalytics.ai">Business Inquiries</a>
-            </div>
-            <p>&copy; 2025 Swap Dietetics Private Limited. All rights reserved.</p>
-            <p>Restalytics - Restaurant Analytics Platform | Hyderabad, Telangana, India</p>
+      <div class="container">
+        <div class="footer-links">
+          <a href="https://www.restalytics.ai/privacy">Privacy Policy</a>
+          <a href="https://www.restalytics.ai/terms">Terms of Service</a>
+          <a href="mailto:support@restalytics.ai">Contact Support</a>
+          <a href="mailto:business@restalytics.ai">Business Inquiries</a>
         </div>
+        <p>&copy; 2025 Swap Dietetics Private Limited. All rights reserved.</p>
+        <p>
+          Restalytics - Restaurant Analytics Platform | Hyderabad, Telangana,
+          India
+        </p>
+      </div>
     </footer>
 
     <script>
-        // Smooth scrolling for navigation links
-        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-            anchor.addEventListener('click', function (e) {
-                e.preventDefault();
-                const target = document.querySelector(this.getAttribute('href'));
-                if (target) {
-                    target.scrollIntoView({
-                        behavior: 'smooth',
-                        block: 'start'
-                    });
-                }
+      // Smooth scrolling for navigation links
+      document.querySelectorAll('a[href^="#"]').forEach((anchor) => {
+        anchor.addEventListener("click", function (e) {
+          e.preventDefault();
+          const target = document.querySelector(this.getAttribute("href"));
+          if (target) {
+            target.scrollIntoView({
+              behavior: "smooth",
+              block: "start",
             });
+          }
         });
+      });
 
-        // Add loading animation for feature cards
-        const observerOptions = {
-            threshold: 0.1,
-            rootMargin: '0px 0px -50px 0px'
-        };
+      // Add loading animation for feature cards
+      const observerOptions = {
+        threshold: 0.1,
+        rootMargin: "0px 0px -50px 0px",
+      };
 
-        const observer = new IntersectionObserver((entries) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    entry.target.style.opacity = '1';
-                    entry.target.style.transform = 'translateY(0)';
-                }
-            });
-        }, observerOptions);
-
-        // Observe feature cards for animation
-        document.querySelectorAll('.feature-card').forEach(card => {
-            card.style.opacity = '0';
-            card.style.transform = 'translateY(20px)';
-            card.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
-            observer.observe(card);
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.style.opacity = "1";
+            entry.target.style.transform = "translateY(0)";
+          }
         });
+      }, observerOptions);
+
+      // Observe feature cards for animation
+      document.querySelectorAll(".feature-card").forEach((card) => {
+        card.style.opacity = "0";
+        card.style.transform = "translateY(20px)";
+        card.style.transition = "opacity 0.6s ease, transform 0.6s ease";
+        observer.observe(card);
+      });
     </script>
-</body>
-
+  </body>
 </html>

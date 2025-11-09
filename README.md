@@ -16,22 +16,26 @@ A modern, responsive sales analytics dashboard built with React, Vite, and Chart
 ## 🚀 Quick Start
 
 ### Prerequisites
+
 - Node.js (v16 or higher)
 - npm or yarn
 
 ### Installation
 
 1. **Navigate to the project directory:**
+
    ```bash
    cd sales-dashboard-vite
    ```
 
 2. **Install dependencies:**
+
    ```bash
    npm install
    ```
 
 3. **Start the development server:**
+
    ```bash
    npm run dev
    ```
@@ -70,6 +74,7 @@ sales-dashboard-vite/
 ## 🎨 Design Features
 
 ### Black & White Theme
+
 - **Primary Black**: `#1a1a1a` - Main text and borders
 - **Secondary Black**: `#2d2d2d` - Hover states
 - **Gray Tones**: `#6c757d` - Secondary text
@@ -77,6 +82,7 @@ sales-dashboard-vite/
 - **Off White**: `#f8f9fa` - Page background
 
 ### Components
+
 - **Responsive Cards** - Hover effects and clean borders
 - **Interactive Charts** - Custom Chart.js styling
 - **Form Controls** - Modern input styling with focus states
@@ -86,24 +92,28 @@ sales-dashboard-vite/
 ## 📊 Dashboard Features
 
 ### Upload Section
+
 - Drag & drop file upload
 - Support for Excel (.xlsx, .xls) and CSV files
 - Real-time upload progress tracking
 - Batch processing with job status polling
 
 ### Report Controls
+
 - Multi-select restaurants and channels
 - Date range picker with Flatpickr
 - Group by options (Total, Week, Month)
 - Form validation and selection summary
 
 ### Data Visualization
+
 - **Summary Cards** - Key metrics with icons
 - **Comparison Charts** - Restaurant/channel comparisons
 - **Time Series** - Trend analysis over time
 - **Interactive Tooltips** - Detailed hover information
 
 ### P&L Analysis
+
 - Monthly expense tracking
 - Percentage calculations against gross sales
 - Save/load expense data
@@ -112,13 +122,17 @@ sales-dashboard-vite/
 ## 🔧 Configuration
 
 ### API Endpoints
+
 Update the API base URL in `src/utils/constants.js`:
+
 ```javascript
 export const API_BASE_URL = "your-api-endpoint-here";
 ```
 
 ### Restaurant Configuration
+
 Modify restaurant mappings in `src/utils/constants.js`:
+
 ```javascript
 export const RESTAURANT_ID_MAP = {
   // Add your restaurant configurations
@@ -126,11 +140,13 @@ export const RESTAURANT_ID_MAP = {
 ```
 
 ### Chart Colors
+
 Customize chart colors in `src/utils/constants.js`:
+
 ```javascript
 export const CHART_COLORS = {
   zomato: "#1a1a1a",
-  swiggy: "#6c757d"
+  swiggy: "#6c757d",
 };
 ```
 
@@ -143,11 +159,13 @@ export const CHART_COLORS = {
 ## 🛠️ Development
 
 ### Available Scripts
+
 - `npm run dev` - Start development server
 - `npm run build` - Build for production
 - `npm run preview` - Preview production build
 
 ### Code Structure
+
 - **JSX Components** - Modern React functional components
 - **Hooks** - useState, useEffect for state management
 - **Services** - Centralized API calls
@@ -157,15 +175,18 @@ export const CHART_COLORS = {
 ## 📦 Dependencies
 
 ### Core
+
 - **React 18** - Modern React with hooks
 - **Vite 4** - Fast build tool and dev server
 
 ### UI & Charts
+
 - **Chart.js 4** - Powerful charting library
 - **react-chartjs-2** - React wrapper for Chart.js
 - **Flatpickr** - Date range picker
 
 ### Development
+
 - **@vitejs/plugin-react** - Vite React plugin
 
 ## 🎯 Usage Tips
@@ -179,12 +200,14 @@ export const CHART_COLORS = {
 ## 🐛 Troubleshooting
 
 ### Common Issues
+
 - **Charts not loading**: Ensure Chart.js is properly imported
 - **Date picker not working**: Check if Flatpickr CSS is loaded
 - **API errors**: Verify the API_BASE_URL configuration
 - **Build errors**: Clear node_modules and reinstall dependencies
 
 ### Performance
+
 - Use `npm run build` for optimized production builds
 - Enable gzip compression on your server
 - Consider lazy loading for heavy chart components

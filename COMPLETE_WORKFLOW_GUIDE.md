@@ -5,6 +5,7 @@
 Your system provides **real-time automated sales analysis** from restaurant delivery platforms (Zomato, Swiggy) by processing Excel attachments from emails. This document outlines the complete user journey from initial login to receiving processed insights.
 
 **Key Features:**
+
 - Real-time email monitoring via Gmail Push Notifications
 - Automatic Excel attachment processing
 - Duplicate prevention and cost optimization
@@ -25,6 +26,7 @@ graph TD
 ```
 
 **Frontend Flow:**
+
 ```javascript
 // App loads
 Frontend loads → Check localStorage for existing session
@@ -47,6 +49,7 @@ graph TD
 ```
 
 **Implementation:**
+
 ```javascript
 // authService.js
 async login(businessEmail, password) {
@@ -55,7 +58,7 @@ async login(businessEmail, password) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ businessEmail, password })
     })
-    
+
     if (response.ok) {
         // Store auth data
         localStorage.setItem('user', JSON.stringify(data.user))
@@ -84,6 +87,7 @@ graph TD
 ```
 
 **OAuth Flow:**
+
 ```javascript
 // User clicks Google login
 authService.loginWithGoogle()
@@ -113,10 +117,11 @@ graph TD
 ```
 
 **Signup Process:**
+
 ```javascript
 // New Google user signup
 authService.completeGoogleSignup(userData)
-├── POST /auth/signup → Lambda: auth-signup.py  
+├── POST /auth/signup → Lambda: auth-signup.py
 ├── Creates user record in DynamoDB
 ├── Calls gmailIntegrationService.initializeGmailIntegration()
 ├── Stores Gmail tokens in user-gmail-tokens table
@@ -139,6 +144,7 @@ graph TD
 ```
 
 **Token Storage:**
+
 ```javascript
 gmailIntegrationService.initializeGmailIntegration(userEmail)
 ├── POST /gmail/tokens → Lambda: gmail-token-manager.py
@@ -147,6 +153,7 @@ gmailIntegrationService.initializeGmailIntegration(userEmail)
 ```
 
 **DynamoDB Structure (user-gmail-tokens):**
+
 ```json
 {
   "user_email": "user@restaurant.com",
@@ -173,6 +180,7 @@ graph TD
 ```
 
 **Watch Subscription:**
+
 ```javascript
 gmailIntegrationService.subscribeToGmailWatch(userEmail)
 ├── POST /gmail/watch/subscribe → Lambda: gmail-watch-subscribe.py
@@ -199,6 +207,7 @@ graph TD
 ```
 
 **Email Reception:**
+
 ```
 payments@swiggy.in sends Excel attachment to user@restaurant.com
 └── Gmail receives email with Excel attachment
@@ -216,14 +225,16 @@ graph TD
 ```
 
 **Push Notification Flow:**
+
 ```
 Gmail → Google Cloud Pub/Sub → AWS API Gateway
 ├── Gmail sends push notification to Pub/Sub topic
-├── Pub/Sub forwards to AWS endpoint: /gmail/pubsub/webhook  
+├── Pub/Sub forwards to AWS endpoint: /gmail/pubsub/webhook
 └── Triggers Lambda: gmail-pubsub-handler.py
 ```
 
 **Pub/Sub Message Format:**
+
 ```json
 {
   "message": {
@@ -235,6 +246,7 @@ Gmail → Google Cloud Pub/Sub → AWS API Gateway
 ```
 
 **Decoded Notification:**
+
 ```json
 {
   "emailAddress": "user@restaurant.com",
@@ -255,6 +267,7 @@ graph TD
 ```
 
 **Handler Logic:**
+
 ```python
 # gmail-pubsub-handler.py
 def lambda_handler(event, context):
@@ -262,10 +275,10 @@ def lambda_handler(event, context):
     notification_data = decode_pubsub_message(event)
     user_email = notification_data['emailAddress']
     history_id = notification_data['historyId']
-    
+
     # Check if this is a new change
     last_history_id = get_stored_history_id(user_email)
-    
+
     if int(history_id) > int(last_history_id):
         # Invoke history checker
         invoke_lambda('gmail-history-checker', {
@@ -289,22 +302,23 @@ graph TD
 ```
 
 **History Checking Process:**
+
 ```python
 # gmail-history-checker.py
 def lambda_handler(event, context):
     user_email = event['userEmail']
     history_id = event['historyId']
     last_history_id = event['lastHistoryId']
-    
+
     # Get new messages from Gmail History API
     new_message_ids = check_history_for_new_emails(
         user_email, history_id, last_history_id
     )
-    
+
     # Check each message sender
     for message_id in new_message_ids:
         sender = get_message_sender(user_email, message_id)
-        
+
         if sender in MONITORED_SENDERS:  # payments@swiggy.in, billing@zomato.com
             # Found new email from monitored sender!
             invoke_lambda('gmail-processor-optimized', {
@@ -317,6 +331,7 @@ def lambda_handler(event, context):
 ```
 
 **Monitored Senders:**
+
 ```python
 MONITORED_SENDERS = [
     'billing@zomato.com',
@@ -341,6 +356,7 @@ graph TD
 ```
 
 **Key Improvement - Specific Message Processing:**
+
 ```python
 # OLD (INEFFICIENT): Process last 50 messages
 messages = gmail_processor.get_messages_from_sender(user_email, sender_email, 50)
@@ -352,17 +368,18 @@ if process_mode == 'specific_messages' and specific_message_ids:
 ```
 
 **S3 Upload with Duplicate Prevention:**
+
 ```python
 def upload_attachment(self, user_email, sender_email, file_data, filename, message_id):
     # Generate consistent S3 key
     file_hash = hashlib.md5(file_data).hexdigest()[:8]
     s3_key = f"users/{formatted_user}/uploads/email-attachments/{formatted_sender}/{current_date}/{file_hash}_{safe_filename}"
-    
+
     # Check if file already exists
     if self.check_file_exists(s3_key):
         logger.info(f"⚠️ File already exists in S3, skipping: {filename}")
         return s3_key  # Return existing key
-    
+
     # Upload new file
     s3_client.put_object(Bucket=BUCKET_NAME, Key=s3_key, Body=file_data)
     logger.info(f"✅ Uploaded NEW file: {filename}")
@@ -370,11 +387,13 @@ def upload_attachment(self, user_email, sender_email, file_data, filename, messa
 ```
 
 **S3 Key Structure:**
+
 ```
 users/user_at_restaurant_dot_com/uploads/email-attachments/payments_at_swiggy_dot_in/2025-11-01/abc12345_invoice_01112025.xlsx
 ```
 
 **Performance Comparison:**
+
 ```
 BEFORE (Broken):
 - Messages processed: 50
@@ -406,22 +425,23 @@ graph TD
 ```
 
 **Batch Processing:**
+
 ```python
 # batch-processor.py
 def lambda_handler(event, context):
     s3_files = event['files']  # List of S3 keys
     business_email = event['businessEmail']
-    
+
     processed_data = []
     for s3_key in s3_files:
         # Download and process each Excel file
         excel_data = download_and_process_excel(s3_key)
         processed_data.append(excel_data)
-    
+
     # Aggregate and save results
     aggregated_data = aggregate_sales_data(processed_data)
     save_to_s3(aggregated_data, business_email)
-    
+
     # Trigger insights generation
     invoke_lambda('insights', {
         'businessEmail': business_email,
@@ -441,12 +461,13 @@ graph TD
 ```
 
 **Insights Processing:**
+
 ```python
 # insights.py
 def lambda_handler(event, context):
     business_email = event['businessEmail']
     processed_data = event['processedData']
-    
+
     # Generate insights
     insights = {
         'daily_revenue': calculate_daily_revenue(processed_data),
@@ -454,10 +475,10 @@ def lambda_handler(event, context):
         'order_trends': analyze_trends(processed_data),
         'platform_comparison': compare_platforms(processed_data)
     }
-    
+
     # Save insights
     save_insights_to_dynamodb(business_email, insights)
-    
+
     # Trigger N8N webhook for notifications
     trigger_n8n_webhook(business_email, insights)
 ```
@@ -473,18 +494,19 @@ graph TD
 ```
 
 **N8N Integration:**
+
 ```javascript
 // N8N Workflow
 webhook_data = {
-    event: 'sales_insights_ready',
-    user_email: 'user@restaurant.com',
-    insights: {
-        daily_revenue: 15000,
-        orders_count: 87,
-        top_platform: 'Swiggy'
-    },
-    timestamp: '2025-11-01T10:35:00Z'
-}
+  event: "sales_insights_ready",
+  user_email: "user@restaurant.com",
+  insights: {
+    daily_revenue: 15000,
+    orders_count: 87,
+    top_platform: "Swiggy",
+  },
+  timestamp: "2025-11-01T10:35:00Z",
+};
 
 // Can trigger:
 // - Email reports to restaurant owner
@@ -509,35 +531,37 @@ graph TD
 ```
 
 **Frontend Data Fetching:**
+
 ```javascript
 // Dashboard component
 useEffect(() => {
-    const fetchDashboardData = async () => {
-        try {
-            // Fetch latest insights
-            const insights = await fetch('/api/insights');
-            
-            // Fetch restaurant data
-            const restaurants = await fetch('/api/restaurants');
-            
-            // Update dashboard with real-time data
-            setDashboardData({ insights, restaurants });
-        } catch (error) {
-            console.error('Failed to fetch dashboard data:', error);
-        }
-    };
-    
-    fetchDashboardData();
-    
-    // Set up polling for real-time updates
-    const interval = setInterval(fetchDashboardData, 30000); // Every 30 seconds
-    return () => clearInterval(interval);
+  const fetchDashboardData = async () => {
+    try {
+      // Fetch latest insights
+      const insights = await fetch("/api/insights");
+
+      // Fetch restaurant data
+      const restaurants = await fetch("/api/restaurants");
+
+      // Update dashboard with real-time data
+      setDashboardData({ insights, restaurants });
+    } catch (error) {
+      console.error("Failed to fetch dashboard data:", error);
+    }
+  };
+
+  fetchDashboardData();
+
+  // Set up polling for real-time updates
+  const interval = setInterval(fetchDashboardData, 30000); // Every 30 seconds
+  return () => clearInterval(interval);
 }, []);
 ```
 
 ### 5.2 Real-Time Updates
 
 **Timeline Example:**
+
 ```
 10:30:00 - User receives email from Swiggy
 10:30:05 - Gmail sends push notification
@@ -566,22 +590,23 @@ graph TD
 ```
 
 **Auto-Renewal:**
+
 ```python
 # EventBridge scheduled function
 def renew_gmail_watches(event, context):
     # Get all users from DynamoDB
     users = dynamodb.scan(TableName='user-gmail-tokens')
-    
+
     for user in users['Items']:
         user_email = user['user_email']
-        
+
         # Re-subscribe to Gmail watch
         lambda_client.invoke(
             FunctionName='gmail-watch-subscribe',
             InvocationType='Event',
             Payload=json.dumps({'userEmail': user_email})
         )
-    
+
     return {'renewed': len(users['Items'])}
 ```
 
@@ -597,16 +622,17 @@ graph TD
 ```
 
 **Automatic Token Refresh:**
+
 ```python
 def get_valid_access_token(user_email):
     tokens = get_user_tokens(user_email)
     current_time = int(time.time())
-    
+
     if current_time >= tokens.get('expires_at', 0):
         # Token expired - refresh it
         new_token = refresh_access_token(user_email)
         return new_token
-    
+
     return tokens['access_token']
 ```
 
@@ -619,12 +645,12 @@ graph TD
     A[User Login] --> B[Gmail OAuth]
     B --> C[Watch Subscribe]
     C --> D[Real-time Processing]
-    
+
     E[Frontend] --> F[Lambda Auth]
     F --> G[Lambda Watch]
     G --> H[Pub/Sub]
     H --> I[History Checker]
-    
+
     J[Dashboard] --> K[Insights]
     K --> L[Batch Process]
     L --> M[Gmail Processor]
@@ -632,6 +658,7 @@ graph TD
 ```
 
 **Component Overview:**
+
 ```
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
 │   Frontend      │    │   Authentication │    │   Gmail Setup   │
@@ -652,22 +679,27 @@ graph TD
 ## ⚡ Key Improvements Made
 
 ### 1. Precision Targeting
+
 - **Before**: Processed last 50 messages from sender
 - **After**: Processes only the specific NEW message that triggered notification
 
 ### 2. Duplicate Prevention
+
 - **Before**: Re-uploaded same files repeatedly
 - **After**: Checks S3 existence before upload, skips duplicates
 
 ### 3. Real-time Speed
+
 - **Before**: 6.58 seconds processing time, many unnecessary operations
 - **After**: 1.48 seconds processing time, surgical precision
 
 ### 4. Cost Optimization
+
 - **Before**: 50 Gmail API calls, 50 S3 uploads, high Lambda costs
 - **After**: 1 Gmail API call, 1 S3 upload, 98% cost reduction
 
 ### 5. Scalability
+
 - **Before**: Would break with many users due to excessive processing
 - **After**: Can handle thousands of users efficiently
 
@@ -677,14 +709,14 @@ graph TD
 
 ### Processing Comparison
 
-| Metric | Before Fix | After Fix | Improvement |
-|--------|------------|-----------|-------------|
-| Messages Processed | 50 | 1 | 98% reduction |
-| Processing Time | 6.58s | 1.48s | 4.4x faster |
-| Files Uploaded | 50 (duplicates) | 1 (new only) | 98% reduction |
-| Gmail API Calls | 50+ | 1-2 | 95% reduction |
-| Lambda Duration | ~7 seconds | ~1.5 seconds | 78% reduction |
-| Cost per Execution | ~$0.05 | ~$0.01 | 80% cost savings |
+| Metric             | Before Fix      | After Fix    | Improvement      |
+| ------------------ | --------------- | ------------ | ---------------- |
+| Messages Processed | 50              | 1            | 98% reduction    |
+| Processing Time    | 6.58s           | 1.48s        | 4.4x faster      |
+| Files Uploaded     | 50 (duplicates) | 1 (new only) | 98% reduction    |
+| Gmail API Calls    | 50+             | 1-2          | 95% reduction    |
+| Lambda Duration    | ~7 seconds      | ~1.5 seconds | 78% reduction    |
+| Cost per Execution | ~$0.05          | ~$0.01       | 80% cost savings |
 
 ### User Experience Timeline
 
@@ -736,11 +768,14 @@ USER_TABLE=users
 ### Common Issues
 
 #### 1. Not Receiving Push Notifications
+
 **Symptoms:**
+
 - Emails arrive but no processing happens
 - No logs in gmail-pubsub-handler
 
 **Diagnosis:**
+
 ```bash
 # Check Pub/Sub subscription status
 gcloud pubsub subscriptions describe gmail-push-to-aws
@@ -753,16 +788,20 @@ aws logs filter-log-events --log-group-name /aws/lambda/gmail-pubsub-handler
 ```
 
 **Solutions:**
+
 - Verify Pub/Sub subscription endpoint URL
 - Check API Gateway CORS configuration
 - Re-subscribe Gmail watch for affected users
 
 #### 2. Duplicate File Processing
+
 **Symptoms:**
+
 - Same files uploaded multiple times
 - Excessive S3 storage usage
 
 **Diagnosis:**
+
 ```python
 # Check S3 duplicate detection logs
 "⚠️ File already exists in S3, skipping"
@@ -770,16 +809,20 @@ aws logs filter-log-events --log-group-name /aws/lambda/gmail-pubsub-handler
 ```
 
 **Solutions:**
+
 - Verify S3 `head_object` permissions
 - Check file hash generation logic
 - Monitor processed_files_cache
 
 #### 3. Token Expiration Issues
+
 **Symptoms:**
+
 - 401 Unauthorized errors
 - Failed Gmail API calls
 
 **Diagnosis:**
+
 ```python
 # Check token expiration in DynamoDB
 current_time = int(time.time())
@@ -788,16 +831,20 @@ if current_time >= tokens.get('expires_at', 0):
 ```
 
 **Solutions:**
+
 - Verify refresh_token is stored correctly
 - Check Google OAuth credentials in Secrets Manager
 - Monitor token refresh logs
 
 #### 4. High Processing Latency
+
 **Symptoms:**
+
 - Long delays between email and insights
 - Timeout errors in Lambda
 
 **Diagnosis:**
+
 ```bash
 # Check Lambda duration metrics
 aws cloudwatch get-metric-statistics \
@@ -807,6 +854,7 @@ aws cloudwatch get-metric-statistics \
 ```
 
 **Solutions:**
+
 - Increase Lambda memory allocation
 - Optimize concurrent workers (MAX_WORKERS)
 - Check S3 upload speeds
@@ -818,6 +866,7 @@ aws cloudwatch get-metric-statistics \
 ### CloudWatch Dashboards
 
 Create dashboards monitoring:
+
 - **Lambda Invocations**: All email processing functions
 - **Error Rates**: 4xx/5xx errors across the pipeline
 - **Processing Latency**: End-to-end timing metrics
@@ -837,7 +886,7 @@ HighErrorRate:
 
 LongProcessingTime:
   MetricName: Duration
-  Threshold: 30000  # 30 seconds
+  Threshold: 30000 # 30 seconds
   ComparisonOperator: GreaterThanThreshold
   Functions:
     - gmail-processor-optimized
@@ -847,7 +896,7 @@ NoEmailProcessing:
   MetricName: Invocations
   Threshold: 1
   ComparisonOperator: LessThanThreshold
-  Period: 3600  # 1 hour during business hours
+  Period: 3600 # 1 hour during business hours
   Function: gmail-pubsub-handler
 ```
 
@@ -856,6 +905,7 @@ NoEmailProcessing:
 ## 🔒 Security Considerations
 
 ### 1. Pub/Sub Endpoint Security
+
 The `/gmail/pubsub/webhook` endpoint is publicly accessible. Implement:
 
 ```python
@@ -866,12 +916,14 @@ def verify_pubsub_signature(request_body, signature):
 ```
 
 ### 2. Token Security
+
 - Enable DynamoDB encryption at rest
 - Use IAM roles with least privilege
 - Implement token rotation policies
 - Monitor for unusual token usage
 
 ### 3. Data Privacy
+
 - Encrypt S3 objects with KMS
 - Implement data retention policies
 - Log access patterns for audit
@@ -909,6 +961,7 @@ Total: ~$30-50/month for 1000 active users
 ## 🚀 Deployment Checklist
 
 ### Pre-Deployment
+
 - [ ] Google Cloud Pub/Sub topic created
 - [ ] All Lambda functions deployed with correct environment variables
 - [ ] API Gateway endpoints configured
@@ -917,6 +970,7 @@ Total: ~$30-50/month for 1000 active users
 - [ ] Secrets Manager configured with OAuth credentials
 
 ### Post-Deployment Testing
+
 - [ ] Test traditional login flow
 - [ ] Test Google OAuth flow
 - [ ] Test Gmail watch subscription
@@ -927,6 +981,7 @@ Total: ~$30-50/month for 1000 active users
 - [ ] Confirm dashboard updates
 
 ### Production Monitoring
+
 - [ ] CloudWatch alarms configured
 - [ ] SNS notifications set up
 - [ ] Log retention policies applied
@@ -938,12 +993,14 @@ Total: ~$30-50/month for 1000 active users
 ## 📚 Additional Resources
 
 ### Documentation Links
+
 - [Gmail API Documentation](https://developers.google.com/gmail/api)
 - [Google Cloud Pub/Sub](https://cloud.google.com/pubsub/docs)
 - [AWS Lambda Best Practices](https://docs.aws.amazon.com/lambda/latest/dg/best-practices.html)
 - [DynamoDB Best Practices](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/best-practices.html)
 
 ### Code Repositories
+
 - Gmail Integration Service: `src/services/gmailIntegrationService.js`
 - Auth Service: `src/services/authService.js`
 - Lambda Functions: `lambda/` directory
