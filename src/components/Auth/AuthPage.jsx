@@ -29,6 +29,16 @@ const AuthPage = ({ onAuthSuccess }) => {
     navigate(isLoginTab ? "/login" : "/signup");
   };
 
+  const handleSignupSuccess = (userData) => {
+    // If userData is provided, user is fully authenticated after signup
+    if (userData) {
+      onAuthSuccess(userData);
+    } else {
+      // Otherwise, just switch to login tab
+      handleTabChange(true);
+    }
+  };
+
   return (
     <div className="auth-container">
       <div className="auth-card">
@@ -58,7 +68,7 @@ const AuthPage = ({ onAuthSuccess }) => {
           {isLogin ? (
             <LoginForm onSuccess={onAuthSuccess} />
           ) : (
-            <SignupForm onSuccess={() => handleTabChange(true)} />
+            <SignupForm onSuccess={handleSignupSuccess} />
           )}
         </div>
 

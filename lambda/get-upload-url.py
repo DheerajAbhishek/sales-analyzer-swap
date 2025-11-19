@@ -34,7 +34,7 @@ def lambda_handler(event, context):
     # the headers it needs.
     cors_headers = {
         "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Headers": "Content-Type",
+        "Access-Control-Allow-Headers": 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-API-Key,X-User-Email,X-Request-Timestamp,X-Request-Signature,business-email,businessEmail,Accept,Accept-Language,Content-Language',
         "Access-Control-Allow-Methods": "OPTIONS,POST"
     }
 

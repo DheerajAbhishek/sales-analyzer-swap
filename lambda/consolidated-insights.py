@@ -26,7 +26,7 @@ def _cors_response(status, body):
             "Content-Type": "application/json",
             "Access-Control-Allow-Origin": "*",
             "Access-Control-Allow-Methods": "OPTIONS,GET,POST",
-            "Access-Control-Allow-Headers": "Content-Type,Authorization"
+            "Access-Control-Allow-Headers": 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-API-Key,X-User-Email,X-Request-Timestamp,X-Request-Signature,business-email,businessEmail,Accept,Accept-Language,Content-Language'
         },
         "body": json.dumps(body)
     }

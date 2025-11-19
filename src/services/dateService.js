@@ -1,4 +1,5 @@
 import { API_BASE_URL } from "../utils/constants.js";
+import { securePost } from "../utils/secureApiClient.js";
 
 export const dateService = {
   async getLastAvailableDate(restaurantId, businessEmail = null) {
@@ -8,13 +9,7 @@ export const dateService = {
         requestBody.businessEmail = businessEmail;
       }
 
-      const response = await fetch(`${API_BASE_URL}/get-last-date`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(requestBody),
-      });
+      const response = await securePost(`${API_BASE_URL}/get-last-date`, requestBody);
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -47,13 +42,7 @@ export const dateService = {
         requestBody.businessEmail = businessEmail;
       }
 
-      const response = await fetch(`${API_BASE_URL}/check-missing-dates`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(requestBody),
-      });
+      const response = await securePost(`${API_BASE_URL}/check-missing-dates`, requestBody);
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);

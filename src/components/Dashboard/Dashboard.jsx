@@ -1,15 +1,22 @@
 import React, { useState, useEffect } from "react";
 import SummaryCards from "./SummaryCards.jsx";
 import ChartsGrid from "../Charts/ChartsGrid.jsx";
+import ChartFilter from "../Charts/ChartFilter.jsx";
 import ExpensesSection from "../PnL/ExpensesSection.jsx";
 import MissingDatesIndicator from "./MissingDatesIndicator.jsx";
 import { isFullMonthSelection } from "../../utils/helpers";
+import { METRICS_CONFIG } from "../../utils/constants";
 
 const Dashboard = ({ data, user }) => {
     const { results, details, selections, groupBy, thresholds } = data;
     const [processedData, setProcessedData] = useState(null);
     const [monthlyData, setMonthlyData] = useState(null);
     const [showPnL, setShowPnL] = useState(false);
+    const [selectedCharts, setSelectedCharts] = useState(["grossSale"]);
+
+    const handleFilterChange = (newSelectedCharts) => {
+        setSelectedCharts(newSelectedCharts);
+    };
 
     useEffect(() => {
         console.log("🔍 RAW API DATA:", {
@@ -690,12 +697,16 @@ const Dashboard = ({ data, user }) => {
                         groupBy={groupBy}
                     />
 
+                    {/* Chart Filter Component */}
+                    <ChartFilter onFilterChange={handleFilterChange} />
+
                     {/* Only show comparison charts for total view */}
                     {groupBy === "total" && (
                         <>
                             <ChartsGrid
                                 type="comparison"
                                 data={totalSummary.individualData}
+                                selectedCharts={selectedCharts}
                             />
                             {showPnL && (
                                 <ExpensesSection
@@ -717,6 +728,7 @@ const Dashboard = ({ data, user }) => {
                                 type="timeSeries"
                                 data={processedData.timeSeriesData}
                                 groupBy={groupBy}
+                                selectedCharts={selectedCharts}
                             />
                         </>
                     )}

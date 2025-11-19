@@ -1,4 +1,5 @@
 import { THRESHOLD_API_BASE_URL } from "../utils/threshold-api-constants";
+import { secureFetch, securePost, rateLimitedFetch } from "../utils/secureApiClient";
 
 export const thresholdService = {
   /**
@@ -8,14 +9,10 @@ export const thresholdService = {
    */
   async getThresholds(userId = "default_user") {
     try {
-      const response = await fetch(
+      const response = await rateLimitedFetch(
         `${THRESHOLD_API_BASE_URL}/threshold-settings?userId=${userId}`,
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        },
+        { method: "GET" },
+        true // Use threshold API headers
       );
 
       if (!response.ok) {
@@ -76,19 +73,16 @@ export const thresholdService = {
         throw new Error("Ads threshold must be a number between 0 and 100");
       }
 
-      const response = await fetch(
+      const payload = {
+        userId: settings.userId || "default_user",
+        discountThreshold: settings.discountThreshold,
+        adsThreshold: settings.adsThreshold,
+      };
+
+      const response = await securePost(
         `${THRESHOLD_API_BASE_URL}/threshold-settings`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            userId: settings.userId || "default_user",
-            discountThreshold: settings.discountThreshold,
-            adsThreshold: settings.adsThreshold,
-          }),
-        },
+        payload,
+        true // Use threshold API headers
       );
 
       if (!response.ok) {
@@ -148,15 +142,13 @@ export const thresholdService = {
         }
       }
 
-      const response = await fetch(
+      const response = await secureFetch(
         `${THRESHOLD_API_BASE_URL}/threshold-settings`,
         {
           method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
           body: JSON.stringify(settings),
         },
+        true // Use threshold API headers
       );
 
       if (!response.ok) {
@@ -190,14 +182,10 @@ export const thresholdService = {
    */
   async deleteThresholds(userId = "default_user") {
     try {
-      const response = await fetch(
+      const response = await secureFetch(
         `${THRESHOLD_API_BASE_URL}/threshold-settings?userId=${userId}`,
-        {
-          method: "DELETE",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        },
+        { method: "DELETE" },
+        true // Use threshold API headers
       );
 
       if (!response.ok) {

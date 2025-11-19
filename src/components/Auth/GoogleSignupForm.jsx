@@ -22,9 +22,9 @@ const GoogleSignupForm = ({
   const [existingUser, setExistingUser] = useState(
     needsAccountLinking
       ? {
-          email: googleUserData?.email,
-          authMethod: "traditional",
-        }
+        email: googleUserData?.email,
+        authMethod: "traditional",
+      }
       : null,
   );
 
@@ -170,6 +170,10 @@ const GoogleSignupForm = ({
             Hi {googleUserData.name}! Please provide additional details and set
             a password to complete your account setup.
           </p>
+          <div className="auth-info-message" style={{ marginTop: '1rem' }}>
+            <strong>✨ Benefits of Google Signup:</strong> Your dashboard will automatically update
+            with sales data from your Gmail. No need to manually upload files!
+          </div>
           <p className="auth-note">
             You'll be able to sign in using either Google or your email and
             password.

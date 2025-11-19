@@ -7,7 +7,7 @@ class GoogleOAuthService {
       import.meta.env.VITE_OAUTH_REDIRECT_URI ||
       `${window.location.origin}/oauth/callback`;
     this.scope =
-      "openid email profile https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/drive.readonly";
+      "openid email profile https://www.googleapis.com/auth/gmail.readonly";
 
     console.log("🔧 OAuth Service Configuration:");
     console.log("  - Client ID:", this.clientId?.substring(0, 20) + "...");

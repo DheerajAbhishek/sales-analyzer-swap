@@ -17,10 +17,6 @@ const NewFooter = () => {
             <strong>Restalytics.ai</strong> — Built by restaurant owners, for
             restaurant owners.
           </p>
-          <p className="footer-company">
-            Powered by <strong>Swap Dietetics Pvt. Ltd.</strong> • Made in India
-            🇮🇳
-          </p>
         </div>
 
         <div className="footer-links-section">
@@ -45,7 +41,7 @@ const NewFooter = () => {
               </li>
               <li>
                 <a
-                  href="https://calendly.com/dheerajabhishek111/30min"
+                  href="https://calendly.com/restalytics-support/30min"
                   target="_blank"
                   rel="noopener noreferrer"
                 >

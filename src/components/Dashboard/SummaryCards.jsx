@@ -15,12 +15,12 @@ const SummaryCards = ({
     position: null,
   });
 
-  // Check if single channel is selected for threshold monitoring
-  const isSingleChannelSelected = selections?.channels?.length === 1;
+  // Show threshold monitoring when thresholds are configured
+  const shouldShowThresholds = thresholds && (thresholds.discount !== undefined || thresholds.ads !== undefined);
 
   // Helper function to get color based on threshold
   const getThresholdColor = (percentage, threshold) => {
-    if (!isSingleChannelSelected || !thresholds || threshold === undefined) {
+    if (!shouldShowThresholds || threshold === undefined) {
       return "#6b7280"; // Default gray color
     }
     return percentage > threshold ? "#dc2626" : "#16a34a"; // Red if exceeded, green if within
@@ -54,30 +54,6 @@ const SummaryCards = ({
       // No percentage - would be confusing to show >100% of gross sale after GST
     },
     {
-      label: "Gross Sale After GST",
-      value: data.grossSaleAfterGST,
-      type: "currency",
-      percentage: 100, // Always 100% of itself
-    },
-    {
-      label: "Net Sale",
-      value: data.netSale,
-      type: "currency",
-      percentage: calculatePercentage(data.netSale, data.grossSaleAfterGST),
-    },
-    {
-      label: "NBV",
-      value: data.nbv,
-      type: "currency",
-      percentage: calculatePercentage(data.nbv, data.grossSaleAfterGST),
-    },
-    {
-      label: "No. of Orders",
-      value: data.noOfOrders,
-      type: "number",
-      // No percentage for order count
-    },
-    {
       label: "Discounts",
       value: data.discounts,
       type: "currency",
@@ -86,6 +62,12 @@ const SummaryCards = ({
         data.discountPercent ||
         calculatePercentage(data.discounts, data.grossSaleAfterGST),
       threshold: thresholds?.discount,
+    },
+    {
+      label: "GST on Order",
+      value: data.gstOnOrder,
+      type: "currency",
+      percentage: calculatePercentage(data.gstOnOrder, data.grossSaleAfterGST),
     },
     {
       label: "Commission & Taxes",
@@ -112,10 +94,28 @@ const SummaryCards = ({
       percentage: calculatePercentage(data.packings, data.grossSaleAfterGST),
     },
     {
-      label: "GST on Order",
-      value: data.gstOnOrder,
+      label: "Net Sale",
+      value: data.netSale,
       type: "currency",
-      percentage: calculatePercentage(data.gstOnOrder, data.grossSaleAfterGST),
+      percentage: calculatePercentage(data.netSale, data.grossSaleAfterGST),
+    },
+    {
+      label: "Gross Sale After GST",
+      value: data.grossSaleAfterGST,
+      type: "currency",
+      percentage: 100, // Always 100% of itself
+    },
+    {
+      label: "NBV",
+      value: data.nbv,
+      type: "currency",
+      percentage: calculatePercentage(data.nbv, data.grossSaleAfterGST),
+    },
+    {
+      label: "No. of Orders",
+      value: data.noOfOrders,
+      type: "number",
+      // No percentage for order count
     },
   ];
 
@@ -167,7 +167,7 @@ const SummaryCards = ({
 
   return (
     <>
-      {isSingleChannelSelected && thresholds && (
+      {shouldShowThresholds && (
         <div
           style={{
             background: "linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)",
@@ -232,14 +232,14 @@ const SummaryCards = ({
                         : "#6b7280",
                     margin: "4px 0 0 0",
                     fontWeight:
-                      item.threshold !== undefined && isSingleChannelSelected
+                      item.threshold !== undefined && shouldShowThresholds
                         ? "600"
                         : "normal",
                   }}
                 >
                   ({item.percentage.toFixed(2)}% of Gross Sale After GST)
                 </p>
-                {item.threshold !== undefined && isSingleChannelSelected && (
+                {item.threshold !== undefined && shouldShowThresholds && (
                   <p
                     style={{
                       fontSize: "0.75em",

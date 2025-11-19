@@ -122,10 +122,10 @@ const NewPricing = ({ user, onGetStarted, onGoToDashboard }) => {
               whileHover={
                 plan.available && !prefersReducedMotion
                   ? {
-                      y: -8,
-                      boxShadow: "0 20px 60px rgba(0,0,0,0.15)",
-                      transition: { duration: 0.2 },
-                    }
+                    y: -8,
+                    boxShadow: "0 20px 60px rgba(0,0,0,0.15)",
+                    transition: { duration: 0.2 },
+                  }
                   : {}
               }
             >
@@ -158,8 +158,8 @@ const NewPricing = ({ user, onGetStarted, onGoToDashboard }) => {
                   >
                     <span className="feature-checkmark">
                       {feature.startsWith("✅") ||
-                      feature.startsWith("🔥") ||
-                      feature.startsWith("🚀")
+                        feature.startsWith("🔥") ||
+                        feature.startsWith("🚀")
                         ? feature.slice(0, 2)
                         : "✅"}
                     </span>
@@ -168,13 +168,13 @@ const NewPricing = ({ user, onGetStarted, onGoToDashboard }) => {
                 ))}
               </ul>
 
-              <button
+              {/* <button
                 className={`pricing-cta-new ${!plan.available ? "disabled" : ""}`}
                 onClick={() => handleCTAClick(plan)}
                 disabled={!plan.available}
               >
                 {plan.cta}
-              </button>
+              </button> */}
             </motion.div>
           ))}
         </div>

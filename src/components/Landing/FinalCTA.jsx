@@ -97,7 +97,7 @@ const FinalCTA = ({ user, onConnectGmail, onGoToDashboard }) => {
             ))}
           </div>
 
-          <motion.button
+          {/* <motion.button
             className="final-cta-button"
             onClick={handleCTAClick}
             initial={prefersReducedMotion ? {} : { opacity: 0, y: 20 }}
@@ -116,7 +116,7 @@ const FinalCTA = ({ user, onConnectGmail, onGoToDashboard }) => {
           >
             <Mail size={24} />
             {user ? "Go to Dashboard" : "Connect Gmail & Audit My Discounts"}
-          </motion.button>
+          </motion.button> */}
 
           <motion.p
             className="final-cta-subtext"

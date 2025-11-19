@@ -2,11 +2,16 @@ import React from "react";
 import MetricChart from "./MetricChart.jsx";
 import { METRICS_CONFIG } from "../../utils/constants";
 
-const ChartsGrid = ({ type, data, groupBy }) => {
+const ChartsGrid = ({ type, data, groupBy, selectedCharts }) => {
+  // Filter metrics based on selectedCharts
+  const visibleMetrics = selectedCharts
+    ? METRICS_CONFIG.filter((metric) => selectedCharts.includes(metric.key))
+    : METRICS_CONFIG;
+
   if (type === "comparison") {
     return (
       <div className="charts-grid">
-        {METRICS_CONFIG.map((metric) => (
+        {visibleMetrics.map((metric) => (
           <MetricChart
             key={metric.key}
             metric={metric}
@@ -23,7 +28,7 @@ const ChartsGrid = ({ type, data, groupBy }) => {
 
     return (
       <div className="charts-grid">
-        {METRICS_CONFIG.map((metric) => (
+        {visibleMetrics.map((metric) => (
           <MetricChart
             key={metric.key}
             metric={metric}

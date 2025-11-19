@@ -1,0 +1,7 @@
+{
+    "Runtime":  "python3.12",
+    "DownloadedAt":  "2025-11-17 23:22:42",
+    "Handler":  "lambda_function.lambda_handler",
+    "Region":  "ap-south-1",
+    "FunctionName":  "sales-dashboard-auth-verify"
+}

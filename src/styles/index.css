@@ -1455,6 +1455,237 @@ textarea:focus-visible {
     background-color: #4ade80;
 }
 
+/* Chart Filter Styles */
+.chart-filter-container {
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9ff 100%);
+    border: 2px solid var(--border-light);
+    border-radius: 20px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    box-shadow:
+        0 4px 20px rgba(99, 102, 241, 0.08),
+        0 1px 3px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+}
+
+.chart-filter-container:hover {
+    box-shadow:
+        0 8px 32px rgba(99, 102, 241, 0.12),
+        0 4px 16px rgba(0, 0, 0, 0.1);
+    border-color: rgba(99, 102, 241, 0.2);
+}
+
+.chart-filter-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    cursor: pointer;
+    user-select: none;
+}
+
+.chart-filter-title {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+    background: var(--gradient-primary);
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.chart-filter-toggle {
+    background: var(--gradient-primary);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: bold;
+    transition: all 0.3s ease;
+    box-shadow: var(--shadow-sm);
+}
+
+.chart-filter-toggle:hover {
+    transform: scale(1.1);
+    box-shadow: var(--shadow-md);
+}
+
+.chart-filter-content {
+    animation: filterFadeIn 0.3s ease;
+}
+
+@keyframes filterFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.chart-filter-actions {
+    display: flex;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.filter-action-btn {
+    flex: 1;
+    padding: 0.75rem 1rem;
+    background: var(--bg-secondary);
+    border: 2px solid var(--border-light);
+    border-radius: 12px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: inherit;
+}
+
+.filter-action-btn:hover:not(:disabled) {
+    background: var(--gradient-primary);
+    color: white;
+    border-color: var(--primary-500);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.filter-action-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.chart-filter-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 0.75rem;
+}
+
+.chart-filter-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem;
+    background: var(--bg-primary);
+    border: 2px solid var(--border-light);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    user-select: none;
+}
+
+.chart-filter-item:hover {
+    background: var(--bg-secondary);
+    border-color: var(--primary-400);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+}
+
+.chart-filter-item.selected {
+    background: linear-gradient(135deg,
+            rgba(99, 102, 241, 0.1) 0%,
+            rgba(99, 102, 241, 0.05) 100%);
+    border-color: var(--primary-500);
+    box-shadow:
+        0 0 0 1px rgba(99, 102, 241, 0.2),
+        var(--shadow-sm);
+}
+
+.chart-filter-item.selected:hover {
+    background: linear-gradient(135deg,
+            rgba(99, 102, 241, 0.15) 0%,
+            rgba(99, 102, 241, 0.08) 100%);
+    box-shadow:
+        0 0 0 2px rgba(99, 102, 241, 0.3),
+        var(--shadow-md);
+}
+
+.chart-filter-item input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    margin: 0;
+    cursor: pointer;
+    accent-color: var(--primary-500);
+}
+
+.chart-filter-label {
+    flex: 1;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.chart-filter-checkmark {
+    font-size: 1.25rem;
+    font-weight: bold;
+    color: var(--primary-500);
+    min-width: 20px;
+    text-align: center;
+}
+
+/* Responsive adjustments for chart filter */
+@media (max-width: 768px) {
+    .chart-filter-grid {
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 0.5rem;
+    }
+
+    .chart-filter-item {
+        padding: 0.75rem;
+    }
+
+    .chart-filter-label {
+        font-size: 0.8rem;
+    }
+
+    .chart-filter-actions {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .chart-filter-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .chart-filter-container {
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .chart-filter-title {
+        font-size: 1rem;
+    }
+}
+
+.chart-danger {
+    background-color: #ef4444;
+}
+
+.chart-green {
+    background-color: #22c55e;
+}
+
+.chart-dark-green {
+    background-color: #16a34a;
+}
+
+.chart-light-green {
+    background-color: #4ade80;
+}
+
 /* Expenses Section */
 .expenses-section {
     margin-top: 3rem;
@@ -1693,8 +1924,10 @@ textarea:focus-visible {
 
     .summary-card {
         padding: 1rem;
+        padding-bottom: 3.5rem;
         display: flex;
         flex-direction: column;
+        min-height: 140px;
     }
 
     .summary-card p {
@@ -1713,29 +1946,35 @@ textarea:focus-visible {
         top: 0.25rem;
         padding: 0.5rem;
         border-radius: 10px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
     }
 
     .top-navbar .brand {
         font-size: 0.9rem;
+        flex-shrink: 0;
     }
 
     .top-navbar .nav-actions {
-        gap: 0.25rem;
-        flex-direction: column;
-        align-items: flex-end;
+        gap: 0.5rem;
+        flex-direction: row;
+        align-items: center;
+        justify-content: flex-end;
+        flex-wrap: nowrap;
     }
 
     .user-name {
         padding: 0.3rem 0.5rem;
         font-size: 0.7rem;
-        order: 2;
+        white-space: nowrap;
     }
 
     .profile-toggle {
         padding: 0.4rem 0.6rem;
         font-size: 0.75rem;
         min-height: 36px;
-        order: 1;
+        white-space: nowrap;
     }
 
     /* Collapsible controls panel on mobile */
@@ -1813,6 +2052,12 @@ textarea:focus-visible {
         gap: 0.75rem;
     }
 
+    .summary-card {
+        padding: 1rem;
+        padding-bottom: 3.5rem;
+        min-height: 140px;
+    }
+
     .summary-card p {
         font-size: 1.125rem;
     }
@@ -1824,11 +2069,37 @@ textarea:focus-visible {
 
     .top-navbar {
         border-radius: 8px;
-        padding: 0.4rem;
+        padding: 0.4rem 0.5rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
     }
 
     .top-navbar .brand {
         font-size: 0.8rem;
+        flex-shrink: 0;
+    }
+
+    .top-navbar .nav-actions {
+        display: flex;
+        flex-direction: row;
+        gap: 0.4rem;
+        align-items: center;
+        justify-content: flex-end;
+        flex-wrap: nowrap;
+    }
+
+    .user-name {
+        font-size: 0.65rem;
+        padding: 0.25rem 0.4rem;
+        white-space: nowrap;
+    }
+
+    .profile-toggle {
+        font-size: 0.7rem;
+        padding: 0.35rem 0.5rem;
+        min-height: 32px;
+        white-space: nowrap;
     }
 
     .hero-cta-primary,
@@ -1848,6 +2119,14 @@ textarea:focus-visible {
     .custom-dropdown-trigger {
         font-size: 16px;
         /* Prevent zoom on iOS */
+    }
+
+    .breakdown-btn {
+        position: static;
+        width: 100%;
+        margin-top: 0.5rem;
+        padding: 0.6rem;
+        font-size: 0.75rem;
     }
 }
 
@@ -2187,11 +2466,10 @@ textarea:focus-visible {
     }
 
     .breakdown-btn {
+        position: static;
         min-height: 44px;
         padding: 0.75rem 1rem;
-        position: relative;
-        bottom: auto;
-        right: auto;
+        font-size: 0.8rem;
         margin-top: 0.5rem;
         width: 100%;
         justify-content: center;
@@ -2262,8 +2540,6 @@ textarea:focus-visible {
 
 /* Discount Breakdown Button */
 .breakdown-btn {
-    bottom: 7rem;
-    right: 1rem;
     background: var(--gradient-primary);
     color: white;
     border: none;
@@ -2617,8 +2893,13 @@ textarea:focus-visible {
     }
 
     .breakdown-btn {
-        font-size: 0.7rem;
-        padding: 0.4rem 0.6rem;
+        position: static;
+        min-height: 40px;
+        padding: 0.6rem 0.8rem;
+        font-size: 0.75rem;
+        margin-top: 0.5rem;
+        width: 100%;
+        justify-content: center;
     }
 }
 
@@ -2863,6 +3144,29 @@ textarea:focus-visible {
     border-radius: 0.5rem;
     font-size: 0.875rem;
     margin-bottom: 1rem;
+}
+
+.auth-warning-notice {
+    background: #fffbeb;
+    border: 1px solid #fbbf24;
+    color: #92400e;
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    margin-bottom: 1rem;
+    display: flex;
+    gap: 0.75rem;
+    align-items: flex-start;
+}
+
+.auth-warning-notice .warning-icon {
+    flex-shrink: 0;
+    color: #f59e0b;
+    margin-top: 0.125rem;
+}
+
+.auth-warning-notice strong {
+    color: #78350f;
 }
 
 .auth-footer {
@@ -3735,7 +4039,7 @@ textarea:focus-visible {
 
 .profile-container {
     position: absolute;
-    right: 9.5rem;
+    right: 172px;
     top: 56px;
     z-index: 60;
 }

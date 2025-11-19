@@ -5,6 +5,7 @@ import { validateSelections } from "../../utils/helpers";
 import { thresholdService } from "../../services/thresholdService";
 import { userRestaurantMappingService } from "../../services/userRestaurantMappingService";
 import { authService } from "../../services/authService";
+import { securePost } from "../../utils/secureApiClient";
 import flatpickr from "flatpickr";
 
 const ReportControls = ({ onGetReport, loading, userRestaurants }) => {
@@ -193,7 +194,25 @@ const ReportControls = ({ onGetReport, loading, userRestaurants }) => {
     setThresholdError(null);
 
     try {
-      const result = await thresholdService.getThresholds();
+      // Get authenticated user
+      const currentUser = authService.getCurrentUser();
+
+      if (!currentUser) {
+        console.warn("No authenticated user found. Using default thresholds.");
+        setThresholdLoading(false);
+        return;
+      }
+
+      // Use businessEmail or email as userId
+      const userId = currentUser.businessEmail || currentUser.email;
+
+      if (!userId) {
+        console.warn("User ID not available. Using default thresholds.");
+        setThresholdLoading(false);
+        return;
+      }
+
+      const result = await thresholdService.getThresholds(userId);
       if (result.success && result.data) {
         setDiscountThreshold(result.data.discountThreshold);
         setAdsThreshold(result.data.adsThreshold);
@@ -248,11 +267,7 @@ const ReportControls = ({ onGetReport, loading, userRestaurants }) => {
         }
 
         try {
-          const response = await fetch(`${API_BASE_URL}/get-last-date`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(requestBody),
-          });
+          const response = await securePost(`${API_BASE_URL}/get-last-date`, requestBody);
           const data = await response.json();
 
           if (data.success && data.data.lastDate) {
@@ -923,10 +938,10 @@ const ReportControls = ({ onGetReport, loading, userRestaurants }) => {
         )}
       </div>
 
-      {selectedChannels.length === 1 && (
+      {selectedChannels.length >= 1 && (
         <div className="form-group">
           <h4 className="form-label">
-            4. Set Percentage Thresholds (Single Channel Selected)
+            4. Set Percentage Thresholds
           </h4>
           {thresholdError && (
             <div

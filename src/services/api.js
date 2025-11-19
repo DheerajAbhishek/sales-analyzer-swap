@@ -1,4 +1,5 @@
 import { API_BASE_URL } from "../utils/constants";
+import { secureFetch, securePost, rateLimitedFetch } from "../utils/secureApiClient";
 
 // Helper function to get user info for API calls
 const getUserInfo = () => {
@@ -38,11 +39,8 @@ export const uploadFileService = {
     const payload = businessEmail
       ? { filename, contentType, businessEmail }
       : { filename, contentType };
-    const response = await fetch(`${API_BASE_URL}/upload-url`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
+
+    const response = await securePost(`${API_BASE_URL}/upload-url`, payload);
 
     if (!response.ok) {
       const error = await response.json();
@@ -103,11 +101,8 @@ export const uploadFileService = {
     const payload = businessEmail
       ? { files: fileKeys, businessEmail }
       : { files: fileKeys };
-    const response = await fetch(`${API_BASE_URL}/batch-process`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
+
+    const response = await securePost(`${API_BASE_URL}/batch-process`, payload);
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
@@ -119,7 +114,7 @@ export const uploadFileService = {
   },
 
   async getJobStatus(jobId) {
-    const response = await fetch(`${API_BASE_URL}/job-status?jobId=${jobId}`);
+    const response = await rateLimitedFetch(`${API_BASE_URL}/job-status?jobId=${jobId}`);
 
     if (!response.ok) {
       throw new Error("Failed to get job status");
@@ -166,7 +161,7 @@ export const reportService = {
       apiUrl += `&groupBy=${groupBy}`;
     }
 
-    const response = await fetch(apiUrl);
+    const response = await rateLimitedFetch(apiUrl);
 
     if (!response.ok) {
       throw new Error("Failed to get consolidated insights");
@@ -178,23 +173,13 @@ export const reportService = {
 
 export const expenseService = {
   async saveExpenses(restaurantId, month, expenses) {
-    const token = localStorage.getItem("token");
-    const user = getUserInfo();
-    const businessEmail = user?.businessEmail;
+    const payload = {
+      restaurantId,
+      month,
+      expenses,
+    };
 
-    const response = await fetch(`${API_BASE_URL}/expenses`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(token && { Authorization: `Bearer ${token}` }),
-        ...(businessEmail && { "business-email": businessEmail }),
-      },
-      body: JSON.stringify({
-        restaurantId,
-        month,
-        expenses,
-      }),
-    });
+    const response = await securePost(`${API_BASE_URL}/expenses`, payload);
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
@@ -205,20 +190,9 @@ export const expenseService = {
   },
 
   async getExpenses(restaurantId, month) {
-    const token = localStorage.getItem("token");
-    const user = getUserInfo();
-    const businessEmail = user?.businessEmail;
-
-    const response = await fetch(
+    const response = await secureFetch(
       `${API_BASE_URL}/expenses?restaurantId=${restaurantId}&month=${month}`,
-      {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token && { Authorization: `Bearer ${token}` }),
-          ...(businessEmail && { "business-email": businessEmail }),
-        },
-      },
+      { method: "GET" }
     );
 
     if (!response.ok) {
@@ -248,15 +222,9 @@ export const restaurantService = {
       // Always make API request (no caching)
       console.log("→ Fetching restaurants from API for:", email);
 
-      const response = await fetch(
+      const response = await secureFetch(
         `${API_BASE_URL}/user-restaurants?businessEmail=${encodeURIComponent(email)}`,
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
-          },
-        },
+        { method: "GET" }
       );
 
       if (!response.ok) {
@@ -323,17 +291,13 @@ export const restaurantMappingService = {
 
       console.log("Saving mappings to backend:", mappings);
 
-      const response = await fetch(`${API_BASE_URL}/restaurant-mappings`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          businessEmail: user.businessEmail,
-          mappings: mappings,
-          updatedAt: new Date().toISOString(),
-        }),
-      });
+      const payload = {
+        businessEmail: user.businessEmail,
+        mappings: mappings,
+        updatedAt: new Date().toISOString(),
+      };
+
+      const response = await securePost(`${API_BASE_URL}/restaurant-mappings`, payload);
 
       console.log("Save response status:", response.status);
 
@@ -369,15 +333,9 @@ export const restaurantMappingService = {
         throw new Error("User email not found");
       }
 
-      const response = await fetch(
+      const response = await secureFetch(
         `${API_BASE_URL}/restaurant-mappings?businessEmail=${encodeURIComponent(user.businessEmail)}`,
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("token") || ""}`,
-          },
-        },
+        { method: "GET" }
       );
 
       if (!response.ok) {
@@ -432,17 +390,13 @@ export const restaurantMappingService = {
         throw new Error("User email not found");
       }
 
-      const response = await fetch(`${API_BASE_URL}/restaurant-metadata`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          businessEmail: user.businessEmail,
-          metadata: metadata,
-          updatedAt: new Date().toISOString(),
-        }),
-      });
+      const payload = {
+        businessEmail: user.businessEmail,
+        metadata: metadata,
+        updatedAt: new Date().toISOString(),
+      };
+
+      const response = await securePost(`${API_BASE_URL}/restaurant-metadata`, payload);
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -473,12 +427,9 @@ export const restaurantMappingService = {
         throw new Error("User email not found");
       }
 
-      const response = await fetch(
+      const response = await secureFetch(
         `${API_BASE_URL}/restaurant-metadata?businessEmail=${encodeURIComponent(user.businessEmail)}`,
-        {
-          method: "GET",
-          headers: getAuthHeaders(),
-        },
+        { method: "GET" }
       );
 
       if (!response.ok) {

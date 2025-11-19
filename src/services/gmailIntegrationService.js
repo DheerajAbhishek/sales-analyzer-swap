@@ -1,4 +1,5 @@
 import { googleOAuthService } from "./googleOAuthService.js";
+import { securePost, secureFetch } from "../utils/secureApiClient.js";
 
 const API_BASE_URL =
   "https://p28ja8leg9.execute-api.ap-south-1.amazonaws.com/Production";
@@ -18,18 +19,12 @@ class GmailIntegrationService {
     try {
       console.log("🔄 Storing Gmail tokens for user:", userEmail);
 
-      const response = await fetch(this.gmail_tokens_url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          user_email: userEmail,
-          access_token: tokens.accessToken,
-          refresh_token: tokens.refreshToken,
-          expires_in: tokens.expiresIn || 3600,
-          id_token: tokens.idToken,
-        }),
+      const response = await securePost(this.gmail_tokens_url, {
+        user_email: userEmail,
+        access_token: tokens.accessToken,
+        refresh_token: tokens.refreshToken,
+        expires_in: tokens.expiresIn || 3600,
+        id_token: tokens.idToken,
       });
 
       const data = await response.json();
@@ -67,15 +62,9 @@ class GmailIntegrationService {
       );
 
       // Temporary: Use POST to the base tokens URL with user_email in body
-      const response = await fetch(this.gmail_tokens_url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          action: "check_tokens",
-          user_email: userEmail,
-        }),
+      const response = await securePost(this.gmail_tokens_url, {
+        action: "check_tokens",
+        user_email: userEmail,
       });
 
       console.log("📊 Response status:", response.status);
@@ -136,16 +125,10 @@ class GmailIntegrationService {
         `🔄 Processing Excel files from ${senderEmail} for user: ${userEmail}`,
       );
 
-      const response = await fetch(this.gmail_process_url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          user_email: userEmail,
-          sender_email: senderEmail,
-          max_results: maxResults,
-        }),
+      const response = await securePost(this.gmail_process_url, {
+        user_email: userEmail,
+        sender_email: senderEmail,
+        max_results: maxResults,
       });
 
       const data = await response.json();
@@ -182,13 +165,10 @@ class GmailIntegrationService {
     try {
       console.log("🗑️ Removing Gmail tokens for user:", userEmail);
 
-      const response = await fetch(
+      const response = await secureFetch(
         `${this.gmail_tokens_url}/${encodeURIComponent(userEmail)}`,
         {
           method: "DELETE",
-          headers: {
-            "Content-Type": "application/json",
-          },
         },
       );
 
@@ -318,14 +298,8 @@ class GmailIntegrationService {
         userEmail,
       );
 
-      const response = await fetch(`${API_BASE_URL}/gmail/watch/subscribe`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          userEmail: userEmail,
-        }),
+      const response = await securePost(`${API_BASE_URL}/gmail/watch/subscribe`, {
+        userEmail: userEmail,
       });
 
       const data = await response.json();

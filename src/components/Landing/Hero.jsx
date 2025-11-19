@@ -75,7 +75,7 @@ const Hero = ({ user, onGoToDashboard, onConnectGmail }) => {
             <strong>No manual uploads.</strong>
           </p>
 
-          <div className="hero-actions-new">
+          {/* <div className="hero-actions-new">
             <button
               className="btn-primary-new"
               onClick={handleCTAClick}
@@ -83,7 +83,7 @@ const Hero = ({ user, onGoToDashboard, onConnectGmail }) => {
             >
               {user ? "Go to Dashboard" : "Start Free Trial"}
             </button>
-          </div>
+          </div> */}
 
           <div className="trust-row">
             <div className="trust-item">
@@ -123,11 +123,11 @@ const Hero = ({ user, onGoToDashboard, onConnectGmail }) => {
                 prefersReducedMotion
                   ? { opacity: 1 }
                   : {
-                      opacity: 1,
-                      y: [0, -20, 0],
-                      x: [0, 10, 0],
-                      rotate: [0, 2, 0, -2, 0],
-                    }
+                    opacity: 1,
+                    y: [0, -20, 0],
+                    x: [0, 10, 0],
+                    rotate: [0, 2, 0, -2, 0],
+                  }
               }
               transition={{
                 opacity: { duration: 0.6, delay: 0.4 },
@@ -146,11 +146,11 @@ const Hero = ({ user, onGoToDashboard, onConnectGmail }) => {
                 prefersReducedMotion
                   ? { opacity: 1 }
                   : {
-                      opacity: 1,
-                      y: [0, 15, 0],
-                      x: [0, -15, 0],
-                      rotate: [0, -3, 0, 3, 0],
-                    }
+                    opacity: 1,
+                    y: [0, 15, 0],
+                    x: [0, -15, 0],
+                    rotate: [0, -3, 0, 3, 0],
+                  }
               }
               transition={{
                 opacity: { duration: 0.6, delay: 0.5 },
@@ -183,11 +183,11 @@ const Hero = ({ user, onGoToDashboard, onConnectGmail }) => {
                 prefersReducedMotion
                   ? { opacity: 1 }
                   : {
-                      opacity: [0.7, 1, 0.7],
-                      scale: [1, 1.1, 1],
-                      y: [0, -15, 0],
-                      x: [0, 8, 0],
-                    }
+                    opacity: [0.7, 1, 0.7],
+                    scale: [1, 1.1, 1],
+                    y: [0, -15, 0],
+                    x: [0, 8, 0],
+                  }
               }
               transition={{
                 opacity: { duration: 0.5, delay: 0.6 },
@@ -217,11 +217,11 @@ const Hero = ({ user, onGoToDashboard, onConnectGmail }) => {
                 prefersReducedMotion
                   ? { opacity: 1 }
                   : {
-                      opacity: [0.7, 1, 0.7],
-                      scale: [1, 1.15, 1],
-                      y: [0, 12, 0],
-                      x: [0, -10, 0],
-                    }
+                    opacity: [0.7, 1, 0.7],
+                    scale: [1, 1.15, 1],
+                    y: [0, 12, 0],
+                    x: [0, -10, 0],
+                  }
               }
               transition={{
                 opacity: { duration: 0.5, delay: 0.7 },
@@ -255,9 +255,9 @@ const Hero = ({ user, onGoToDashboard, onConnectGmail }) => {
                 prefersReducedMotion
                   ? {}
                   : {
-                      x: [20, 200, 350, 200, 350, 20, 20],
-                      y: [20, 50, 20, 200, 200, 150, 20],
-                    }
+                    x: [20, 200, 350, 200, 350, 20, 20],
+                    y: [20, 50, 20, 200, 200, 150, 20],
+                  }
               }
               transition={{
                 duration: 12,
@@ -278,9 +278,9 @@ const Hero = ({ user, onGoToDashboard, onConnectGmail }) => {
                 prefersReducedMotion
                   ? {}
                   : {
-                      y: [0, 350, 0],
-                      opacity: [0, 0.8, 0.5, 0.8, 0],
-                    }
+                    y: [0, 350, 0],
+                    opacity: [0, 0.8, 0.5, 0.8, 0],
+                  }
               }
               transition={{
                 duration: 4,
@@ -302,7 +302,7 @@ const Hero = ({ user, onGoToDashboard, onConnectGmail }) => {
           Not sure where to start? Book a free demo with our team
         </p>
         <a
-          href="https://calendly.com/dheerajabhishek111/30min"
+          href="https://calendly.com/restalytics-support/30min"
           target="_blank"
           rel="noopener noreferrer"
           className="demo-button"
