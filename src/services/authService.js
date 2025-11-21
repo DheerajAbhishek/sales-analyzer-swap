@@ -1,4 +1,4 @@
-import { restaurantService } from "./api.js";
+﻿import { restaurantService } from "./api.js";
 import { googleOAuthService } from "./googleOAuthService.js";
 import { gmailIntegrationService } from "./gmailIntegrationService.js";
 import { autoEmailProcessingService } from "./autoEmailProcessingService.js";
@@ -30,8 +30,6 @@ class AuthService {
           const restaurantData = await restaurantService.getUserRestaurants(
             data.user.businessEmail,
           );
-          console.log("User restaurants fetched:", restaurantData);
-
           // Store restaurant data in localStorage for quick access
           localStorage.setItem(
             "userRestaurants",
@@ -119,8 +117,6 @@ class AuthService {
           const restaurantData = await restaurantService.getUserRestaurants(
             data.user.businessEmail,
           );
-          console.log("User restaurants refreshed:", restaurantData);
-
           // Update stored restaurant data
           localStorage.setItem(
             "userRestaurants",
@@ -140,7 +136,7 @@ class AuthService {
             user: data.user,
             restaurants: JSON.parse(
               localStorage.getItem("userRestaurants") ||
-                '{"restaurantIds":[],"objectKeysCount":0}',
+              '{"restaurantIds":[],"objectKeysCount":0}',
             ),
           };
         }
@@ -160,7 +156,6 @@ class AuthService {
   }
 
   logout() {
-    console.log("🚪 AuthService: logout() called - clearing localStorage");
     console.trace("Logout call stack:");
     localStorage.removeItem("user");
     localStorage.removeItem("token");
@@ -187,23 +182,13 @@ class AuthService {
   // Google OAuth Methods - SIMPLIFIED
   async handleGoogleCallback(code, state) {
     try {
-      console.log("🚀 Starting Google OAuth callback handling");
-
       const result = await googleOAuthService.handleCallback(code, state);
 
       if (result.success) {
-        console.log("✅ OAuth token exchange successful");
-        console.log("🔍 Context:", result.context);
-        console.log("� User email:", result.user.email);
-
         // Check if user exists in our database
         const userCheck = await this.verifyGoogleUserExists(result.user.email);
-        console.log("👤 User check result:", userCheck);
-
         if (userCheck.userExists) {
           // User exists - proceed with login
-          console.log("✅ Existing user - logging in directly");
-
           const userData = {
             id: result.user.id,
             email: result.user.email,
@@ -246,9 +231,6 @@ class AuthService {
         } else {
           // User doesn't exist
           if (result.context === "login") {
-            console.log(
-              "� New user detected during LOGIN - redirecting to signup",
-            );
             googleOAuthService.clearTokens();
 
             return {
@@ -265,7 +247,6 @@ class AuthService {
             };
           } else {
             // This is signup - proceed to signup form
-            console.log("🆕 New user signup - showing signup form");
             return {
               success: true,
               isNewUser: true,
@@ -281,7 +262,7 @@ class AuthService {
           }
         }
       } else {
-        console.warn("❌ OAuth token exchange failed");
+        console.warn("Γ¥î OAuth token exchange failed");
         return {
           success: false,
           message: result.error || "Google authentication failed",
@@ -295,8 +276,6 @@ class AuthService {
 
   async verifyGoogleUserExists(email) {
     try {
-      console.log("🔍 Checking if Google user exists:", email);
-
       const response = await fetch(
         `${API_BASE_URL}/auth/check-user?email=${encodeURIComponent(email)}`,
         {
@@ -308,14 +287,8 @@ class AuthService {
       );
 
       const data = await response.json();
-
-      console.log("📋 User existence check response:", {
-        status: response.status,
-        data: data,
-      });
-
       if (!response.ok || !data.success) {
-        console.error("❌ User check failed:", data.message);
+        console.error("Γ¥î User check failed:", data.message);
         return {
           userExists: false,
         };
@@ -324,7 +297,6 @@ class AuthService {
       if (data.exists) {
         // User exists - determine auth method
         if (data.hasGoogleId) {
-          console.log("✅ Existing Google user found");
           return {
             userExists: true,
             user: {
@@ -334,7 +306,6 @@ class AuthService {
             },
           };
         } else {
-          console.log("🔗 Existing user found (needs linking)");
           return {
             userExists: true,
             user: {
@@ -346,7 +317,6 @@ class AuthService {
         }
       } else {
         // User doesn't exist
-        console.log("❌ New user detected");
         return {
           userExists: false,
         };
@@ -402,8 +372,6 @@ class AuthService {
   // Initiate Google OAuth login - SIMPLIFIED
   async loginWithGoogle() {
     try {
-      console.log("🚀 Starting Google OAuth login");
-
       // Clear previous session data
       sessionStorage.removeItem("oauth_context");
       sessionStorage.setItem("oauth_context", "login");
@@ -427,8 +395,6 @@ class AuthService {
   // Initiate Google OAuth signup - SIMPLIFIED
   async signupWithGoogle() {
     try {
-      console.log("🚀 Starting Google OAuth signup");
-
       // Clear previous session data
       sessionStorage.removeItem("oauth_context");
       sessionStorage.setItem("oauth_context", "signup");
@@ -452,11 +418,6 @@ class AuthService {
   // Complete Google signup/account linking
   async completeGoogleSignup(userData) {
     try {
-      console.log(
-        "🔄 Completing Google signup/account linking for:",
-        userData.email,
-      );
-
       const response = await fetch(`${API_BASE_URL}/auth/signup`, {
         method: "POST",
         headers: {
@@ -468,12 +429,8 @@ class AuthService {
       const data = await response.json();
 
       if (response.ok) {
-        console.log("✅ Google signup/linking completed successfully");
-
         // Use email as businessEmail if businessEmail is not provided
         const businessEmail = userData.businessEmail || userData.email;
-        console.log("📧 Using businessEmail:", businessEmail);
-
         // Store user data FIRST before fetching restaurants
         const userInfo = {
           id: userData.googleId,
@@ -489,52 +446,40 @@ class AuthService {
         // Save to localStorage BEFORE calling getUserRestaurants
         localStorage.setItem("user", JSON.stringify(userInfo));
         localStorage.setItem("authMethod", "google");
-
-        console.log("✅ User data saved to localStorage:", businessEmail);
-
         // Store Gmail tokens for email processing
         try {
-          console.log("🔄 Initializing Gmail integration...");
           await gmailIntegrationService.initializeGmailIntegration(
             businessEmail,
           );
-          console.log("✅ Gmail integration initialized for new user");
-
           // Subscribe to Gmail push notifications for real-time processing
-          console.log("🔔 Subscribing to Gmail watch notifications...");
           const watchResult =
             await gmailIntegrationService.subscribeToGmailWatch(businessEmail);
           if (watchResult.success) {
-            console.log("✅ Gmail watch subscription successful");
           } else {
             console.warn(
-              "⚠️ Gmail watch subscription failed:",
+              "ΓÜá∩╕Å Gmail watch subscription failed:",
               watchResult.message,
             );
           }
         } catch (gmailError) {
           console.warn(
-            "⚠️ Failed to initialize Gmail integration:",
+            "ΓÜá∩╕Å Failed to initialize Gmail integration:",
             gmailError,
           );
           // Don't block - continue with signup
         }
 
         // Start auto-processing emails immediately (don't wait for it to complete)
-        console.log("🚀 Starting auto email processing for:", businessEmail);
         autoEmailProcessingService
           .startAutoProcessing(businessEmail)
-          .then(() => console.log("✅ Auto email processing completed"))
           .catch((err) =>
             console.warn("⚠️ Auto email processing had errors:", err),
           );
 
         // Fetch user restaurants - now localStorage has the email
         try {
-          console.log("🔍 Fetching restaurants for:", businessEmail);
           const restaurantData =
             await restaurantService.getUserRestaurants(businessEmail);
-          console.log("✅ Restaurants fetched:", restaurantData);
           localStorage.setItem(
             "userRestaurants",
             JSON.stringify(restaurantData),
@@ -577,11 +522,6 @@ class AuthService {
   // Link Google account to existing traditional account
   async linkGoogleAccount(userData) {
     try {
-      console.log(
-        "🔗 Linking Google account to existing account:",
-        userData.email,
-      );
-
       // For account linking, we only need the Google data and force link flag
       // The existing account already has restaurant details
       const linkData = {
@@ -610,8 +550,6 @@ class AuthService {
       const data = await response.json();
 
       if (response.ok) {
-        console.log("✅ Google account linking completed successfully");
-
         // Store updated user data
         const userInfo = {
           id: userData.googleId,
@@ -628,31 +566,24 @@ class AuthService {
 
         // Initialize Gmail integration and subscribe to watch notifications
         try {
-          console.log(
-            "🔄 Initializing Gmail integration for linked account...",
-          );
           await gmailIntegrationService.initializeGmailIntegration(
             userInfo.businessEmail,
           );
-          console.log("✅ Gmail integration initialized");
-
           // Subscribe to Gmail push notifications
-          console.log("🔔 Subscribing to Gmail watch notifications...");
           const watchResult =
             await gmailIntegrationService.subscribeToGmailWatch(
               userInfo.businessEmail,
             );
           if (watchResult.success) {
-            console.log("✅ Gmail watch subscription successful");
           } else {
             console.warn(
-              "⚠️ Gmail watch subscription failed:",
+              "ΓÜá∩╕Å Gmail watch subscription failed:",
               watchResult.message,
             );
           }
         } catch (gmailError) {
           console.warn(
-            "⚠️ Failed to initialize Gmail integration:",
+            "ΓÜá∩╕Å Failed to initialize Gmail integration:",
             gmailError,
           );
           // Don't block - continue with linking
@@ -687,7 +618,7 @@ class AuthService {
           };
         }
       } else {
-        console.error("❌ Account linking failed:", data);
+        console.error("Γ¥î Account linking failed:", data);
         return {
           success: false,
           message: data.message || "Failed to link Google account",

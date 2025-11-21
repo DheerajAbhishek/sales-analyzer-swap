@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Secure API Client
  * Handles authentication, API key management, and secure requests to AWS API Gateway
  */
@@ -30,9 +30,6 @@ const getAuthHeaders = () => {
         ...(businessEmail && { "X-User-Email": businessEmail }),
         ...(API_KEY && { "X-API-Key": API_KEY }),
     };
-
-    console.log("🔐 Secure API Headers:", { hasApiKey: !!API_KEY, headers });
-
     return headers;
 };/**
  * Get threshold API headers
@@ -60,22 +57,11 @@ export const secureFetch = async (url, options = {}, useThresholdAPI = false) =>
             ...authHeaders,
             ...(options.headers || {}),
         };
-
-        console.log("📡 Making request:", {
-            url,
-            method: options.method || 'GET',
-            headers,
-            hasBody: !!options.body
-        });
-
         // Make request
         const response = await fetch(url, {
             ...options,
             headers,
         });
-
-        console.log("📥 Response:", { status: response.status, ok: response.ok });
-
         // Handle unauthorized
         if (response.status === 401 || response.status === 403) {
             console.error("Unauthorized request detected");
@@ -122,9 +108,6 @@ export const generateRequestSignature = (payload, timestamp) => {
 export const securePost = async (url, body, useThresholdAPI = false) => {
     const timestamp = Date.now();
     const signature = generateRequestSignature(body, timestamp);
-
-    console.log("🚀 securePost called:", { url, hasBody: !!body, useThresholdAPI });
-
     return secureFetch(
         url,
         {
@@ -144,15 +127,15 @@ export const validateApiConfig = () => {
     const warnings = [];
 
     if (!API_KEY) {
-        warnings.push("⚠️ VITE_API_KEY not configured");
+        warnings.push("ΓÜá∩╕Å VITE_API_KEY not configured");
     }
 
     if (!THRESHOLD_API_KEY) {
-        warnings.push("⚠️ VITE_THRESHOLD_API_KEY not configured");
+        warnings.push("ΓÜá∩╕Å VITE_THRESHOLD_API_KEY not configured");
     }
 
     if (!import.meta.env.VITE_REQUEST_SECRET) {
-        warnings.push("⚠️ VITE_REQUEST_SECRET not configured");
+        warnings.push("ΓÜá∩╕Å VITE_REQUEST_SECRET not configured");
     }
 
     if (warnings.length > 0) {

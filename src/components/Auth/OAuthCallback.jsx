@@ -25,18 +25,12 @@ const OAuthCallback = ({ onAuthSuccess }) => {
         processingRef.current ||
         (code && processedCodeRef.current === code)
       ) {
-        console.log(
-          "⏳ OAuth callback already processed for this code, skipping...",
-        );
+
         return;
       }
 
       processingRef.current = true;
       if (code) processedCodeRef.current = code;
-      console.log(
-        "🚀 Starting OAuth callback processing for code:",
-        code?.substring(0, 10) + "...",
-      );
 
       try {
         if (error) {
@@ -56,21 +50,27 @@ const OAuthCallback = ({ onAuthSuccess }) => {
         if (result.success) {
           if (result.isNewUser) {
             // New user or account linking needed - show signup form
+
             setGoogleUserData(result.googleUserData);
             setNeedsAccountLinking(result.needsAccountLinking || false);
             setShowSignupForm(true);
             setLoading(false);
           } else {
             // Existing user - log them in
+
+            // Small delay to ensure localStorage is fully written
+            await new Promise(resolve => setTimeout(resolve, 100));
+
             // Wait for onAuthSuccess to complete before navigating
             if (onAuthSuccess) {
               await onAuthSuccess(result.user);
             }
+
             navigate("/dashboard", { replace: true });
           }
         } else if (result.shouldRedirectToSignup) {
           // New user tried to login - redirect to signup page with message
-          console.log("🚫 New user tried to login, redirecting to signup...");
+
           navigate("/signup", {
             replace: true,
             state: {
@@ -95,11 +95,17 @@ const OAuthCallback = ({ onAuthSuccess }) => {
   }, [searchParams, navigate, onAuthSuccess]);
 
   const handleSignupComplete = async (user) => {
+
     setShowSignupForm(false);
+
+    // Small delay to ensure localStorage is fully written
+    await new Promise(resolve => setTimeout(resolve, 100));
+
     // Wait for onAuthSuccess to complete before navigating
     if (onAuthSuccess) {
       await onAuthSuccess(user);
     }
+
     navigate("/dashboard", { replace: true });
   };
 

@@ -1,12 +1,10 @@
-import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect } from "react";
 import { gmailIntegrationService } from "../../services/gmailIntegrationService.js";
 import { authService } from "../../services/authService.js";
 import { autoEmailProcessingService } from "../../services/autoEmailProcessingService.js";
 import "./GmailIntegrationPanel.css";
 
 const GmailIntegrationPanel = () => {
-  console.log("🚀 GmailIntegrationPanel is rendering!");
-
   const [integrationStatus, setIntegrationStatus] = useState({
     ready: false,
     checking: true,
@@ -121,7 +119,7 @@ const GmailIntegrationPanel = () => {
     return (
       <div className="gmail-integration-panel">
         <div className="integration-header">
-          <h3>📧 Gmail Integration</h3>
+          <h3>≡ƒôº Gmail Integration</h3>
         </div>
         <div className="checking-status">
           <div className="loading-spinner"></div>
@@ -134,15 +132,15 @@ const GmailIntegrationPanel = () => {
   return (
     <div className="gmail-integration-panel">
       <div className="integration-header">
-        <h3>📧 Gmail Integration</h3>
+        <h3>≡ƒôº Gmail Integration</h3>
         <div
           className={`status-indicator ${integrationStatus.ready ? "connected" : "disconnected"}`}
         >
-          {integrationStatus.ready ? "🟢 Connected" : "🔴 Not Connected"}
+          {integrationStatus.ready ? "≡ƒƒó Connected" : "≡ƒö┤ Not Connected"}
         </div>
       </div>
 
-      {error && <div className="error-message">⚠️ {error}</div>}
+      {error && <div className="error-message">ΓÜá∩╕Å {error}</div>}
 
       {!integrationStatus.ready && (
         <div className="connection-section">
@@ -170,7 +168,7 @@ const GmailIntegrationPanel = () => {
           </div>
 
           <button className="connect-button" onClick={initiateGmailAuth}>
-            🔗{" "}
+            ≡ƒöù{" "}
             {integrationStatus.hasTokens ? "Reconnect Gmail" : "Connect Gmail"}
           </button>
         </div>
@@ -227,7 +225,7 @@ const GmailIntegrationPanel = () => {
                     Processing...
                   </>
                 ) : (
-                  "🚀 Process Excel Files"
+                  "≡ƒÜÇ Process Excel Files"
                 )}
               </button>
 
@@ -236,7 +234,7 @@ const GmailIntegrationPanel = () => {
                 onClick={disconnectGmail}
                 disabled={processing.active}
               >
-                🔌 Disconnect Gmail
+                ≡ƒöî Disconnect Gmail
               </button>
             </div>
           </div>

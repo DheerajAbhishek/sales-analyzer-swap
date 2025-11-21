@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect } from "react";
 import { dateService } from "../../services/dateService";
 import { userRestaurantMappingService } from "../../services/userRestaurantMappingService";
 
@@ -11,13 +11,6 @@ const MissingDatesIndicator = ({
   const [showDetails, setShowDetails] = useState(false);
   const [missingDatesData, setMissingDatesData] = useState({}); // Store missing dates per platform
   const [loading, setLoading] = useState(false);
-
-  console.log("🔍 MissingDatesIndicator props:", {
-    timeSeriesData,
-    selections,
-    dataType,
-  });
-
   // Function to generate all dates in range
   const generateDateRange = (startDate, endDate) => {
     const dates = [];
@@ -28,23 +21,12 @@ const MissingDatesIndicator = ({
       dates.push(current.toISOString().split("T")[0]);
       current.setDate(current.getDate() + 1);
     }
-
-    console.log("📅 Generated date range:", {
-      startDate,
-      endDate,
-      totalDates: dates.length,
-    });
     return dates;
   };
 
   // Function to find missing dates from time series data
   const findMissingDatesFromTimeSeries = () => {
     if (!timeSeriesData || !selections?.startDate || !selections?.endDate) {
-      console.log("❌ Missing required data for missing dates check:", {
-        hasTimeSeriesData: !!timeSeriesData,
-        hasStartDate: !!selections?.startDate,
-        hasEndDate: !!selections?.endDate,
-      });
       return [];
     }
 
@@ -56,12 +38,8 @@ const MissingDatesIndicator = ({
 
     // Get actual dates that have data
     const actualDates = Object.keys(timeSeriesData);
-    console.log("📊 Actual dates with data:", actualDates);
-
     // Find missing dates
     const missing = expectedDates.filter((date) => !actualDates.includes(date));
-
-    console.log("⚠️ Missing dates found:", missing);
     return missing;
   };
 
@@ -78,9 +56,6 @@ const MissingDatesIndicator = ({
       selections?.restaurants
     ) {
       // For total summary, check missing dates for each restaurant and platform
-      console.log(
-        "📊 Total summary mode - checking missing dates via API for multiple platforms",
-      );
       setLoading(true);
 
       const checkMissingDatesForAllPlatforms = async () => {
@@ -93,10 +68,6 @@ const MissingDatesIndicator = ({
             await userRestaurantMappingService.getUserRestaurantMappings();
 
           for (const restaurantId of selections.restaurants) {
-            console.log(
-              `🔍 Checking missing dates for restaurant: ${restaurantId}`,
-            );
-
             // Check if this is a restaurant group or direct platform ID
             const restaurant = restaurantMappings.find(
               (r) => r.id === restaurantId,
@@ -113,11 +84,6 @@ const MissingDatesIndicator = ({
                     selections.channels.includes(channel),
                 )
                 .map(([channel, platformId]) => ({ channel, platformId }));
-
-              console.log(
-                `Restaurant group ${restaurant.name} has filtered platform IDs:`,
-                platformIds,
-              );
             } else {
               // Direct platform ID - determine channel and filter by selected channels
               const guessedChannel =
@@ -139,9 +105,6 @@ const MissingDatesIndicator = ({
                 userRestaurantMappingService.guessChannelForId(platformId);
 
               try {
-                console.log(
-                  `📅 Checking missing dates for platform ${platformId} (${channel})`,
-                );
                 const result = await dateService.checkMissingDates(
                   platformId,
                   selections.startDate,
@@ -159,29 +122,19 @@ const MissingDatesIndicator = ({
                     channel,
                     restaurantName: restaurant?.name || platformId,
                   };
-                  console.log(
-                    `✅ Missing dates for ${key}:`,
-                    result.data.missingDates?.length || 0,
-                  );
                 } else {
-                  console.log(
-                    `❌ Failed to get missing dates for ${platformId}:`,
-                    result.error,
-                  );
                 }
               } catch (error) {
                 console.error(
-                  `❌ Error checking missing dates for ${platformId}:`,
+                  `Γ¥î Error checking missing dates for ${platformId}:`,
                   error,
                 );
               }
             }
           }
-
-          console.log("📊 All missing dates results:", results);
           setMissingDatesData(results);
         } catch (error) {
-          console.error("❌ Error in missing dates check:", error);
+          console.error("Γ¥î Error in missing dates check:", error);
           setMissingDatesData({});
         }
 
@@ -205,7 +158,7 @@ const MissingDatesIndicator = ({
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          <span style={{ fontSize: "1.2em" }}>🔍</span>
+          <span style={{ fontSize: "1.2em" }}>≡ƒöì</span>
           <p
             style={{
               margin: 0,
@@ -263,7 +216,7 @@ const MissingDatesIndicator = ({
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <span style={{ fontSize: "1.2em" }}>📊</span>
+            <span style={{ fontSize: "1.2em" }}>≡ƒôè</span>
             <div>
               <p
                 style={{
@@ -289,16 +242,8 @@ const MissingDatesIndicator = ({
       return null;
     }
   }
-
-  console.log("🎯 MissingDatesIndicator render:", {
-    missingDatesCount: calculatedMissingDates.length,
-    willRender: calculatedMissingDates.length > 0,
-    dataType,
-  });
-
   // Don't show anything if no missing dates
   if (calculatedMissingDates.length === 0) {
-    console.log("✅ No missing dates - component hidden");
     return null;
   }
 
@@ -373,7 +318,7 @@ const MissingDatesIndicator = ({
           marginBottom: "8px",
         }}
       >
-        <span style={{ fontSize: "1.2em" }}>⚠️</span>
+        <span style={{ fontSize: "1.2em" }}>ΓÜá∩╕Å</span>
         <div>
           <p
             style={{

@@ -1,4 +1,4 @@
-import { reportService } from "./api.js";
+﻿import { reportService } from "./api.js";
 
 class AutoLoadService {
   /**
@@ -22,7 +22,6 @@ class AutoLoadService {
       userRestaurants?.restaurantMappings &&
       userRestaurants.restaurantMappings.length > 0
     ) {
-      console.log("📋 Using restaurant mappings for names");
       restaurantIds.forEach((id) => {
         const mapping = userRestaurants.restaurantMappings.find(
           (r) => r.id === id,
@@ -48,7 +47,6 @@ class AutoLoadService {
       return restaurantNames;
     } else {
       // No mappings available - try to fetch metadata for real names
-      console.log("📋 No mappings found, fetching restaurant metadata...");
       try {
         const { restaurantService } = await import("./api.js");
         const metadataPromises = restaurantIds.map(async (restaurantId) => {
@@ -62,7 +60,7 @@ class AutoLoadService {
             };
           } catch (error) {
             console.warn(
-              `⚠️ Failed to fetch metadata for ${restaurantId}:`,
+              `ΓÜá∩╕Å Failed to fetch metadata for ${restaurantId}:`,
               error.message,
             );
             return {
@@ -74,10 +72,9 @@ class AutoLoadService {
         });
 
         const results = await Promise.all(metadataPromises);
-        console.log("📋 Fetched metadata for restaurants:", results);
         return results;
       } catch (error) {
-        console.error("❌ Error fetching restaurant metadata:", error);
+        console.error("Γ¥î Error fetching restaurant metadata:", error);
         // Final fallback to generic names
         return restaurantIds.map((id) => ({
           id: id,
@@ -94,16 +91,10 @@ class AutoLoadService {
    */
   async loadLastMonthData(userRestaurants) {
     try {
-      console.log(
-        "🚀 Auto-loading last month data for user restaurants:",
-        userRestaurants,
-      );
-
       if (
         !userRestaurants?.restaurantIds ||
         userRestaurants.restaurantIds.length === 0
       ) {
-        console.log("📭 No restaurants found for auto-load");
         return null;
       }
 
@@ -117,21 +108,10 @@ class AutoLoadService {
 
       const startDateStr = this.formatDate(startDate);
       const endDateStr = this.formatDate(endDate);
-
-      console.log(`📊 Auto-loading data from ${startDateStr} to ${endDateStr}`);
-
       // Try restaurants one by one until we find data
       const allRestaurantIds = userRestaurants.restaurantIds;
-      console.log(
-        `🔍 Will try ${allRestaurantIds.length} restaurants until data is found...`,
-      );
-
       for (let i = 0; i < allRestaurantIds.length; i++) {
         const restaurantId = allRestaurantIds[i];
-        console.log(
-          `� Trying restaurant ${i + 1}/${allRestaurantIds.length}: ${restaurantId}`,
-        );
-
         try {
           // Get restaurant name for this specific restaurant
           const restaurantData = await this.getRestaurantNames(
@@ -139,10 +119,6 @@ class AutoLoadService {
             [restaurantId],
           );
           const restaurant = restaurantData[0];
-
-          console.log(
-            `📈 Fetching data for restaurant: ${restaurant.name} (${restaurantId})`,
-          );
           const result = await reportService.getConsolidatedInsights(
             restaurantId,
             startDateStr,
@@ -161,10 +137,6 @@ class AutoLoadService {
           ) {
             const insights = parsed.consolidatedInsights;
             if (insights.noOfOrders > 0 || insights.grossSale > 0) {
-              console.log(
-                `✅ Found data for restaurant: ${restaurant.name} (${restaurantId})`,
-              );
-
               // Return successful result for this single restaurant
               return {
                 results: [parsed],
@@ -194,13 +166,9 @@ class AutoLoadService {
               };
             }
           }
-
-          console.log(
-            `📭 No meaningful data found for restaurant: ${restaurant.name} (${restaurantId})`,
-          );
         } catch (error) {
           console.warn(
-            `⚠️ Failed to fetch data for restaurant ${restaurantId}:`,
+            `ΓÜá∩╕Å Failed to fetch data for restaurant ${restaurantId}:`,
             error.message,
           );
           continue; // Try next restaurant
@@ -208,10 +176,9 @@ class AutoLoadService {
       }
 
       // If we get here, no restaurant had data
-      console.log("📭 No data available for any restaurant in auto-load");
       return null;
     } catch (error) {
-      console.error("❌ Error in auto-load service:", error);
+      console.error("Γ¥î Error in auto-load service:", error);
       return null;
     }
   }
@@ -222,7 +189,6 @@ class AutoLoadService {
   shouldAutoLoad(userRestaurants, isNewUser = false) {
     // Don't auto-load for new users (signups)
     if (isNewUser) {
-      console.log("🆕 New user - skipping auto-load");
       return false;
     }
 
@@ -231,11 +197,8 @@ class AutoLoadService {
       userRestaurants?.restaurantIds &&
       userRestaurants.restaurantIds.length > 0
     ) {
-      console.log("👤 Existing user with restaurants - will auto-load");
       return true;
     }
-
-    console.log("📭 User has no restaurants - skipping auto-load");
     return false;
   }
 }

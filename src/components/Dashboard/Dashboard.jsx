@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect } from "react";
 import SummaryCards from "./SummaryCards.jsx";
 import ChartsGrid from "../Charts/ChartsGrid.jsx";
 import ChartFilter from "../Charts/ChartFilter.jsx";
@@ -19,19 +19,8 @@ const Dashboard = ({ data, user }) => {
     };
 
     useEffect(() => {
-        console.log("🔍 RAW API DATA:", {
-            groupBy,
-            results: results,
-            details: details,
-            selections: selections,
-            resultsLength: results?.length,
-            detailsLength: details?.length,
-        });
-
         // Log each result individually to see the structure
         results?.forEach((result, index) => {
-            console.log(`📦 Result ${index}:`, result);
-            console.log(`📋 Detail ${index}:`, details[index]);
         });
 
         if (groupBy === "total") {
@@ -55,11 +44,6 @@ const Dashboard = ({ data, user }) => {
 
             // Process monthly data even for weekly/monthly views
             const monthly = processMonthlyData(results, details);
-            console.log("Dashboard monthly data:", monthly);
-            console.log(
-                "Dashboard monthly data length:",
-                Object.keys(monthly || {}).length,
-            );
             setMonthlyData(monthly);
             setShowPnL(false);
         }
@@ -80,11 +64,6 @@ const Dashboard = ({ data, user }) => {
             nbv: 0,
         };
         let discountBreakdownData = {};
-
-        console.log("🔍 processTotalSummary - Processing results:", results.length);
-        console.log("🔍 processTotalSummary - Details:", details);
-        console.log("🔍 processTotalSummary - Selections:", selections);
-
         // Build channel mapping - when auto is selected, it returns results for swiggy and zomato
         const channelMapping = ["swiggy", "zomato"];
 
@@ -92,7 +71,6 @@ const Dashboard = ({ data, user }) => {
         results.forEach((apiResult, index) => {
             const detail = details[index];
             if (!detail) {
-                console.log(`⚠️ No detail for index ${index}`);
                 return;
             }
 
@@ -112,50 +90,35 @@ const Dashboard = ({ data, user }) => {
                 if (!channel && apiResult?.discountBreakdown) {
                     // Check if discount breakdown has platform-specific keys
                     const breakdownKeys = Object.keys(apiResult.discountBreakdown);
-                    console.log(`🔍 Discount breakdown keys:`, breakdownKeys);
-
                     // Swiggy has keys like "60", "50", etc. (percentage discounts)
-                    // Zomato has keys like "Flat ₹100 off", "20% off upto ₹50", etc. (descriptive)
+                    // Zomato has keys like "Flat Γé╣100 off", "20% off upto Γé╣50", etc. (descriptive)
                     const hasPercentageKeys = breakdownKeys.some(
                         (key) => /^\d+$/.test(key) && key !== "TOTAL",
                     );
                     const hasDescriptiveKeys = breakdownKeys.some(
                         (key) =>
-                            key.includes("₹") || key.includes("off") || key.includes("upto"),
+                            key.includes("Γé╣") || key.includes("off") || key.includes("upto"),
                     );
 
                     if (hasPercentageKeys && !hasDescriptiveKeys) {
                         channel = "swiggy";
-                        console.log(`🎯 Detected Swiggy from discount breakdown structure`);
                     } else if (hasDescriptiveKeys) {
                         channel = "zomato";
-                        console.log(`🎯 Detected Zomato from discount breakdown structure`);
                     }
                 }
 
                 // Final fallback - this is risky and should be replaced with explicit backend response
                 if (!channel || channel === "auto") {
                     console.error(
-                        `❌ CRITICAL: Unable to determine channel for index ${index}. Backend must provide explicit channel information.`,
+                        `Γ¥î CRITICAL: Unable to determine channel for index ${index}. Backend must provide explicit channel information.`,
                     );
                     channel = "unknown";
                 } else {
-                    console.log(`✅ Successfully inferred channel: ${channel}`);
                 }
             }
             const restaurantName = detail.name || `Restaurant ${index + 1}`;
-
-            console.log(
-                `📊 Processing index ${index}: ${restaurantName} (${channel})`,
-            );
-            console.log(
-                `🔍 Channel source - detail.platform: ${detail.platform}, final channel: ${channel}`,
-            );
-
             // Check if this result has data
             if (!apiResult || apiResult.message || !apiResult.consolidatedInsights) {
-                console.log(`⚠️ No data for ${restaurantName} (${channel})`);
-
                 // Add zero values
                 individualRestaurantData.push({
                     name: `${restaurantName} (${channel})`,
@@ -182,11 +145,6 @@ const Dashboard = ({ data, user }) => {
             }
 
             const insights = apiResult.consolidatedInsights;
-            console.log(
-                `✅ Found data for ${restaurantName} (${channel}):`,
-                insights,
-            );
-
             // Add this restaurant-channel's data to individual results
             const grossSaleAfterGST = insights.grossSale - (insights.gstOnOrder || 0);
             individualRestaurantData.push({
@@ -243,10 +201,6 @@ const Dashboard = ({ data, user }) => {
             combinedGrossSaleAfterGST > 0
                 ? (combinedData.ads / combinedGrossSaleAfterGST) * 100
                 : 0;
-
-        console.log("📊 Final individual data:", individualRestaurantData);
-        console.log("📊 Final combined data:", combinedData);
-
         return {
             type: "total",
             combinedData,
@@ -272,58 +226,27 @@ const Dashboard = ({ data, user }) => {
             "netSale",
             "nbv",
         ];
-
-        console.log("🔍 processMonthlyData - Starting with groupBy:", groupBy);
-        console.log("🔍 processMonthlyData - Number of results:", results?.length);
-
         results.forEach((data, index) => {
-            console.log(`🔍 processMonthlyData - Processing result ${index}:`, data);
-
             const timeSeriesData =
                 data.body?.timeSeriesData || data.timeSeriesData || [];
-            console.log(
-                `🔍 processMonthlyData - TimeSeriesData length for result ${index}:`,
-                timeSeriesData?.length,
-            );
-            console.log(
-                `🔍 processMonthlyData - TimeSeriesData sample:`,
-                timeSeriesData?.[0],
-            );
-
             // Always process from timeSeriesData when available (for all groupBy modes)
             if (timeSeriesData && timeSeriesData.length > 0) {
-                console.log(
-                    `✅ Processing ${timeSeriesData.length} periods from timeSeriesData`,
-                );
-
                 timeSeriesData.forEach((periodData, periodIndex) => {
                     const period = periodData.period;
                     const monthKey = period.substring(0, 7); // Gets YYYY-MM
-
-                    console.log(
-                        `📅 Period ${periodIndex}: ${period} -> Month: ${monthKey}`,
-                    );
-                    console.log(`📊 Period data:`, periodData);
-
                     if (!monthlyData[monthKey]) {
                         monthlyData[monthKey] = {};
                         keysToSum.forEach((key) => (monthlyData[monthKey][key] = 0));
-                        console.log(`🆕 Created new month entry: ${monthKey}`);
                     }
 
                     // Sum data from all platforms for this period
                     const platforms = ["zomato", "swiggy", "takeaway", "subs"];
                     platforms.forEach((platform) => {
                         const platformData = periodData[platform] || {};
-                        console.log(`🔍 Platform ${platform} data:`, platformData);
-
                         keysToSum.forEach((key) => {
                             if (platformData[key] && typeof platformData[key] === "number") {
                                 const oldValue = monthlyData[monthKey][key];
                                 monthlyData[monthKey][key] += platformData[key];
-                                console.log(
-                                    `➕ Adding ${platform}.${key}: ${oldValue} + ${platformData[key]} = ${monthlyData[monthKey][key]}`,
-                                );
                             }
                         });
                     });
@@ -347,12 +270,6 @@ const Dashboard = ({ data, user }) => {
                 }
             }
         });
-
-        console.log(
-            "🎯 Final monthlyData before calculating derived metrics:",
-            monthlyData,
-        );
-
         // Calculate derived metrics for each month
         Object.keys(monthlyData).forEach((month) => {
             const data = monthlyData[month];
@@ -367,10 +284,7 @@ const Dashboard = ({ data, user }) => {
                 data.grossSaleAfterGST > 0
                     ? (data.ads / data.grossSaleAfterGST) * 100
                     : 0;
-            console.log(`📊 Final month ${month} data:`, data);
         });
-
-        console.log("✅ Returning monthlyData:", monthlyData);
         // Return monthly data regardless of the number of months
         return monthlyData;
     };
@@ -381,27 +295,10 @@ const Dashboard = ({ data, user }) => {
 
         // Determine if we should show zero values for missing channels
         const shouldShowZeroValues = selectedChannels.length > 1;
-        console.log(
-            "🔍 processTimeSeries - Should show zero values for missing channels:",
-            shouldShowZeroValues,
-        );
-        console.log("🔍 processTimeSeries - Processing", results.length, "results");
-
         results.forEach((data, index) => {
             const channel = selectedChannels[index];
-
-            console.log(`🔍 Processing result ${index}:`, {
-                channel,
-                hasData: !!data,
-                hasMessage: !!data?.message,
-                hasTimeSeriesData: !!data?.timeSeriesData,
-                timeSeriesLength: data?.timeSeriesData?.length || 0,
-                fullData: data,
-            });
-
             // Skip results that don't have data
             if (!data || data.message || !data.timeSeriesData) {
-                console.log(`⚠️ No time series data for ${channel}`);
                 return;
             }
 
@@ -409,15 +306,8 @@ const Dashboard = ({ data, user }) => {
 
             // Only process if we have actual time data
             if (timeData.length === 0) {
-                console.log(`⚠️ Empty time series data for ${channel}`);
                 return;
             }
-
-            console.log(
-                `✅ Processing ${timeData.length} periods for channel: ${channel}`,
-            );
-            console.log(`📊 Sample period data (first period):`, timeData[0]);
-
             timeData.forEach((periodData, periodIndex) => {
                 let period = periodData.period;
                 if (groupBy === "month") {
@@ -426,7 +316,6 @@ const Dashboard = ({ data, user }) => {
 
                 if (!timeSeries[period]) {
                     timeSeries[period] = {};
-                    console.log(`📅 Created new period: ${period}`);
                 }
 
                 // Extract all platform keys from the period data (excluding 'period' key)
@@ -435,7 +324,6 @@ const Dashboard = ({ data, user }) => {
                 );
 
                 if (periodIndex === 0) {
-                    console.log(`🔍 Period ${period} has platforms:`, platformKeys);
                 }
 
                 // Process each platform in this period
@@ -443,7 +331,6 @@ const Dashboard = ({ data, user }) => {
                     const platformData = periodData[platform];
 
                     if (periodIndex === 0) {
-                        console.log(`🔍 Platform ${platform} data:`, platformData);
                     }
 
                     // Add or merge platform data
@@ -463,14 +350,6 @@ const Dashboard = ({ data, user }) => {
                 });
             });
         });
-
-        console.log("📊 Final time series data:", timeSeries);
-        console.log("📊 Number of periods:", Object.keys(timeSeries).length);
-        console.log(
-            "📊 Sample period structure:",
-            timeSeries[Object.keys(timeSeries)[0]],
-        );
-
         return {
             type: "timeSeries",
             timeSeriesData: timeSeries,
@@ -505,11 +384,6 @@ const Dashboard = ({ data, user }) => {
 
         const selectedChannels = selections.channels || [];
         const shouldShowZeroValues = selectedChannels.length > 1;
-        console.log(
-            "🔍 Summary calculation - should show zero values:",
-            shouldShowZeroValues,
-        );
-
         // Initialize restaurant-wise data
         const restaurantData = {};
 
@@ -522,16 +396,10 @@ const Dashboard = ({ data, user }) => {
                 );
 
                 if (!hasData && !shouldShowZeroValues) {
-                    console.log(
-                        `⚠️ Skipping platform ${platform} - no meaningful data (single channel mode)`,
-                    );
                     return;
                 }
 
                 if (!hasData && shouldShowZeroValues) {
-                    console.log(
-                        `📊 Including platform ${platform} with zero values (multiple channels mode)`,
-                    );
                 }
 
                 // Add to combined totals (only meaningful values contribute to totals)
@@ -606,11 +474,6 @@ const Dashboard = ({ data, user }) => {
                 },
             });
         });
-
-        console.log(
-            "📊 Summary from time series (only platforms with data):",
-            summary,
-        );
         return summary;
     };
 

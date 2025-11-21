@@ -8,7 +8,7 @@ const GoogleSignupButton = ({ onSuccess, onError, disabled = false }) => {
       if (result.success) {
         // The function will redirect to Google, so onSuccess will be called
         // from the callback page
-        console.log("Redirecting to Google OAuth for signup...");
+
       } else {
         onError(result.message || "Failed to initiate Google sign-up");
       }

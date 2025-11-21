@@ -18,16 +18,10 @@ class AutoLoadService {
    */
   async loadLastMonthData(userRestaurants) {
     try {
-      console.log(
-        "🚀 Auto-loading recent data for user restaurants:",
-        userRestaurants,
-      );
-
       if (
         !userRestaurants?.restaurantIds ||
         userRestaurants.restaurantIds.length === 0
       ) {
-        console.log("📭 No restaurants found for auto-load");
         return null;
       }
 
@@ -36,14 +30,11 @@ class AutoLoadService {
       const businessEmail = user.businessEmail || user.email;
 
       if (!businessEmail) {
-        console.log("📧 No business email found for auto-load");
         return null;
       }
 
       // Get the first restaurant ID to find recent data
       const firstRestaurantId = userRestaurants.restaurantIds[0];
-      console.log("🔍 Finding recent data for restaurant:", firstRestaurantId);
-
       // Use the working dateService to get last available date
       const result = await dateService.getLastAvailableDate(
         firstRestaurantId,
@@ -51,13 +42,10 @@ class AutoLoadService {
       );
 
       if (!result.success || !result.data?.lastDate) {
-        console.log("📅 No recent data found for auto-load");
         return null;
       }
 
       const lastDate = result.data.lastDate;
-      console.log("📅 Last available date found:", lastDate);
-
       // Calculate last month's date range (30 days back from last available date)
       const endDate = new Date(lastDate);
       const startDate = new Date(endDate);
@@ -65,14 +53,10 @@ class AutoLoadService {
 
       const startDateStr = this.formatDate(startDate);
       const endDateStr = this.formatDate(endDate);
-
-      console.log(`📊 Auto-loading data from ${startDateStr} to ${endDateStr}`);
-
       // Try to fetch data for available restaurant IDs (limit to first 3 for performance)
       const restaurantIds = userRestaurants.restaurantIds.slice(0, 3);
       const fetchPromises = restaurantIds.map(async (restaurantId) => {
         try {
-          console.log(`📈 Fetching data for restaurant: ${restaurantId}`);
           const result = await reportService.getConsolidatedInsights(
             restaurantId,
             startDateStr,
@@ -111,7 +95,6 @@ class AutoLoadService {
       const successfulResults = results.filter((result) => result.success);
 
       if (successfulResults.length === 0) {
-        console.log("📭 No data available for any restaurant in auto-load");
         return null;
       }
 
@@ -125,11 +108,6 @@ class AutoLoadService {
       const successfulDetails = successfulResults.map(
         (result) => result.detail,
       );
-
-      console.log(
-        `✅ Auto-loaded data for ${successfulResults.length} restaurants`,
-      );
-
       // Return dashboard data in the same format as manual reports
       return {
         results: parsedResults,
@@ -168,7 +146,6 @@ class AutoLoadService {
   shouldAutoLoad(userRestaurants, isNewUser = false) {
     // Don't auto-load for new users (signups)
     if (isNewUser) {
-      console.log("🆕 New user - skipping auto-load");
       return false;
     }
 
@@ -177,11 +154,8 @@ class AutoLoadService {
       userRestaurants?.restaurantIds &&
       userRestaurants.restaurantIds.length > 0
     ) {
-      console.log("👤 Existing user with restaurants - will auto-load");
       return true;
     }
-
-    console.log("📭 User has no restaurants - skipping auto-load");
     return false;
   }
 }

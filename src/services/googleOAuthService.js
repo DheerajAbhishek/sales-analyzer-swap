@@ -1,4 +1,4 @@
-import { jwtDecode } from "jwt-decode";
+﻿import { jwtDecode } from "jwt-decode";
 
 class GoogleOAuthService {
   constructor() {
@@ -8,12 +8,6 @@ class GoogleOAuthService {
       `${window.location.origin}/oauth/callback`;
     this.scope =
       "openid email profile https://www.googleapis.com/auth/gmail.readonly";
-
-    console.log("🔧 OAuth Service Configuration:");
-    console.log("  - Client ID:", this.clientId?.substring(0, 20) + "...");
-    console.log("  - Redirect URI:", this.redirectUri);
-    console.log("  - Current Origin:", window.location.origin);
-    console.log("  - Environment:", import.meta.env.MODE);
   }
 
   // Generate OAuth 2.0 authorization URL - SIMPLIFIED
@@ -38,11 +32,6 @@ class GoogleOAuthService {
     // Store minimal state
     sessionStorage.setItem("oauth_state", params.get("state"));
     sessionStorage.setItem("oauth_context", isNewUser ? "signup" : "login");
-
-    console.log(
-      `🔧 OAuth URL generated for ${isNewUser ? "signup" : "login"} with ${prompt} prompt`,
-    );
-
     return authUrl;
   }
 
@@ -56,7 +45,6 @@ class GoogleOAuthService {
   // Initiate OAuth flow - SIMPLIFIED
   initiateOAuth(isNewUser = false) {
     const authUrl = this.getAuthUrl(isNewUser);
-    console.log(`🚀 Starting ${isNewUser ? "signup" : "login"} OAuth flow`);
     window.location.href = authUrl;
   }
 
@@ -64,21 +52,13 @@ class GoogleOAuthService {
   async handleCallback(code, state) {
     const storedState = sessionStorage.getItem("oauth_state");
     const oauthContext = sessionStorage.getItem("oauth_context") || "login";
-
-    console.log("=== OAuth Callback Debug ===");
-    console.log("Code:", code?.substring(0, 20) + "...");
-    console.log("State match:", state === storedState);
-    console.log("Context:", oauthContext);
-    console.log("Current URL:", window.location.href);
-    console.log("============================");
-
     // Check for OAuth errors
     const urlParams = new URLSearchParams(window.location.search);
     const error = urlParams.get("error");
     const errorDescription = urlParams.get("error_description");
 
     if (error) {
-      console.error("❌ OAuth Error:", error, errorDescription);
+      console.error("Γ¥î OAuth Error:", error, errorDescription);
 
       // Clear session data on any error
       this.clearOAuthSession();
@@ -90,7 +70,7 @@ class GoogleOAuthService {
     }
 
     if (state !== storedState) {
-      console.warn("⚠️ State mismatch - security risk");
+      console.warn("ΓÜá∩╕Å State mismatch - security risk");
       // Don't fail completely, but log the issue
     }
 
@@ -106,9 +86,6 @@ class GoogleOAuthService {
 
       // Store tokens securely
       this.storeTokens(tokenResponse);
-
-      console.log("✅ OAuth token exchange successful!");
-
       return {
         success: true,
         user: {
@@ -154,12 +131,6 @@ class GoogleOAuthService {
       grant_type: "authorization_code",
       redirect_uri: this.redirectUri,
     });
-
-    console.log("🔄 Token exchange request:");
-    console.log("Client ID:", this.clientId);
-    console.log("Redirect URI:", this.redirectUri);
-    console.log("Code length:", code.length);
-
     const response = await fetch(tokenEndpoint, {
       method: "POST",
       headers: {
@@ -167,12 +138,9 @@ class GoogleOAuthService {
       },
       body: params,
     });
-
-    console.log("📡 Token response status:", response.status);
-
     if (!response.ok) {
       const error = await response.json();
-      console.error("❌ Token exchange error:", error);
+      console.error("Γ¥î Token exchange error:", error);
       throw new Error(
         `Token exchange failed: ${error.error_description || error.error}`,
       );
@@ -194,7 +162,6 @@ class GoogleOAuthService {
     };
 
     localStorage.setItem("google_oauth_tokens", JSON.stringify(tokenData));
-    console.log("💾 Tokens stored successfully");
   }
 
   // Get stored tokens

@@ -1,4 +1,4 @@
-import { googleOAuthService } from "./googleOAuthService.js";
+﻿import { googleOAuthService } from "./googleOAuthService.js";
 import { securePost, secureFetch } from "../utils/secureApiClient.js";
 
 const API_BASE_URL =
@@ -17,8 +17,6 @@ class GmailIntegrationService {
    */
   async storeGmailTokens(userEmail, tokens) {
     try {
-      console.log("🔄 Storing Gmail tokens for user:", userEmail);
-
       const response = await securePost(this.gmail_tokens_url, {
         user_email: userEmail,
         access_token: tokens.accessToken,
@@ -30,13 +28,12 @@ class GmailIntegrationService {
       const data = await response.json();
 
       if (response.ok) {
-        console.log("✅ Gmail tokens stored successfully");
         return {
           success: true,
           message: data.message,
         };
       } else {
-        console.error("❌ Failed to store Gmail tokens:", data);
+        console.error("Γ¥î Failed to store Gmail tokens:", data);
         return {
           success: false,
           message: data.error || "Failed to store Gmail tokens",
@@ -56,37 +53,21 @@ class GmailIntegrationService {
    */
   async checkGmailTokens(userEmail) {
     try {
-      console.log("🔍 Checking Gmail tokens for user:", userEmail);
-      console.log(
-        "🧪 TESTING: Using POST method to check tokens (temporary workaround)",
-      );
-
       // Temporary: Use POST to the base tokens URL with user_email in body
       const response = await securePost(this.gmail_tokens_url, {
         action: "check_tokens",
         user_email: userEmail,
       });
-
-      console.log("📊 Response status:", response.status);
-      console.log("📊 Response ok:", response.ok);
-      console.log(
-        "📊 Response headers:",
-        Object.fromEntries(response.headers.entries()),
-      );
-
       if (!response.ok) {
         const errorText = await response.text();
-        console.error("❌ Response error details:", errorText);
+        console.error("Γ¥î Response error details:", errorText);
         throw new Error(
           `HTTP ${response.status}: ${response.statusText} - ${errorText}`,
         );
       }
 
       const data = await response.json();
-      console.log("📊 Response data:", data);
-
       if (response.ok) {
-        console.log("✅ Gmail token status retrieved:", data);
         return {
           success: true,
           hasTokens: data.has_tokens,
@@ -94,14 +75,13 @@ class GmailIntegrationService {
           expiresAt: data.expires_at,
         };
       } else if (response.status === 404) {
-        console.log("📭 No Gmail tokens found for user");
         return {
           success: true,
           hasTokens: false,
           isExpired: true,
         };
       } else {
-        console.error("❌ Failed to check Gmail tokens:", data);
+        console.error("Γ¥î Failed to check Gmail tokens:", data);
         return {
           success: false,
           message: data.error || "Failed to check Gmail tokens",
@@ -121,10 +101,6 @@ class GmailIntegrationService {
    */
   async processEmailsFromSender(userEmail, senderEmail, maxResults = 150) {
     try {
-      console.log(
-        `🔄 Processing Excel files from ${senderEmail} for user: ${userEmail}`,
-      );
-
       const response = await securePost(this.gmail_process_url, {
         user_email: userEmail,
         sender_email: senderEmail,
@@ -134,7 +110,6 @@ class GmailIntegrationService {
       const data = await response.json();
 
       if (response.ok) {
-        console.log("✅ Email processing completed:", data);
         return {
           success: true,
           processedFiles: data.processed_files,
@@ -143,7 +118,7 @@ class GmailIntegrationService {
           message: data.message,
         };
       } else {
-        console.error("❌ Email processing failed:", data);
+        console.error("Γ¥î Email processing failed:", data);
         return {
           success: false,
           message: data.error || "Failed to process emails",
@@ -163,8 +138,6 @@ class GmailIntegrationService {
    */
   async removeGmailTokens(userEmail) {
     try {
-      console.log("🗑️ Removing Gmail tokens for user:", userEmail);
-
       const response = await secureFetch(
         `${this.gmail_tokens_url}/${encodeURIComponent(userEmail)}`,
         {
@@ -175,13 +148,12 @@ class GmailIntegrationService {
       const data = await response.json();
 
       if (response.ok) {
-        console.log("✅ Gmail tokens removed successfully");
         return {
           success: true,
           message: data.message,
         };
       } else {
-        console.error("❌ Failed to remove Gmail tokens:", data);
+        console.error("Γ¥î Failed to remove Gmail tokens:", data);
         return {
           success: false,
           message: data.error || "Failed to remove Gmail tokens",
@@ -202,13 +174,11 @@ class GmailIntegrationService {
    */
   async initializeGmailIntegration(userEmail) {
     try {
-      console.log("🚀 Initializing Gmail integration for user:", userEmail);
-
       // Get tokens from Google OAuth service
       const tokens = googleOAuthService.getStoredTokens();
 
       if (!tokens) {
-        console.error("❌ No Google OAuth tokens found");
+        console.error("Γ¥î No Google OAuth tokens found");
         return {
           success: false,
           message: "No Google OAuth tokens found. Please authenticate first.",
@@ -219,7 +189,6 @@ class GmailIntegrationService {
       const storeResult = await this.storeGmailTokens(userEmail, tokens);
 
       if (storeResult.success) {
-        console.log("✅ Gmail integration initialized successfully");
         return {
           success: true,
           message: "Gmail integration initialized successfully",
@@ -293,11 +262,6 @@ class GmailIntegrationService {
    */
   async subscribeToGmailWatch(userEmail) {
     try {
-      console.log(
-        "🔔 Subscribing to Gmail watch notifications for:",
-        userEmail,
-      );
-
       const response = await securePost(`${API_BASE_URL}/gmail/watch/subscribe`, {
         userEmail: userEmail,
       });
@@ -305,14 +269,13 @@ class GmailIntegrationService {
       const data = await response.json();
 
       if (response.ok && data.success) {
-        console.log("✅ Gmail watch subscription successful");
         return {
           success: true,
           historyId: data.historyId,
           expiration: data.expiration,
         };
       } else {
-        console.error("❌ Failed to subscribe to Gmail watch:", data);
+        console.error("Γ¥î Failed to subscribe to Gmail watch:", data);
         return {
           success: false,
           message: data.message || "Failed to subscribe to Gmail notifications",
@@ -332,8 +295,6 @@ class GmailIntegrationService {
    */
   async handleGmailAuthCallback(code, state, userEmail) {
     try {
-      console.log("🔄 Handling Gmail auth callback for user:", userEmail);
-
       // Handle OAuth callback
       const oauthResult = await googleOAuthService.handleCallback(code, state);
 

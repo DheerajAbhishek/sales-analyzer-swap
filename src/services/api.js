@@ -1,4 +1,4 @@
-import { API_BASE_URL } from "../utils/constants";
+﻿import { API_BASE_URL } from "../utils/constants";
 import { secureFetch, securePost, rateLimitedFetch } from "../utils/secureApiClient";
 
 // Helper function to get user info for API calls
@@ -126,11 +126,7 @@ export const uploadFileService = {
     // Check if job completed successfully and refresh restaurants
     if (result.status === "SUCCEEDED" || result.status === "COMPLETED") {
       try {
-        console.log(
-          "Job completed successfully, refreshing user restaurants...",
-        );
         await restaurantService.refreshUserRestaurants();
-        console.log("User restaurants refreshed after job completion");
       } catch (refreshError) {
         console.warn(
           "Failed to refresh restaurants after job completion:",
@@ -220,8 +216,6 @@ export const restaurantService = {
       }
 
       // Always make API request (no caching)
-      console.log("→ Fetching restaurants from API for:", email);
-
       const response = await secureFetch(
         `${API_BASE_URL}/user-restaurants?businessEmail=${encodeURIComponent(email)}`,
         { method: "GET" }
@@ -236,8 +230,6 @@ export const restaurantService = {
 
       const data = await response.json();
       const result = data.body ? JSON.parse(data.body) : data;
-
-      console.log("✓ Restaurants fetched from API");
       return result;
     } catch (error) {
       console.error("Error fetching user restaurants:", error);
@@ -247,8 +239,6 @@ export const restaurantService = {
 
   async refreshUserRestaurants() {
     try {
-      console.log("🔄 Refreshing user restaurants...");
-
       // Get email from localStorage
       let email = null;
       const userStr = localStorage.getItem("user");
@@ -260,8 +250,6 @@ export const restaurantService = {
       if (!email) {
         throw new Error("User email not found in localStorage");
       }
-
-      console.log("📧 Refreshing for email:", email);
       const restaurantData = await this.getUserRestaurants(email);
 
       // Dispatch custom event to notify components of the update
@@ -288,9 +276,6 @@ export const restaurantMappingService = {
       if (!user?.businessEmail) {
         throw new Error("User email not found");
       }
-
-      console.log("Saving mappings to backend:", mappings);
-
       const payload = {
         businessEmail: user.businessEmail,
         mappings: mappings,
@@ -298,9 +283,6 @@ export const restaurantMappingService = {
       };
 
       const response = await securePost(`${API_BASE_URL}/restaurant-mappings`, payload);
-
-      console.log("Save response status:", response.status);
-
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         console.error("Save failed with error:", errorData);
@@ -310,8 +292,6 @@ export const restaurantMappingService = {
       }
 
       const data = await response.json();
-      console.log("Save response data:", data);
-
       return {
         success: true,
         data: data.body ? JSON.parse(data.body) : data,
@@ -353,8 +333,6 @@ export const restaurantMappingService = {
       }
 
       const data = await response.json();
-      console.log("Raw API response:", data);
-
       // Handle different response formats
       let mappings = [];
       if (data.body) {
@@ -365,9 +343,6 @@ export const restaurantMappingService = {
         // Direct response
         mappings = data.mappings || [];
       }
-
-      console.log("Extracted mappings:", mappings);
-
       return {
         success: true,
         data: mappings,

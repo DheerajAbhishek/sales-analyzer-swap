@@ -1,4 +1,4 @@
-import { gmailIntegrationService } from "./gmailIntegrationService";
+﻿import { gmailIntegrationService } from "./gmailIntegrationService";
 
 const DEFAULT_SENDER_EMAILS = ["billing@zomato.com", "payments@swiggy.in"];
 
@@ -11,8 +11,6 @@ class AutoEmailProcessingService {
    * Auto-process emails from default senders after user signup
    */
   async startAutoProcessing(userEmail) {
-    console.log("🚀 Starting auto email processing for:", userEmail);
-
     // Set initial status
     this.setStatus(userEmail, {
       isProcessing: true,
@@ -28,10 +26,6 @@ class AutoEmailProcessingService {
     // Process each sender email
     for (let i = 0; i < DEFAULT_SENDER_EMAILS.length; i++) {
       const senderEmail = DEFAULT_SENDER_EMAILS[i];
-      console.log(
-        `📧 Processing emails from: ${senderEmail} (${i + 1}/${DEFAULT_SENDER_EMAILS.length})`,
-      );
-
       try {
         const result = await gmailIntegrationService.processEmailsFromSender(
           userEmail,
@@ -47,11 +41,9 @@ class AutoEmailProcessingService {
           success: result.success,
           data: result,
         });
-
-        console.log(`✅ Processed ${senderEmail}:`, result);
         this.notifyStatusChange(userEmail);
       } catch (error) {
-        console.error(`❌ Error processing ${senderEmail}:`, error);
+        console.error(`Γ¥î Error processing ${senderEmail}:`, error);
 
         const status = this.getStatus(userEmail);
         status.completed++;
@@ -68,8 +60,6 @@ class AutoEmailProcessingService {
     finalStatus.isProcessing = false;
     finalStatus.completedAt = new Date().toISOString();
     this.notifyStatusChange(userEmail);
-
-    console.log("✅ Auto email processing completed for:", userEmail);
     return finalStatus;
   }
 

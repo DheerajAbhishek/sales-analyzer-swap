@@ -4,11 +4,15 @@ import hashlib
 import uuid
 import os
 import re
-from datetime import datetime
+import jwt
+from datetime import datetime, timedelta
 
 # Initialize DynamoDB
 dynamodb = boto3.resource('dynamodb')
 users_table = dynamodb.Table(os.environ.get('USERS_TABLE', 'sales-dashboard-users'))
+
+# JWT secret key (should match auth-login lambda)
+JWT_SECRET = os.environ.get('JWT_SECRET', 'your-secret-key-change-in-production')
 
 def lambda_handler(event, context):
     try:
@@ -301,6 +305,20 @@ def lambda_handler(event, context):
         # Save to DynamoDB
         users_table.put_item(Item=user_item)
         
+        # Generate JWT token for traditional signups (Google signups don't need tokens)
+        token = None
+        if not is_google_signup:
+            payload = {
+                'businessEmail': business_email,
+                'userId': user_id,
+                'restaurantName': restaurant_name,
+                'phoneNumber': phone_number,
+                'state': state,
+                'city': city,
+                'exp': datetime.utcnow() + timedelta(days=7)  # Token expires in 7 days
+            }
+            token = jwt.encode(payload, JWT_SECRET, algorithm='HS256')
+        
         return {
             'statusCode': 201,
             'headers': {
@@ -315,9 +333,13 @@ def lambda_handler(event, context):
                 'user': {
                     'businessEmail': business_email,
                     'userId': user_id,
-                    'name': restaurant_name,
+                    'restaurantName': restaurant_name,
+                    'phoneNumber': phone_number,
+                    'state': state,
+                    'city': city,
                     'authMethod': 'google' if is_google_signup else 'traditional'
-                } if is_google_signup else None
+                },
+                'token': token  # Will be None for Google signups, JWT for traditional signups
             })
         }
         

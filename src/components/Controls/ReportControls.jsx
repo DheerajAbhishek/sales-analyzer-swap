@@ -101,7 +101,7 @@ const ReportControls = ({ onGetReport, loading, userRestaurants }) => {
 
         if (isCancelled) return;
         setRestaurantOptions(options);
-        console.log("Restaurant options created:", options.length, "total options");
+
       } catch (error) {
         console.error("Error setting up restaurant options:", error);
         if (!isCancelled) setRestaurantOptions([]);
@@ -124,7 +124,7 @@ const ReportControls = ({ onGetReport, loading, userRestaurants }) => {
   useEffect(() => {
     const handleStorageChange = (e) => {
       if (e.key === "restaurantMappings") {
-        console.log("Restaurant mappings updated, refreshing options...");
+
         // Trigger a refresh of restaurant options
         if (userRestaurants?.restaurantIds) {
           const updateRestaurantOptions = async () => {
@@ -171,11 +171,7 @@ const ReportControls = ({ onGetReport, loading, userRestaurants }) => {
               });
 
               setRestaurantOptions(options);
-              console.log(
-                "Restaurant options refreshed:",
-                options.length,
-                "total options",
-              );
+
             } catch (error) {
               console.error("Error refreshing restaurant options:", error);
             }
@@ -247,12 +243,9 @@ const ReportControls = ({ onGetReport, loading, userRestaurants }) => {
         platformIds = Object.values(restaurant.platforms || {}).filter(
           (id) => id && id.trim(),
         );
-        console.log(
-          `Restaurant group ${restaurant.name} has platform IDs:`,
-          platformIds,
-        );
+
       } else {
-        console.log(`Using direct platform ID ${restaurantId}`);
+
       }
 
       if (platformIds.length === 0) {
@@ -295,7 +288,6 @@ const ReportControls = ({ onGetReport, loading, userRestaurants }) => {
       });
 
       const results = await Promise.all(datePromises);
-      console.log(`Restaurant ${restaurantId} results:`, results);
 
       // Find the most recent date among all successful results
       const successfulResults = results.filter((r) => r.success && r.date);
@@ -431,14 +423,6 @@ const ReportControls = ({ onGetReport, loading, userRestaurants }) => {
       }
     });
 
-    console.log(
-      "Updated platform IDs:",
-      platformIds,
-      "from restaurants:",
-      restaurants,
-      "and channels:",
-      channels,
-    );
     setSelectedPlatformIds(platformIds);
 
     // Fetch last available dates for the restaurants (not platform IDs)
@@ -566,8 +550,6 @@ const ReportControls = ({ onGetReport, loading, userRestaurants }) => {
       );
       return;
     }
-
-    console.log("Submitting report with platform IDs:", platformIds);
 
     onGetReport({
       restaurants: platformIds,

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+﻿import React, { useState, useEffect, useRef } from "react";
 import { authService } from "../services/authService";
 import { restaurantMappingService } from "../services/api";
 
@@ -62,8 +62,6 @@ const ProfilePage = ({ user, onLogout, onBack }) => {
 
   const loadRestaurantsOptimized = async () => {
     const startTime = Date.now();
-    console.log("🚀 ProfilePage: Starting optimized restaurant loading...");
-
     try {
       // First, immediately load from localStorage for instant UI
       const userRestaurants = authService.getUserRestaurants();
@@ -74,9 +72,6 @@ const ProfilePage = ({ user, onLogout, onBack }) => {
         setPlatformIds([]);
         setUnusedPlatformIds([]);
         setLoading(false);
-        console.log(
-          `⚡ ProfilePage: Loading completed in ${Date.now() - startTime}ms (no data)`,
-        );
         return;
       }
 
@@ -90,15 +85,10 @@ const ProfilePage = ({ user, onLogout, onBack }) => {
       if (localMappings) {
         try {
           mappings = JSON.parse(localMappings);
-          console.log("Loaded mappings from localStorage (instant):", mappings);
-
           // Set initial state immediately with cached data
           setRestaurants(mappings);
           updateUnusedPlatformIds(mappings, allPlatformIds);
           setLoading(false); // Stop loading immediately
-          console.log(
-            `⚡ ProfilePage: Loading completed in ${Date.now() - startTime}ms (from cache)`,
-          );
         } catch (parseErr) {
           console.error("Failed to parse localStorage mappings:", parseErr);
         }
@@ -107,37 +97,26 @@ const ProfilePage = ({ user, onLogout, onBack }) => {
         setRestaurants([]);
         updateUnusedPlatformIds([], allPlatformIds);
         setLoading(false);
-        console.log(
-          `⚡ ProfilePage: Loading completed in ${Date.now() - startTime}ms (no cache)`,
-        );
       }
 
       // Background API call to refresh data (doesn't block UI)
       backgroundTimeoutRef.current = setTimeout(async () => {
         try {
-          console.log(
-            "🔄 Background: Refreshing restaurant mappings from API...",
-          );
           const response =
             await restaurantMappingService.getRestaurantMappings();
 
           // Guard against state updates after unmount
           if (!isMountedRef.current) {
-            console.log("⚠️ Component unmounted, skipping background update");
             return;
           }
 
           if (response.success) {
             const freshMappings = response.data || [];
-            console.log("✅ Background: Fresh mappings loaded:", freshMappings);
-
             // Only update UI if data actually changed
             const currentMappingsStr = JSON.stringify(mappings);
             const freshMappingsStr = JSON.stringify(freshMappings);
 
             if (currentMappingsStr !== freshMappingsStr) {
-              console.log("📊 Background: Data changed, updating UI");
-
               // Double-check component is still mounted before updating state
               if (isMountedRef.current) {
                 setRestaurants(freshMappings);
@@ -149,11 +128,9 @@ const ProfilePage = ({ user, onLogout, onBack }) => {
                 );
               }
             } else {
-              console.log("📊 Background: Data unchanged");
             }
           }
         } catch (err) {
-          console.log("⚠️ Background API refresh failed (not critical):", err);
           // Don't show error - user already has cached data
         }
       }, 100); // Small delay to not block initial render
@@ -299,13 +276,9 @@ const ProfilePage = ({ user, onLogout, onBack }) => {
   const handleSaveRestaurant = async (restaurantId) => {
     try {
       setSaving(true);
-      console.log("Saving restaurants:", restaurants);
-
       // Save to backend using the API service
       const result =
         await restaurantMappingService.saveRestaurantMappings(restaurants);
-      console.log("Save result:", result);
-
       if (result.success) {
         setEditingRestaurant(null);
         setError(null);
@@ -313,7 +286,6 @@ const ProfilePage = ({ user, onLogout, onBack }) => {
         updateUnusedPlatformIds(restaurants, platformIds);
         // Save to localStorage as backup
         localStorage.setItem("restaurantMappings", JSON.stringify(restaurants));
-        console.log("Successfully saved restaurant mappings");
       } else {
         setError("Failed to save restaurant data: " + result.error);
         console.error("Save failed:", result.error);
@@ -454,7 +426,7 @@ const ProfilePage = ({ user, onLogout, onBack }) => {
     // If there are conflicts, ask for confirmation
     if (conflictingAssignments.length > 0) {
       const conflictMessage = `The following platform IDs are already assigned:\n${conflictingAssignments
-        .map((c) => `• ${c.platformId} (assigned to ${c.assignedTo})`)
+        .map((c) => `ΓÇó ${c.platformId} (assigned to ${c.assignedTo})`)
         .join("\n")}\n\nDo you want to move them to this new restaurant?`;
 
       if (!window.confirm(conflictMessage)) {
@@ -628,7 +600,6 @@ const ProfilePage = ({ user, onLogout, onBack }) => {
                 "restaurantMappings",
                 JSON.stringify(updated),
               );
-              console.log("✅ Merged restaurants saved successfully");
               setError(null);
             } else {
               console.error("Failed to save merged restaurants:", result.error);
@@ -766,7 +737,7 @@ const ProfilePage = ({ user, onLogout, onBack }) => {
                   disabled={saving}
                   style={{ backgroundColor: "#f59e0b", borderColor: "#f59e0b" }}
                 >
-                  🔄 Resolve Conflicts ({conflicts.length})
+                  ≡ƒöä Resolve Conflicts ({conflicts.length})
                 </button>
               )}
               <button
@@ -790,14 +761,14 @@ const ProfilePage = ({ user, onLogout, onBack }) => {
                 marginBottom: "1.5rem",
               }}
             >
-              <strong>⚠️ Potential Duplicate Restaurants Detected:</strong>
+              <strong>ΓÜá∩╕Å Potential Duplicate Restaurants Detected:</strong>
               <br />
               {conflicts.map((conflict, index) => (
                 <div
                   key={index}
                   style={{ marginTop: "0.5rem", fontSize: "0.9rem" }}
                 >
-                  • {conflict.restaurants.map((r) => r.name).join(", ")} might
+                  ΓÇó {conflict.restaurants.map((r) => r.name).join(", ")} might
                   be the same restaurant
                 </div>
               ))}
@@ -817,7 +788,7 @@ const ProfilePage = ({ user, onLogout, onBack }) => {
               }}
             >
               <strong>
-                🏪 Unassigned Restaurant IDs ({unusedPlatformIds.length}):
+                ≡ƒÅ¬ Unassigned Restaurant IDs ({unusedPlatformIds.length}):
               </strong>
               <div
                 style={{
@@ -999,7 +970,7 @@ const ProfilePage = ({ user, onLogout, onBack }) => {
                           fontWeight: "bold",
                         }}
                       >
-                        ⚠️
+                        ΓÜá∩╕Å
                       </div>
                     )}
 
@@ -1203,7 +1174,7 @@ const ProfilePage = ({ user, onLogout, onBack }) => {
             }}
           >
             <h3 style={{ marginTop: 0, color: "#7c3aed" }}>
-              🔄 Merge Duplicate Restaurants?
+              ≡ƒöä Merge Duplicate Restaurants?
             </h3>
 
             <p style={{ color: "#6b7280", marginBottom: "1.5rem" }}>
@@ -1282,7 +1253,7 @@ const ProfilePage = ({ user, onLogout, onBack }) => {
                 }}
                 onClick={handleCancelConflictResolution}
               >
-                ❌ Keep Separate
+                Γ¥î Keep Separate
               </button>
             </div>
 

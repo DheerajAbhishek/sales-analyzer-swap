@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 import { authService } from "../services/authService";
@@ -54,7 +54,6 @@ const LandingPage = ({ onGetStarted, onLogin }) => {
               authService.logout();
             }
           } catch (error) {
-            console.log("Background auth verification failed:", error);
             // Keep user logged in unless there's a definitive failure
           }
         }, 500); // Delay background check

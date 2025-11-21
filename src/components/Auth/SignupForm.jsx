@@ -60,16 +60,12 @@ const SignupForm = ({ onSuccess }) => {
       });
 
       if (result.success) {
-        // After successful signup, automatically log the user in
-        const loginResult = await authService.login(
-          formData.businessEmail,
-          formData.password
-        );
-
-        if (loginResult.success) {
-          // Store user data in localStorage
-          localStorage.setItem("user", JSON.stringify(loginResult.user));
-          localStorage.setItem("token", loginResult.token);
+        // Signup now returns user data and token directly, no need for separate login
+        if (result.user && result.token) {
+          // Store user data and token in localStorage
+          localStorage.setItem("user", JSON.stringify(result.user));
+          localStorage.setItem("token", result.token);
+          localStorage.setItem("authMethod", "traditional");
 
           // Clear form
           setFormData({
@@ -83,9 +79,9 @@ const SignupForm = ({ onSuccess }) => {
           });
 
           // Call onSuccess with user data to complete authentication
-          onSuccess(loginResult.user);
+          onSuccess(result.user);
         } else {
-          // If auto-login fails, redirect to login page with message
+          // Fallback: if no token returned, try login (shouldn't happen with updated backend)
           setError("Account created successfully! Please log in.");
           setTimeout(() => {
             onSuccess(); // This will switch to login tab

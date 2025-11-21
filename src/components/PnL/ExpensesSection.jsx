@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect } from "react";
 import { expenseService } from "../../services/api";
 import { formatValue } from "../../utils/helpers";
 
@@ -56,7 +56,6 @@ const ExpensesSection = ({
       }
     } catch (err) {
       if (err.response?.status === 404) {
-        console.log("No saved expenses found");
       } else {
         console.error("Error loading expenses:", err);
         setStatus("Failed to load expenses");
@@ -177,7 +176,7 @@ const ExpensesSection = ({
               letterSpacing: "0.5px",
             }}
           >
-            📊 Expenses Analysis
+            ≡ƒôè Expenses Analysis
           </h3>
           <table>
             <thead>

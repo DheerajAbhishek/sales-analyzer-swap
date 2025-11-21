@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+﻿import React, { useState, useEffect, useRef } from "react";
 import {
     BrowserRouter as Router,
     Routes,
@@ -36,16 +36,8 @@ const ProtectedRoute = ({ children }) => {
             const currentUser = authService.getCurrentUser();
             const authMethod = authService.getAuthMethod();
 
-            console.log(
-                "ProtectedRoute: Current user:",
-                currentUser ? "Found" : "Not found",
-            );
-            console.log("ProtectedRoute: Auth method:", authMethod);
-
             if (!currentUser) {
-                console.log(
-                    "ProtectedRoute: No user in localStorage, redirecting to login",
-                );
+
                 setIsCheckingAuth(false);
                 return;
             }
@@ -57,9 +49,6 @@ const ProtectedRoute = ({ children }) => {
             setIsCheckingAuth(false); // Stop loading immediately
 
             // Perform background verification (don't block UI)
-            console.log(
-                `ProtectedRoute: User found with authMethod: ${authMethod}, performing background verification`,
-            );
 
             try {
                 const hasGoogleData = currentUser.picture || currentUser.sub; // 'sub' is Google's unique user ID
@@ -67,25 +56,17 @@ const ProtectedRoute = ({ children }) => {
                     authMethod === "google" || authMethod === "linked" || hasGoogleData;
                 authMethod === "google" || authMethod === "linked" || hasGoogleData;
 
-                console.log(
-                    `ProtectedRoute: isGoogleUser: ${isGoogleUser}, hasGoogleData: ${hasGoogleData}`,
-                );
-
                 if (isGoogleUser) {
                     // For Google OAuth users, we mainly rely on localStorage
                     // These users don't have traditional auth tokens
-                    console.log(
-                        "ProtectedRoute: Google/linked user verified from localStorage",
-                    );
+
                 } else if (authMethod === "traditional") {
                     // For traditional auth, verify the token in background
                     const token = authService.getToken();
                     if (token) {
                         const result = await authService.verifyToken(token);
                         if (!result.success) {
-                            console.log(
-                                "ProtectedRoute: Token verification failed, showing session expired notification",
-                            );
+
                             // Show session expired notification instead of immediate logout
                             setSessionExpired(true);
                             // Delay logout to allow user to see the notification
@@ -100,9 +81,7 @@ const ProtectedRoute = ({ children }) => {
                             setUserRestaurants(result.restaurants);
                         }
                     } else {
-                        console.log(
-                            "ProtectedRoute: No token found for traditional auth, showing session expired notification",
-                        );
+
                         // Show session expired notification instead of immediate logout
                         setSessionExpired(true);
                         // Delay logout to allow user to see the notification
@@ -114,9 +93,7 @@ const ProtectedRoute = ({ children }) => {
                     }
                 } else {
                     // Unknown auth method, but user exists in localStorage
-                    console.log(
-                        `ProtectedRoute: Unknown authMethod '${authMethod}', but user exists - keeping logged in`,
-                    );
+
                 }
             } catch (error) {
                 console.warn(
@@ -144,7 +121,7 @@ const ProtectedRoute = ({ children }) => {
         return (
             <div className="auth-loading">
                 <div className="session-expired-notification">
-                    <div className="notification-icon">⚠️</div>
+                    <div className="notification-icon">ΓÜá∩╕Å</div>
                     <h2>Session Expired</h2>
                     <p>Your session has expired. Please log in again.</p>
                     <div className="loading-spinner"></div>
@@ -213,14 +190,10 @@ const DashboardPage = () => {
             // Mark the data as manually fetched if it's from user action
             const dataToSave = { ...data, isManuallyFetched: isManual };
             localStorage.setItem("dashboardData", JSON.stringify(dataToSave));
-            console.log(
-                isManual
-                    ? "💾 Persisted manual dashboard data"
-                    : "💾 Persisted auto-loaded dashboard data",
-            );
+
         } else {
             localStorage.removeItem("dashboardData");
-            console.log("🗑️ Cleared persisted dashboard data");
+
         }
     };
 
@@ -233,7 +206,6 @@ const DashboardPage = () => {
 
         const fetchFreshRestaurants = async () => {
             try {
-                console.log("Dashboard: Fetching fresh user restaurants from API...");
 
                 // Get email from user state or localStorage
                 const email = user?.businessEmail || user?.email;
@@ -245,9 +217,8 @@ const DashboardPage = () => {
                     return;
                 }
 
-                console.log("Dashboard: Fetching restaurants for:", email);
                 const freshData = await restaurantService.getUserRestaurants(email);
-                console.log("Dashboard: Fresh restaurants loaded:", freshData);
+
                 setUserRestaurants(freshData);
                 // Update localStorage
                 localStorage.setItem("userRestaurants", JSON.stringify(freshData));
@@ -269,13 +240,13 @@ const DashboardPage = () => {
         const attemptAutoLoad = async () => {
             // Prevent concurrent auto-load attempts
             if (autoLoadInProgress.current) {
-                console.log("🚫 Auto-load already in progress, skipping");
+
                 return;
             }
 
             // Don't auto-load if we have persisted manual data
             if (dashboardData?.isManuallyFetched) {
-                console.log("📋 Found persisted manual data, skipping auto-load");
+
                 setAutoLoadAttempted(true);
                 localStorage.setItem("autoLoadAttempted", "true");
                 return;
@@ -297,7 +268,6 @@ const DashboardPage = () => {
 
             // Only auto-load for existing users (not during signup)
             if (autoLoadService.shouldAutoLoad(userRestaurants, isNewUser)) {
-                console.log("🔄 Attempting to auto-load last month data...");
 
                 // Mark as in progress before starting
                 autoLoadInProgress.current = true;
@@ -311,13 +281,13 @@ const DashboardPage = () => {
                         await autoLoadService.loadLastMonthData(userRestaurants);
 
                     if (autoLoadedData) {
-                        console.log("✅ Auto-loaded dashboard data:", autoLoadedData);
+
                         updateDashboardData(autoLoadedData, false); // Auto-loaded data, not manual
                     } else {
-                        console.log("📭 No data available for auto-load");
+
                     }
                 } catch (error) {
-                    console.error("❌ Auto-load failed:", error);
+                    console.error("Γ¥î Auto-load failed:", error);
                     // Don't show error for auto-load failure
                 } finally {
                     setLoading(false);
@@ -334,7 +304,7 @@ const DashboardPage = () => {
 
     // Log user restaurants on component mount for debugging
     useEffect(() => {
-        console.log("Dashboard: User restaurants loaded:", userRestaurants);
+
     }, [userRestaurants]);
 
     // Listen for auto email processing updates
@@ -345,23 +315,15 @@ const DashboardPage = () => {
             const existingStatus = autoEmailProcessingService.getStatus(userEmail);
 
             if (existingStatus.isProcessing) {
-                console.log(
-                    "📥 Found existing processing status on mount:",
-                    existingStatus,
-                );
+
                 setEmailProcessingStatus(existingStatus);
             }
         }
 
         const handleProcessingUpdate = (event) => {
             const { userEmail, status } = event.detail;
-            console.log("📥 App received processing update:", {
-                receivedUserEmail: userEmail,
-                currentUserEmail: user?.businessEmail || user?.email,
-                status,
-            });
+
             if (userEmail === user?.businessEmail || userEmail === user?.email) {
-                console.log("✅ Email matches - updating state:", status);
 
                 // Only set processing status if it's actually processing (from signup)
                 // Don't restore old completed status on page refresh
@@ -372,7 +334,7 @@ const DashboardPage = () => {
                     setEmailProcessingStatus(status);
                 }
             } else {
-                console.log("❌ Email does not match - ignoring update");
+
             }
         };
 
@@ -397,7 +359,6 @@ const DashboardPage = () => {
         // Check if this is from a page reload (if completedAt already exists, don't start timer)
         if (emailProcessingStatus.completedAt) return;
 
-        console.log("⏱️ Starting 1-minute progress timer for email processing");
         const startTime = Date.now();
         const duration = 60000; // 1 minute in milliseconds
 
@@ -432,7 +393,7 @@ const DashboardPage = () => {
         }, 100); // Update every 100ms for smooth animation
 
         return () => {
-            console.log("⏱️ Cleaning up progress timer");
+
             clearInterval(timer);
         };
     }, [emailProcessingStatus?.isProcessing, emailProcessingStatus?.completedAt]);
@@ -440,7 +401,7 @@ const DashboardPage = () => {
     // Listen for restaurant updates after file uploads
     useEffect(() => {
         const handleRestaurantUpdate = (event) => {
-            console.log("Dashboard: Restaurants updated after upload:", event.detail);
+
             setUserRestaurants(event.detail);
         };
 
@@ -472,7 +433,6 @@ const DashboardPage = () => {
     };
 
     const handleRefreshControlsPanel = async () => {
-        console.log("🔄 Refreshing Controls Panel and Restaurants...");
 
         setRefreshing(true);
 
@@ -485,10 +445,7 @@ const DashboardPage = () => {
                 return;
             }
 
-            console.log("📥 Fetching fresh restaurants for:", email);
             const freshData = await restaurantService.getUserRestaurants(email);
-
-            console.log("✅ Fresh restaurants loaded:", freshData);
 
             // Update state and localStorage
             setUserRestaurants(freshData);
@@ -497,7 +454,7 @@ const DashboardPage = () => {
             // Force Controls Panel to remount with new data
             setControlsPanelKey((prev) => prev + 1);
         } catch (error) {
-            console.error("❌ Error refreshing restaurants:", error);
+            console.error("Γ¥î Error refreshing restaurants:", error);
             // Don't show error on dashboard - just log it
             // User will notice nothing changed in the dropdown
         } finally {
@@ -605,16 +562,8 @@ const DashboardPage = () => {
                 return res;
             });
 
-            console.log("📦 API Response - Parsed Results:", parsedResults);
-            console.log("📦 Number of successful results:", parsedResults.length);
             parsedResults.forEach((result, index) => {
-                console.log(`📦 Result ${index}:`, {
-                    hasConsolidatedInsights: !!result.consolidatedInsights,
-                    hasTimeSeriesData: !!result.timeSeriesData,
-                    timeSeriesLength: result.timeSeriesData?.length || 0,
-                    consolidatedInsights: result.consolidatedInsights,
-                    sampleTimeSeries: result.timeSeriesData?.[0],
-                });
+
             });
 
             // Get successful details
@@ -656,9 +605,9 @@ const DashboardPage = () => {
     const handleRefreshRestaurants = async () => {
         try {
             setLoading(true);
-            console.log("🔄 Manually refreshing user restaurants...");
+
             const freshData = await restaurantService.refreshUserRestaurants();
-            console.log("✓ Restaurants refreshed successfully:", freshData);
+
             setUserRestaurants(freshData);
             // Update localStorage
             localStorage.setItem("userRestaurants", JSON.stringify(freshData));
@@ -700,14 +649,24 @@ const DashboardPage = () => {
                                 gap: "6px",
                             }}
                         >
-                            <span
+                            <svg
+                                width="16"
+                                height="16"
+                                viewBox="0 0 16 16"
+                                fill="none"
                                 style={{
-                                    display: "inline-block",
                                     animation: refreshing ? "spin 1s linear infinite" : "none",
                                 }}
                             >
-                                ↻
-                            </span>
+                                <path
+                                    d="M14 8A6 6 0 1 1 8 2v2a4 4 0 1 0 4 4h2z"
+                                    fill="currentColor"
+                                />
+                                <path
+                                    d="M8 0v4L6 2 8 0zM8 0l2 2-2 2V0z"
+                                    fill="currentColor"
+                                />
+                            </svg>
                             {refreshing ? "Refreshing..." : "Refresh Controls"}
                         </button>
                     </div>
@@ -737,14 +696,24 @@ const DashboardPage = () => {
                             }}
                             title="Refresh controls panel"
                         >
-                            <span
+                            <svg
+                                width="16"
+                                height="16"
+                                viewBox="0 0 16 16"
+                                fill="none"
                                 style={{
-                                    display: "inline-block",
                                     animation: refreshing ? "spin 1s linear infinite" : "none",
                                 }}
                             >
-                                ↻
-                            </span>
+                                <path
+                                    d="M14 8A6 6 0 1 1 8 2v2a4 4 0 1 0 4 4h2z"
+                                    fill="currentColor"
+                                />
+                                <path
+                                    d="M8 0v4L6 2 8 0zM8 0l2 2-2 2V0z"
+                                    fill="currentColor"
+                                />
+                            </svg>
                             {refreshing ? "Refreshing..." : "Refresh"}
                         </button>
                         <button
@@ -880,7 +849,7 @@ const DashboardPage = () => {
                                                 fontSize: "14px",
                                             }}
                                         >
-                                            ⚠️ <strong>Data not available for:</strong>{" "}
+                                            ΓÜá∩╕Å <strong>Data not available for:</strong>{" "}
                                             {dashboardData.excludedChannels
                                                 .map((ch) => `${ch.name} (${ch.platform})`)
                                                 .join(", ")}
@@ -919,7 +888,7 @@ const DashboardPage = () => {
                                         }}
                                     >
                                         <p style={{ margin: 0, fontSize: "0.9rem", color: "#666" }}>
-                                            💡 <strong>Tip:</strong> We tried to load your last
+                                            ≡ƒÆí <strong>Tip:</strong> We tried to load your last
                                             month's data automatically, but it may not be available
                                             yet. Use the controls panel to select specific restaurants
                                             and date ranges for your reports.
@@ -939,10 +908,6 @@ const OAuthCallbackWithNavigation = () => {
     const navigate = useNavigate();
 
     const handleAuthSuccess = async (userData) => {
-        console.log(
-            "✅ Existing user login successful, auth data persisted",
-        );
-        console.log("👤 User data:", userData);
 
         // No navigation here - OAuthCallback component handles navigation
         // after this callback completes
@@ -1015,7 +980,6 @@ const ProfilePageWithNavigation = () => {
 };
 
 function App() {
-    console.log("[dev] App.jsx: rendering App component");
 
     return (
         <Router>
@@ -1052,3 +1016,4 @@ function App() {
 }
 
 export default App;
+
