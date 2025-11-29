@@ -26,6 +26,17 @@ export const formatChartValue = (value, type) => {
     return value;
 };
 
+export const formatMonthPeriod = (period) => {
+    // Assuming period is YYYY-MM
+    if (!period || !period.includes('-')) return period
+    const [year, month] = period.split('-')
+    const monthNames = [
+        'January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December'
+    ]
+    return `${monthNames[parseInt(month, 10) - 1]} ${year}`
+}
+
 export const validateSelections = (restaurants, channels, startDate, endDate) => {
     return restaurants.length > 0 && channels.length > 0 && startDate && endDate;
 };

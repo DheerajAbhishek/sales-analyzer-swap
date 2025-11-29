@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { formatValue } from '../../utils/helpers'
 import DiscountBreakdownModal from './DiscountBreakdownModal'
 
-const SummaryCards = ({ data, selections, discountBreakdown, thresholds }) => {
+const SummaryCards = ({ data, selections, discountBreakdown, thresholds, monthlyData, groupBy }) => {
     const [discountModalOpen, setDiscountModalOpen] = useState({ isOpen: false, position: null })
 
     // Check if single channel is selected for threshold monitoring
@@ -30,30 +30,61 @@ const SummaryCards = ({ data, selections, discountBreakdown, thresholds }) => {
         "GST on Order": "gstOnOrder"
     }
 
+    // Helper function to calculate percentage relative to gross sale after GST
+    const calculatePercentage = (value, grossSaleAfterGST) => {
+        if (!grossSaleAfterGST || grossSaleAfterGST === 0) return 0
+        return Math.abs((value / grossSaleAfterGST) * 100)
+    }
+
     const cardData = [
         { label: "Gross Sale", value: data.grossSale, type: 'currency' },
         { label: "Gross Sale After GST", value: data.grossSaleAfterGST, type: 'currency' },
-        { label: "Net Sale", value: data.netSale, type: 'currency' },
-        { label: "NBV", value: data.nbv, type: 'currency' },
+        {
+            label: "Net Sale",
+            value: data.netSale,
+            type: 'currency',
+            percentage: calculatePercentage(data.netSale, data.grossSaleAfterGST)
+        },
+        {
+            label: "NBV",
+            value: data.nbv,
+            type: 'currency',
+            percentage: calculatePercentage(data.nbv, data.grossSaleAfterGST)
+        },
         { label: "No. of Orders", value: data.noOfOrders, type: 'number' },
         {
             label: "Discounts",
             value: data.discounts,
             type: 'currency',
             hasBreakdown: true,
-            percentage: data.discountPercent,
+            percentage: data.discountPercent || calculatePercentage(data.discounts, data.grossSaleAfterGST),
             threshold: thresholds?.discount
         },
-        { label: "Commission & Taxes", value: data.commissionAndTaxes, type: 'currency' },
+        {
+            label: "Commission & Taxes",
+            value: data.commissionAndTaxes,
+            type: 'currency',
+            percentage: calculatePercentage(data.commissionAndTaxes, data.grossSaleAfterGST)
+        },
         {
             label: "Ads",
             value: data.ads,
             type: 'currency',
-            percentage: data.adsPercent,
+            percentage: data.adsPercent || calculatePercentage(data.ads, data.grossSaleAfterGST),
             threshold: thresholds?.ads
         },
-        { label: "Packings", value: data.packings, type: 'currency' },
-        { label: "GST on Order", value: data.gstOnOrder, type: 'currency' }
+        {
+            label: "Packings",
+            value: data.packings,
+            type: 'currency',
+            percentage: calculatePercentage(data.packings, data.grossSaleAfterGST)
+        },
+        {
+            label: "GST on Order",
+            value: data.gstOnOrder,
+            type: 'currency',
+            percentage: calculatePercentage(data.gstOnOrder, data.grossSaleAfterGST)
+        }
     ]
 
     const scrollToChart = (label) => {
@@ -84,7 +115,7 @@ const SummaryCards = ({ data, selections, discountBreakdown, thresholds }) => {
         e.stopPropagation() // Prevent card click from triggering
 
         if (!discountBreakdown) {
-            alert('Discount breakdown is only available for Swiggy channel with single restaurant selection')
+            alert('Discount breakdown is available for Swiggy, Zomato, and Subscription channels')
             return
         }
 
@@ -125,6 +156,7 @@ const SummaryCards = ({ data, selections, discountBreakdown, thresholds }) => {
                     </div>
                 </div>
             )}
+
             <div className="summary-grid">
                 {cardData.map((item, index) => (
                     <div
@@ -156,7 +188,7 @@ const SummaryCards = ({ data, selections, discountBreakdown, thresholds }) => {
                                     margin: '4px 0 0 0',
                                     fontWeight: item.threshold !== undefined && isSingleChannelSelected ? '600' : 'normal'
                                 }}>
-                                    ({item.percentage.toFixed(2)}% of Gross Sale After GST)
+                                    ({item.percentage.toFixed(1)}% of Gross Sale After GST)
                                 </p>
                                 {item.threshold !== undefined && isSingleChannelSelected && (
                                     <p style={{
@@ -175,6 +207,13 @@ const SummaryCards = ({ data, selections, discountBreakdown, thresholds }) => {
                 ))}
             </div>
 
+            {groupBy === 'month' && (
+                <MonthlyComparisonView
+                    monthlyData={monthlyData}
+                    scrollToChart={scrollToChart}
+                />
+            )}
+
             <DiscountBreakdownModal
                 isOpen={discountModalOpen.isOpen}
                 onClose={() => setDiscountModalOpen({ isOpen: false, position: null })}
@@ -184,6 +223,128 @@ const SummaryCards = ({ data, selections, discountBreakdown, thresholds }) => {
             />
         </>
     )
+}
+
+// Monthly Comparison Component
+const MonthlyComparisonView = ({ monthlyData, scrollToChart }) => {
+    if (!monthlyData || Object.keys(monthlyData).length === 0) {
+        return (
+            <div style={{
+                textAlign: 'center',
+                padding: '2rem',
+                color: '#64748b',
+                fontStyle: 'italic'
+            }}>
+                No monthly data available for comparison
+            </div>
+        )
+    }
+
+    const months = Object.keys(monthlyData).sort()
+    const metrics = [
+        { key: 'grossSale', label: 'Gross Sale', type: 'currency' },
+        { key: 'grossSaleAfterGST', label: 'Gross Sale After GST', type: 'currency' },
+        { key: 'netSale', label: 'Net Sale', type: 'currency' },
+        { key: 'nbv', label: 'NBV', type: 'currency' },
+        { key: 'noOfOrders', label: 'No. of Orders', type: 'number' },
+        { key: 'discounts', label: 'Discounts', type: 'currency' },
+        { key: 'commissionAndTaxes', label: 'Commission & Taxes', type: 'currency' },
+        { key: 'ads', label: 'Ads', type: 'currency' },
+        { key: 'packings', label: 'Packings', type: 'currency' },
+        { key: 'gstOnOrder', label: 'GST on Order', type: 'currency' }
+    ]
+
+    return (
+        <div>
+            <h3 style={{
+                marginBottom: '1.5rem',
+                color: '#334155',
+                fontSize: '1.2rem',
+                textAlign: 'center'
+            }}>
+                📅 Month-on-Month Comparison ({months.length} months)
+            </h3>
+
+            <div style={{ display: 'grid', gap: '1.5rem' }}>
+                {metrics.map(metric => (
+                    <div
+                        key={metric.key}
+                        className="monthly-comparison-card"
+                        onClick={() => scrollToChart(metric.label)}
+                        title={`Click to view ${metric.label} chart`}
+                    >
+                        <h4 className="monthly-metric-title">{metric.label}</h4>
+
+                        <div className="monthly-data-grid">
+                            {months.map(month => {
+                                const value = monthlyData[month][metric.key] || 0
+                                return (
+                                    <div key={month} className="monthly-data-item">
+                                        <div className="monthly-data-month">
+                                            {formatMonthDisplay(month)}
+                                        </div>
+                                        <div className="monthly-data-value">
+                                            {formatValue(value, metric.type)}
+                                        </div>
+                                    </div>
+                                )
+                            })}
+                        </div>
+
+                        {/* Show growth/decline if there are multiple months */}
+                        {months.length > 1 && (
+                            <MonthlyGrowthIndicator
+                                months={months}
+                                monthlyData={monthlyData}
+                                metricKey={metric.key}
+                            />
+                        )}
+                    </div>
+                ))}
+            </div>
+        </div>
+    )
+}
+
+// Growth Indicator Component
+const MonthlyGrowthIndicator = ({ months, monthlyData, metricKey }) => {
+    const firstMonth = months[0]
+    const lastMonth = months[months.length - 1]
+    const firstValue = monthlyData[firstMonth][metricKey] || 0
+    const lastValue = monthlyData[lastMonth][metricKey] || 0
+
+    if (firstValue === 0) return null
+
+    const growthPercent = ((lastValue - firstValue) / firstValue) * 100
+    const isPositive = growthPercent > 0
+    const isNegative = growthPercent < 0
+
+    const className = `monthly-growth-indicator ${isPositive ? 'growth-positive' : isNegative ? 'growth-negative' : ''}`
+
+    return (
+        <div className={className}>
+            <span style={{ fontWeight: '600', fontSize: '0.9rem' }}>
+                {isPositive ? '📈' : isNegative ? '📉' : '➡️'}
+                {' '}
+                {Math.abs(growthPercent).toFixed(1)}%
+                {isPositive ? ' growth' : isNegative ? ' decline' : ' no change'}
+            </span>
+            <span style={{ color: '#64748b', marginLeft: '0.5rem', fontSize: '0.85rem' }}>
+                ({formatMonthDisplay(firstMonth)} → {formatMonthDisplay(lastMonth)})
+            </span>
+        </div>
+    )
+}
+
+// Helper function to format month display
+const formatMonthDisplay = (monthString) => {
+    // Assuming monthString is in YYYY-MM format
+    const [year, month] = monthString.split('-')
+    const monthNames = [
+        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    ]
+    return `${monthNames[parseInt(month) - 1]} ${year}`
 }
 
 export default SummaryCards

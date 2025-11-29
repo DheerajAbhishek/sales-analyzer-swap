@@ -2,7 +2,7 @@ import React from 'react'
 import MetricChart from './MetricChart.jsx'
 import { METRICS_CONFIG } from '../../utils/constants'
 
-const ChartsGrid = ({ type, data }) => {
+const ChartsGrid = ({ type, data, groupBy }) => {
     if (type === 'comparison') {
         return (
             <div className="charts-grid">
@@ -30,6 +30,7 @@ const ChartsGrid = ({ type, data }) => {
                         type="timeSeries"
                         data={data}
                         periods={periods}
+                        groupBy={groupBy}
                     />
                 ))}
             </div>

@@ -51,7 +51,7 @@ const ReportControls = ({ onGetReport, loading }) => {
                 setAdsThreshold(result.data.adsThreshold)
             }
         } catch (error) {
-            console.error('Failed to load threshold settings:', error)
+            // Silently handle error
             setThresholdError('Failed to load saved thresholds. Using defaults.')
         } finally {
             setThresholdLoading(false)
@@ -84,7 +84,7 @@ const ReportControls = ({ onGetReport, loading }) => {
                 }))
             }
         } catch (error) {
-            console.error('Error fetching last available date:', error)
+            // Silently handle error
             setRestaurantLastDates(prev => ({
                 ...prev,
                 [restaurantKey]: {
@@ -147,13 +147,13 @@ const ReportControls = ({ onGetReport, loading }) => {
 
             const result = await thresholdService.updateThresholds(updateData)
             if (!result.success) {
-                console.error('Failed to save threshold:', result.error)
+                // Silently handle error
                 setThresholdError(`Failed to save ${type}: ${result.error}`)
             } else {
                 setThresholdError(null)
             }
         } catch (error) {
-            console.error('Error saving threshold:', error)
+            // Silently handle error
             setThresholdError(`Failed to save ${type}`)
         }
     }
@@ -197,6 +197,7 @@ const ReportControls = ({ onGetReport, loading }) => {
         { value: 'zomato', label: 'Zomato' },
         { value: 'swiggy', label: 'Swiggy' },
         { value: 'takeaway', label: 'Takeaway' },
+        { value: 'corporate', label: 'Corporate Orders' },
         { value: 'subs', label: 'Subscriptions' }
     ]
 
@@ -347,7 +348,7 @@ const ReportControls = ({ onGetReport, loading }) => {
                                                 {lastDateInfo.hasData ? (
                                                     <div>
                                                         {lastDateInfo.platforms.map((platform, index) => (
-                                                            <div key={platform.platformId} style={{
+                                                            <div key={`${platform.platformId}-${platform.platform}`} style={{
                                                                 marginBottom: index < lastDateInfo.platforms.length - 1 ? '2px' : '0'
                                                             }}>
                                                                 {platform.date ? (

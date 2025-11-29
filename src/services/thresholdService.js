@@ -30,7 +30,7 @@ export const thresholdService = {
                 throw new Error(data.error || 'Failed to get threshold settings');
             }
         } catch (error) {
-            console.error('Error getting threshold settings:', error);
+            // Silently handle error and return default values
             return {
                 success: false,
                 error: error.message,
@@ -95,7 +95,7 @@ export const thresholdService = {
                 throw new Error(data.error || 'Failed to save threshold settings');
             }
         } catch (error) {
-            console.error('Error saving threshold settings:', error);
+            // Silently handle error
             return {
                 success: false,
                 error: error.message
@@ -154,7 +154,7 @@ export const thresholdService = {
                 throw new Error(data.error || 'Failed to update threshold settings');
             }
         } catch (error) {
-            console.error('Error updating threshold settings:', error);
+            // Silently handle error
             return {
                 success: false,
                 error: error.message
@@ -191,7 +191,7 @@ export const thresholdService = {
                 throw new Error(data.error || 'Failed to delete threshold settings');
             }
         } catch (error) {
-            console.error('Error deleting threshold settings:', error);
+            // Silently handle error
             return {
                 success: false,
                 error: error.message

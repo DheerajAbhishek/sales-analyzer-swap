@@ -1,39 +1,48 @@
 export const API_BASE_URL = "https://xiphvj43ij.execute-api.ap-south-1.amazonaws.com/Prod";
 
+export const RISTA_API_KEY = import.meta.env.VITE_RISTA_API_KEY;
+export const RISTA_SECRET_KEY = import.meta.env.VITE_RISTA_SECRET_KEY;
+export const RISTA_API_URL = import.meta.env.VITE_RISTA_API_URL;
+
 export const RESTAURANT_ID_MAP = {
     'main_kitchen': {
         name: 'Main Kitchen',
         zomato: '19251816',
         swiggy: '224899',
-        takeaway: 'Ninithaa\u2019s Highs', // Updated to use Unicode right single quotation mark
+        takeaway: 'MK',
+        corporate: 'MK',
         subs: 'subsMK'
     },
     'madhapur': {
         name: 'Madhapur',
         zomato: '19677040',
         swiggy: '366522',
-        takeaway: '',
+        takeaway: 'MADH',
+        corporate: 'MADH',
         subs: 'subsMadhapur'
     },
     'banjara_hills': {
         name: 'Banjara Hills',
         zomato: '21481358',
         swiggy: '977488',
-        takeaway: '',
-        subs: 'subsBanjara Hills'
+        takeaway: 'SMF',
+        corporate: 'SMF',
+        subs: 'subsBH'
     },
     'madhurawada_vuda_colony': {
         name: 'Madhurawada',
         zomato: '20289495',
         swiggy: '547103',
-        takeaway: '',
+        takeaway: 'MAD',
+        corporate: 'MAD',
         subs: ''
     },
     'kondapur': {
         name: 'Kondapur',
         zomato: '20534248',
         swiggy: '662306',
-        takeaway: '',
+        takeaway: 'KDPR',
+        corporate: 'KDPR',
         subs: 'subsKDPR'
     },
     'nad': {
@@ -41,6 +50,7 @@ export const RESTAURANT_ID_MAP = {
         zomato: '20126789',
         swiggy: '492064',
         takeaway: '',
+        corporate: '',
         subs: 'subsNAD'
     },
     'bellandur': {
@@ -48,6 +58,7 @@ export const RESTAURANT_ID_MAP = {
         zomato: '20906774',
         swiggy: '785991',
         takeaway: '',
+        corporate: '',
         subs: 'subsBLR'
     },
     'tirupathi': {
@@ -55,29 +66,106 @@ export const RESTAURANT_ID_MAP = {
         zomato: '20379393',
         swiggy: '590420',
         takeaway: '',
+        corporate: '',
         subs: ''
     },
     'vijayawada': {
         name: 'Vijayawada',
         zomato: '20916901',
         swiggy: '793916',
-        takeaway: '',
+        takeaway: 'VJWD',
+        corporate: 'VJWD',
         subs: 'subsVJWD'
     },
-    'vizag': {
-        name: 'Vizag',
+    'hyderabad_whitefields': {
+        name: 'Hyderabad Whitefields',
         zomato: '22097588',
-        swiggy: '1181548',
+        swiggy: '994656',
         takeaway: '',
-        subs: 'subsVizag'
+        corporate: '',
+        subs: ''
     },
-    'bh': {
-        name: 'BH',
+    'banglore_koramangala': {
+        name: 'Bangalore Koramangala',
         zomato: '22154339',
         swiggy: '1181549',
-        takeaway: '',
-        subs: 'subsBH'
+        takeaway: 'KRMG',
+        corporate: 'KRMG',
+        subs: 'subsBLR'
+    },
+    'Animal Fitness': {
+        name: 'Animal Fitness',
+        zomato: '',
+        swiggy: '',
+        takeaway: 'AF',
+        corporate: 'AF',
+        subs: ''
+    },
+    'Apple Fitness': {
+        name: 'Apple Fitness',
+        zomato: '',
+        swiggy: '',
+        takeaway: 'SAF',
+        corporate: 'SAF',
+        subs: ''
+    },
+    'Swap - millennium Fitness': {
+        name: 'Swap - Millennium Fitness',
+        zomato: '',
+        swiggy: '',
+        takeaway: 'SMF',
+        corporate: 'SMF',
+        subs: ''
+    },
+    'Fit Nation': {
+        name: 'Fit Nation',
+        zomato: '',
+        swiggy: '',
+        takeaway: 'SFN',
+        corporate: 'SFN',
+        subs: ''
+    },
+    'WeWork Kondapur': {
+        name: 'WeWork Kondapur',
+        zomato: '',
+        swiggy: '',
+        takeaway: 'WWK',
+        corporate: 'WWK',
+        subs: ''
+    },
+    'WeWork Roshni': {
+        name: 'WeWork Roshni',
+        zomato: '',
+        swiggy: '',
+        takeaway: 'WWR',
+        corporate: 'WWR',
+        subs: ''
+    },
+    'WeWork Vaishnavi Signature': {
+        name: 'WeWork Vaishnavi Signature',
+        zomato: '',
+        swiggy: '',
+        takeaway: 'WWVS',
+        corporate: 'WWVS',
+        subs: ''
+    },
+    'Wework Rajapushpa': {
+        name: 'WeWork Rajapushpa',
+        zomato: '',
+        swiggy: '',
+        takeaway: 'RPS',
+        corporate: 'RPS',
+        subs: ''
+    },
+    'Wework Symbiosis': {
+        name: 'Wework Symbiosis',
+        zomato: '',
+        swiggy: '',
+        takeaway: 'BEN',
+        corporate: 'BEN',
+        subs: ''
     }
+
 };
 
 // Helper function to get all platform IDs for a restaurant
@@ -89,6 +177,7 @@ export const getRestaurantPlatformIds = (restaurantKey) => {
         restaurant.zomato,
         restaurant.swiggy,
         restaurant.takeaway,
+        restaurant.corporate,
         restaurant.subs
     ].filter(id => id && id.trim() !== '');
 
@@ -99,12 +188,25 @@ export const getRestaurantPlatformIds = (restaurantKey) => {
 
 // Helper function to get the latest date across all platforms for a restaurant
 export const getRestaurantLatestDate = async (restaurantKey) => {
-    const platformIds = getRestaurantPlatformIds(restaurantKey);
+    const restaurant = RESTAURANT_ID_MAP[restaurantKey];
+    if (!restaurant) return { platforms: [], hasData: false };
+
+    const allPlatformIds = getRestaurantPlatformIds(restaurantKey);
     const results = [];
 
-    console.log(`Checking platforms for ${restaurantKey}:`, platformIds);
+    // Define which channels are on-demand and should be excluded from this check
+    // Use a Set to avoid duplicates when takeaway and corporate have the same ID
+    const onDemandChannelsSet = new Set();
+    if (restaurant.takeaway) onDemandChannelsSet.add(restaurant.takeaway);
+    if (restaurant.corporate) onDemandChannelsSet.add(restaurant.corporate);
+    const onDemandChannels = Array.from(onDemandChannelsSet);
 
-    for (const platformId of platformIds) {
+    // Filter out the on-demand channels
+    const platformIdsToCheck = allPlatformIds.filter(id => !onDemandChannels.includes(id));
+
+    console.log(`Checking latest dates for platforms:`, platformIdsToCheck);
+
+    for (const platformId of platformIdsToCheck) {
         try {
             const response = await fetch(`${API_BASE_URL}/get-last-date`, {
                 method: 'POST',
@@ -112,9 +214,6 @@ export const getRestaurantLatestDate = async (restaurantKey) => {
                 body: JSON.stringify({ restaurantId: platformId })
             });
             const data = await response.json();
-
-            console.log(`Platform ${platformId} response:`, data);
-
             const platformName = getPlatformName(restaurantKey, platformId);
 
             if (data.success && data.data.lastDate) {
@@ -125,7 +224,6 @@ export const getRestaurantLatestDate = async (restaurantKey) => {
                     totalDates: data.data.totalDatesFound || 0
                 });
             } else {
-                // Include platforms with no data
                 results.push({
                     platformId,
                     date: null,
@@ -134,7 +232,6 @@ export const getRestaurantLatestDate = async (restaurantKey) => {
                 });
             }
         } catch (error) {
-            console.error(`Error fetching date for ${platformId}:`, error);
             results.push({
                 platformId,
                 date: null,
@@ -144,9 +241,26 @@ export const getRestaurantLatestDate = async (restaurantKey) => {
         }
     }
 
-    console.log(`Results for ${restaurantKey}:`, results);
+    // Add placeholder info for the excluded on-demand channels so the UI knows about them
+    onDemandChannels.forEach(id => {
+        // Check if this ID is used for both takeaway and corporate
+        const isTakeaway = restaurant.takeaway === id;
+        const isCorporate = restaurant.corporate === id;
+        let platformLabel;
+        if (isTakeaway && isCorporate) {
+            platformLabel = 'Takeaway/Corporate';
+        } else {
+            platformLabel = getPlatformName(restaurantKey, id);
+        }
 
-    // Return all platform results
+        results.push({
+            platformId: id,
+            date: 'On-Demand', // Special text for UI
+            platform: platformLabel,
+            totalDates: 'N/A'
+        });
+    });
+
     return {
         platforms: results,
         hasData: results.some(r => r.date !== null)
@@ -161,6 +275,7 @@ const getPlatformName = (restaurantKey, platformId) => {
     if (restaurant.zomato === platformId) return 'Zomato';
     if (restaurant.swiggy === platformId) return 'Swiggy';
     if (restaurant.takeaway === platformId) return 'Takeaway';
+    if (restaurant.corporate === platformId) return 'Corporate Orders';
     if (restaurant.subs === platformId) return 'Subscriptions';
 
     return 'Unknown';
@@ -170,6 +285,7 @@ export const CHART_COLORS = {
     zomato: "#ef4444",        // Red
     swiggy: "#f97316",        // Orange
     takeaway: "#22c55e",      // Green
+    corporate: "#8b5cf6",      // Purple
     subscription: "#16a34a",  // Dark Green
     subs: "#16a34a",          // Alias for subscription
     primary: "#6366f1",
@@ -203,6 +319,7 @@ export const CHART_COLORS = {
         zomato: "#ef4444",
         swiggy: "#f97316",
         takeaway: "#22c55e",
+        corporate: "#8b5cf6",
         subscription: "#16a34a",
         subs: "#16a34a"
     },
@@ -212,7 +329,8 @@ export const CHART_COLORS = {
         "#f97316", // Orange (Swiggy)
         "#22c55e", // Green (Takeaway)
         "#16a34a", // Dark Green (Subscription)
-        "#6366f1", // Purple
+        "#8b5cf6", // Purple (Corporate)
+        "#6366f1", // Indigo
         "#3b82f6", // Blue
         "#06b6d4", // Cyan
         "#ec4899", // Pink
@@ -223,15 +341,74 @@ export const CHART_COLORS = {
 
 export const METRICS_CONFIG = [
     { key: 'grossSale', title: 'Gross Sale', type: 'currency' },
-    { key: 'netSale', title: 'Net Sale', type: 'currency' },
-    { key: 'nbv', title: 'NBV', type: 'currency' },
-    { key: 'noOfOrders', title: 'No. of Orders', type: 'number' },
     { key: 'discounts', title: 'Discounts', type: 'currency' },
     { key: 'commissionAndTaxes', title: 'Commission & Taxes', type: 'currency' },
     { key: 'ads', title: 'Ads', type: 'currency' },
-    { key: 'packings', title: 'Packings', type: 'currency' },
-    { key: 'gstOnOrder', title: 'GST on Order', type: 'currency' },
+    { key: 'netSale', title: 'Net Sale', type: 'currency' },
+    { key: 'noOfOrders', title: 'No. of Orders', type: 'number' },
     { key: 'commissionPercent', title: 'Commission %', type: 'percent' },
     { key: 'discountPercent', title: 'Discount %', type: 'percent' },
     { key: 'adsPercent', title: 'Ads %', type: 'percent' }
 ];
+
+// Function to check data availability for selected channels
+export const checkChannelDataAvailability = async (selectedChannels, restaurantKey) => {
+    const results = {
+        selectedChannels: [...selectedChannels],
+        availableChannels: [],
+        missingChannels: [],
+        channelData: {}
+    };
+
+    // Get platform mapping for the restaurant
+    const restaurant = RESTAURANT_ID_MAP[restaurantKey];
+    if (!restaurant) {
+        results.missingChannels = [...selectedChannels];
+        return results;
+    }
+
+    // Map channel names to platform IDs
+    const channelMapping = {
+        'zomato': restaurant.zomato,
+        'swiggy': restaurant.swiggy,
+        'takeaway': restaurant.takeaway,
+        'corporate': restaurant.corporate,
+        'subscription': restaurant.subs,
+        'subs': restaurant.subs
+    };
+
+    for (const channel of selectedChannels) {
+        const platformId = channelMapping[channel.toLowerCase()];
+
+        if (!platformId || platformId.trim() === '') {
+            results.missingChannels.push(channel);
+            results.channelData[channel] = false;
+            continue;
+        }
+
+        try {
+            // Check if data exists for this platform
+            const response = await fetch(`${API_BASE_URL}/get-last-date`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ restaurantId: platformId })
+            });
+
+            const data = await response.json();
+
+            if (data.success && data.data.lastDate) {
+                results.availableChannels.push(channel);
+                results.channelData[channel] = true;
+            } else {
+                results.missingChannels.push(channel);
+                results.channelData[channel] = false;
+            }
+        } catch (error) {
+            // Silently handle errors - just mark channel as unavailable
+            results.missingChannels.push(channel);
+            results.channelData[channel] = false;
+        }
+    }
+
+    return results;
+};

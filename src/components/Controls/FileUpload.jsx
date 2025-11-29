@@ -5,6 +5,7 @@ const FileUpload = () => {
     const [selectedFiles, setSelectedFiles] = useState([])
     const [uploadStatus, setUploadStatus] = useState('')
     const [uploading, setUploading] = useState(false)
+    const [isDragging, setIsDragging] = useState(false)
 
     const handleFileSelect = (event) => {
         const files = Array.from(event.target.files)
@@ -16,6 +17,49 @@ const FileUpload = () => {
             setUploadStatus(`${files.length} files selected`)
         } else {
             setUploadStatus('')
+        }
+    }
+
+    const handleDragOver = (event) => {
+        event.preventDefault()
+        event.stopPropagation()
+        setIsDragging(true)
+    }
+
+    const handleDragLeave = (event) => {
+        event.preventDefault()
+        event.stopPropagation()
+        setIsDragging(false)
+    }
+
+    const handleDrop = (event) => {
+        event.preventDefault()
+        event.stopPropagation()
+        setIsDragging(false)
+
+        const files = Array.from(event.dataTransfer.files)
+        // Filter only allowed file types
+        const validFiles = files.filter(file => {
+            const ext = file.name.toLowerCase()
+            return ext.endsWith('.xlsx') || ext.endsWith('.xls') || ext.endsWith('.csv')
+        })
+
+        if (validFiles.length > 0) {
+            setSelectedFiles(validFiles)
+
+            if (validFiles.length === 1) {
+                setUploadStatus(`Selected: ${validFiles[0].name}`)
+            } else if (validFiles.length > 1) {
+                setUploadStatus(`${validFiles.length} files selected`)
+            }
+        } else {
+            setUploadStatus('⚠️ Please drop only .xlsx, .xls, or .csv files')
+        }
+
+        if (files.length !== validFiles.length) {
+            setTimeout(() => {
+                setUploadStatus(`${validFiles.length} valid files selected (${files.length - validFiles.length} invalid files ignored)`)
+            }, 100)
         }
     }
 
@@ -90,7 +134,12 @@ const FileUpload = () => {
             <h2 className="card-header">Upload New Report(s)</h2>
 
             <label htmlFor="file-upload">
-                <div className="upload-box">
+                <div
+                    className={`upload-box ${isDragging ? 'dragging' : ''}`}
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                >
                     <p>Drag & drop files here, or click to browse</p>
                     <p style={{ fontSize: '0.9rem', marginTop: '0.5rem', color: 'var(--primary-gray)' }}>
                         Supports .xlsx, .xls, .csv files

@@ -5,6 +5,7 @@ import pandas as pd
 import logging
 import re
 import hashlib
+from botocore.exceptions import ClientError
 
 # Set up logging
 logger = logging.getLogger()
@@ -64,10 +65,32 @@ def read_file(tmp_path, file_ext, skiprows=0, sheet_name=None):
 def lambda_handler(event, context):
     job_id = event.get("requestContext", {}).get("jobId")
 
+    def _sanitize_email_for_key(email: str) -> str:
+        if not email:
+            return "unknown"
+        e = email.strip().lower()
+        e = e.replace("@", "_at_")
+        e = e.replace(".", "_dot_")
+        import re
+
+        e = re.sub(r"[^a-z0-9_\-]", "_", e)
+        return e
+
     try:
         # ---------------- File Processing ----------------
         params = event.get("queryStringParameters") or {}
         filename_from_event = params.get("filename")
+        # businessEmail may be passed as a query param or in request body
+        business_email = params.get("businessEmail") or params.get("business_email")
+        if not business_email:
+            # try to get from body if available
+            try:
+                body = json.loads(event.get("body") or "{}")
+                business_email = body.get("businessEmail") or body.get("business_email")
+            except Exception:
+                business_email = None
+
+        user_folder = _sanitize_email_for_key(business_email) if business_email else None
 
         if not filename_from_event:
             return {
@@ -80,6 +103,7 @@ def lambda_handler(event, context):
         file_hash = get_file_hash(tmp_path)
 
         file_ext = os.path.splitext(filename_from_event)[1].lower()
+        logger.info(f"✅ File downloaded: {filename_from_event}, format: {file_ext}")
         logger.info(
             f"Processing file '{filename_from_event}' with hash: {file_hash} and extension {file_ext}"
         )
@@ -191,6 +215,7 @@ def lambda_handler(event, context):
         if file_format == "zomato":
             patterns = {
                 "res_id": r"Res\. ID",
+                "order_id": r"Order ID",
                 "order_date": r"Order Date",
                 "subtotal": r"Subtotal.*\(items total\)",
                 "packaging_charge": r"Packaging charge",
@@ -198,13 +223,13 @@ def lambda_handler(event, context):
                 "discount_promo": r"Restaurant discount.*Promo.*",
                 "discount_other": r"Restaurant discount.*BOGO.*others",
                 "gst_on_order": r"Total GST collected from customers",
-                "commission": r"Service fee\b",
-                "payment_fee": r"Payment mechanism fee.*",
+                "service_and_payment_fee": r"Service fee & payment mechanism fee",
                 "tax_on_service": r"Taxes on service.*",
                 "tds_amount": r"TDS 194O amount.*",
             }
         elif file_format == "swiggy":
             patterns = {
+                "order_id": r"Order\s*(ID|No\.?|Number)",
                 "order_date": r"Order Date",
                 "item_total": r"Item Total",
                 "packaging_charges": r"Packaging Charges",
@@ -220,6 +245,7 @@ def lambda_handler(event, context):
             patterns = {
                 "branch_name": r"Branch Name",
                 "order_source": r"Order Source",
+                "order_id": r"Invoice Number",
                 "order_date": r"Invoice Date",
                 "gross_sale": r"Gross Amount",
                 "discounts": r"Discounts",
@@ -270,148 +296,19 @@ def lambda_handler(event, context):
         df.dropna(subset=[date_col], inplace=True)
         df[date_col] = df[date_col].dt.date
 
-        # Takeaway: keep only POS rows
-        if file_format == "takeaway" and found_cols.get("order_source"):
-            src_col = found_cols["order_source"]
-            df = df[df[src_col].astype(str).str.upper() == "POS"]
+        corporate_df = None
+        if file_format == "takeaway" and "Channel" in df.columns:
+            df["_channel_norm"] = df["Channel"].astype(str).str.strip()
+            corporate_df = df[df["_channel_norm"] == "Corporate Orders"].copy()
+            df = df[df["_channel_norm"] == "Takeaway - Swap"].copy()
 
         num_days = len(df[date_col].unique())
         daily_ad_cost = total_ads / num_days if num_days > 0 else 0.0
 
         # Numeric conversion (skip non-numeric/string columns)
         for key, col_name in found_cols.items():
-            if key not in ["order_date", "res_id", "branch_name", "order_source"] and col_name:
+            if key not in ["order_date", "res_id", "branch_name", "order_source", "order_id"] and col_name:
                 df.loc[:, col_name] = pd.to_numeric(df[col_name], errors="coerce").fillna(0)
-                # --- Extra Discount Breakdown for Swiggy ---
-        
-        discount_breakdown = {}
-        if file_format == "swiggy" and file_ext != ".csv":
-            try:
-                disc_df = pd.read_excel(
-                tmp_path, engine="openpyxl", sheet_name="Discount Summary", skiprows=1
-                )
-                logger.info(f"Columns in Discount Summary: {disc_df.columns.tolist()}")
-                # Normalize column names
-                disc_df.columns = disc_df.columns.str.strip().str.replace("\n", " ", regex=False)
-
-                share_col = next((c for c in disc_df.columns if "Restaurant Share (%)" in c), None)
-                orders_col = next((c for c in disc_df.columns if "Total Orders" in c), None)
-                discount_col = next((c for c in disc_df.columns if "Total Discount Given" in c), None)
-
-                if share_col and orders_col and discount_col:
-                    disc_df[share_col] = disc_df[share_col].fillna("Undefined")
-                    disc_df[share_col] = disc_df[share_col].astype(str).str.strip()
-                    disc_df.loc[disc_df[share_col] == "", share_col] = "Undefined"
-
-                    grouped = disc_df.groupby(disc_df[share_col])
-
-                    for share, group in grouped:
-                        total_orders = group[orders_col].apply(safe_num).sum()
-                        total_discount = group[discount_col].apply(safe_num).sum()
-                        discount_breakdown[share] = {
-                            "orders": int(total_orders),
-                            "discount": round(float(total_discount), 2),
-                        }
-
-                    # --- Insert ordering logic here ---
-                    ordered_breakdown = {}
-
-                    # Numeric-like keys first (e.g., "65", "100")
-                    for key in sorted([k for k in discount_breakdown if k not in ["Undefined"] and not k.upper().startswith("TOTAL")],
-                                      key=lambda x: float(re.sub(r'[^0-9.]', '', x)) if re.sub(r'[^0-9.]', '', x) else 0):
-                        ordered_breakdown[key] = discount_breakdown[key]
-
-                    # Undefined next (if exists)
-                    if "Undefined" in discount_breakdown:
-                        ordered_breakdown["Undefined"] = discount_breakdown["Undefined"]
-
-                    # TOTAL always last
-                    total_orders_sum = sum(v["orders"] for k, v in discount_breakdown.items() if k not in ["TOTAL"])
-                    total_discount_sum = sum(v["discount"] for k, v in discount_breakdown.items() if k not in ["TOTAL"])
-                    ordered_breakdown["TOTAL"] = {
-                        "orders": int(total_orders_sum),
-                        "discount": round(float(total_discount_sum), 2),
-                    }
-
-                    discount_breakdown = ordered_breakdown
-
-            except Exception as e:
-                logger.warning(f"Could not extract Discount Summary for Swiggy: {e}")
-                # --- Extra Discount Breakdown for Zomato ---
-        if file_format == "zomato" and file_ext != ".csv":
-            try:
-                # Use the same Order Level sheet already read in df
-                disc_df = read_file(tmp_path, file_ext, skiprows=6, sheet_name="Order Level")
-                logger.info(f"Columns in Order Level (Zomato): {disc_df.columns.tolist()}")
-
-                disc_df.columns = disc_df.columns.str.strip().str.replace("\n", " ", regex=False)
-
-                # --- ## REFINED ##: Reuse columns found earlier ---
-                # Get promo and other discount column names directly from found_cols
-                promo_col = found_cols.get("discount_promo")
-                other_discount_col = found_cols.get("discount_other")
-                
-                # We still need to find the 'discount construct' column as it's not in the main patterns
-                offer_col = next((c for c in disc_df.columns if "discount construct" in c.lower()), None)
-
-                if offer_col and promo_col and other_discount_col:
-                    # --- Prepare the data ---
-                    disc_df[offer_col] = disc_df[offer_col].fillna("Undefined").astype(str).str.strip()
-                    disc_df[promo_col] = disc_df[promo_col].apply(safe_num)
-                    disc_df[other_discount_col] = disc_df[other_discount_col].apply(safe_num)
-
-                    discount_breakdown = {}
-
-                    # --- First, calculate the total for the "Other Discounts" column ---
-                    total_other_discounts = disc_df[other_discount_col].sum()
-
-                    if total_other_discounts > 0:
-                        orders_with_other_discount = len(disc_df[disc_df[other_discount_col] > 0])
-                        discount_breakdown["Other Discounts (BOGO, Freebies, etc.)"] = {
-                            "orders": orders_with_other_discount,
-                            "totalDiscount": round(float(total_other_discounts), 2)
-                        }
-                    
-                    # --- Now, process the promo discounts by grouping ---
-                    disc_df["_clean_offer"] = disc_df[offer_col].str.replace(r"\s*\(.*?\)", "", regex=True).str.strip()
-                    grouped = disc_df.groupby("_clean_offer")
-
-                    for offer, group in grouped:
-                        if offer == "Undefined":
-                            continue
-
-                        total_discount = group[promo_col].sum()
-                        order_count = len(group)
-                        
-                        if total_discount > 0:
-                            x = total_discount / order_count if order_count > 0 else 0.0
-                            match = re.search(r"₹\s*(\d+)", offer)
-                            extracted_val = float(match.group(1)) if match else None
-                            ratio = None
-                            if extracted_val and extracted_val > 0:
-                                ratio = round((x / extracted_val) * 100, 2)
-
-                            discount_breakdown[offer] = {
-                                "orders": order_count,
-                                "totalDiscount": round(float(total_discount), 2),
-                                "avgDiscountPerOrder": round(x, 2),
-                                "offerValue": extracted_val,
-                                "valueRealizationPercentage": ratio
-                            }
-
-                    # --- Calculate TOTAL at the end ---
-                    if discount_breakdown:
-                        all_orders = sum(v["orders"] for v in discount_breakdown.values())
-                        all_discount = sum(v["totalDiscount"] for v in discount_breakdown.values())
-                        discount_breakdown["TOTAL"] = {
-                            "orders": int(all_orders),
-                            "totalDiscount": round(all_discount, 2),
-                        }
-
-            except Exception as e:
-                logger.warning(f"Could not extract Order Level discount breakdown for Zomato: {e}")
-
-
 
         # ---------------- Aggregation Totals ----------------
         total_orders = 0
@@ -424,36 +321,95 @@ def lambda_handler(event, context):
         total_ads_accum = 0.0
         total_nbv = 0.0
         total_net_sale = 0.0
+        
+        # Collect all new orders for discount breakdown calculation
+        all_new_orders = []
 
-        for report_date, day_df in df.groupby(date_col):
-            insights_key = f"daily-insights/{restaurant_id}/{report_date.strftime('%Y-%m-%d')}.json"
+        # Define grouping strategy based on format
+        if file_format == "takeaway":
+            # Group by Branch Name AND Date
+            bn_col = found_cols["branch_name"]
+            df[bn_col] = df[bn_col].astype(str).str.strip()
+            grouped_data = df.groupby([bn_col, date_col])
+        else:
+            # Group by Date only (Zomato/Swiggy) - scalar key
+            grouped_data = df.groupby(date_col)
+
+        for group_key, day_df in grouped_data:
+            # Resolve date and restaurant_id
+            if file_format == "takeaway":
+                current_branch_name, report_date = group_key
+                # Sanitize branch name for S3 safety
+                safe_branch = re.sub(r"[^a-zA-Z0-9_\-]", "_", str(current_branch_name))
+                current_restaurant_id = safe_branch
+            else:
+                report_date = group_key
+                current_restaurant_id = restaurant_id
+
+            if user_folder:
+                insights_key = f"users/{user_folder}/daily-insights/{current_restaurant_id}/{report_date.strftime('%Y-%m-%d')}.json"
+            else:
+                insights_key = f"daily-insights/{current_restaurant_id}/{report_date.strftime('%Y-%m-%d')}.json"
+            
             existing_insight = {}
             try:
                 s3_object = s3.get_object(Bucket=BUCKET, Key=insights_key)
                 existing_insight = json.loads(s3_object["Body"].read().decode("utf-8"))
-            except s3.exceptions.NoSuchKey:
-                pass
+            except ClientError as e:
+                # When object is not found S3 raises a ClientError with NoSuchKey
+                err_code = e.response.get("Error", {}).get("Code")
+                if err_code == 'NoSuchKey':
+                    # No existing insight — this is expected for new keys
+                    existing_insight = {}
+                else:
+                    # Log and continue with empty existing_insight to avoid failing the whole job
+                    logger.warning(f"Unexpected error fetching {insights_key} from S3: {e}")
+                    existing_insight = {}
 
             processed_hashes = existing_insight.get("processedFileHashes", [])
             if file_hash in processed_hashes:
+                logger.info(f"📝 File already processed for {report_date}, skipping")
                 continue
 
-            # More precise replacement logic: only replace if SAME platform AND SAME restaurant ID
-            should_replace = False
+            # Log if different platform data exists (shouldn't happen normally)
+            if existing_insight.get("platform") and existing_insight.get("platform") != file_format:
+                logger.warning(f"Different platform data found in {current_restaurant_id} folder: existing={existing_insight.get('platform')}, new={file_format}")
+
+            # Get existing processed order IDs to prevent duplicates
+            processed_order_ids = set(existing_insight.get("processedOrderIds", []))
             
-            if (existing_insight.get("platform") == file_format and 
-                existing_insight.get("restaurantId") == restaurant_id and 
-                processed_hashes):
-                # This is the same platform for the same restaurant - replace the data
-                should_replace = True
-                logger.info(f"Replacing existing {file_format} data for restaurant {restaurant_id} on {report_date} (new hash: {file_hash})")
-            elif existing_insight.get("platform") and existing_insight.get("platform") != file_format:
-                # Different platform for same date - this shouldn't happen since each platform has its own restaurant_id
-                logger.warning(f"Different platform data found in {restaurant_id} folder: existing={existing_insight.get('platform')}, new={file_format}")
+            # Get order ID column
+            order_id_col = found_cols.get("order_id")
+            if not order_id_col:
+                logger.warning(f"No order ID column found for {file_format}, falling back to file hash only")
+                # If no order ID column, treat each row as unique by using row index
+                day_df["_temp_order_id"] = [f"{file_hash}_{i}" for i in range(len(day_df))]
+                order_id_col = "_temp_order_id"
+            
+            # Filter out already processed orders
+            day_df["_order_id_str"] = day_df[order_id_col].astype(str).str.strip()
+            new_orders_df = day_df[~day_df["_order_id_str"].isin(processed_order_ids)]
+            
+            if len(new_orders_df) == 0:
+                logger.info(f"📝 All {len(day_df)} orders for {report_date} already processed, skipping")
+                continue
+            
+            skipped_count = len(day_df) - len(new_orders_df)
+            if skipped_count > 0:
+                logger.info(f"📝 Skipping {skipped_count} duplicate orders, processing {len(new_orders_df)} new orders for {report_date}")
+            
+            # Use only new orders for calculations
+            day_df = new_orders_df
+            
+            # Collect new orders for discount breakdown (will calculate after loop)
+            all_new_orders.append(day_df)
 
             # Calculate new values
             gross_sale = gst = discounts = packings = comm_taxes = payout = net_sale = nbv = 0.0
-
+            
+            # Calculate discount breakdown for THIS specific date's new orders only
+            date_discount_breakdown = {}
+            
             if file_format == "zomato":
                 gross_sale = day_df[found_cols["subtotal"]].sum() + day_df[found_cols["packaging_charge"]].sum()
                 gst = day_df[found_cols["gst_on_order"]].sum()
@@ -462,13 +418,70 @@ def lambda_handler(event, context):
                 )
                 packings = day_df[found_cols["packaging_charge"]].sum()
                 comm_taxes = (
-                    day_df[found_cols["commission"]].sum()
-                    + day_df[found_cols["payment_fee"]].sum()
+                    day_df[found_cols["service_and_payment_fee"]].sum()
                     + day_df[found_cols["tax_on_service"]].sum()
                     + day_df[found_cols["tds_amount"]].sum()
                 )
                 payout = day_df[found_cols["payout"]].sum()
                 net_sale = payout - daily_ad_cost  # per-day net for z/s
+                
+                # --- Per-day Discount Breakdown for Zomato (from NEW orders only) ---
+                if file_ext != ".csv" and len(day_df) > 0:
+                    try:
+                        promo_col = found_cols.get("discount_promo")
+                        other_discount_col = found_cols.get("discount_other")
+                        offer_col = next((c for c in day_df.columns if "discount construct" in c.lower()), None)
+                        
+                        if offer_col and promo_col and other_discount_col:
+                            disc_df = day_df.copy()
+                            disc_df[offer_col] = disc_df[offer_col].fillna("Undefined").astype(str).str.strip()
+                            
+                            # Other Discounts
+                            total_other_discounts = disc_df[other_discount_col].sum()
+                            if total_other_discounts > 0:
+                                orders_with_other_discount = len(disc_df[disc_df[other_discount_col] > 0])
+                                date_discount_breakdown["Other Discounts (BOGO, Freebies, etc.)"] = {
+                                    "orders": orders_with_other_discount,
+                                    "totalDiscount": round(float(total_other_discounts), 2)
+                                }
+                            
+                            # Promo discounts
+                            disc_df["_clean_offer"] = disc_df[offer_col].str.replace(r"\s*\(.*?\)", "", regex=True).str.strip()
+                            grouped = disc_df.groupby("_clean_offer")
+                            
+                            for offer, group in grouped:
+                                if offer == "Undefined":
+                                    continue
+                                
+                                total_discount = group[promo_col].sum()
+                                order_count = len(group)
+                                
+                                if total_discount > 0:
+                                    x = total_discount / order_count if order_count > 0 else 0.0
+                                    match = re.search(r"₹\s*(\d+)", offer)
+                                    extracted_val = float(match.group(1)) if match else None
+                                    ratio = None
+                                    if extracted_val and extracted_val > 0:
+                                        ratio = round((x / extracted_val) * 100, 2)
+                                    
+                                    date_discount_breakdown[offer] = {
+                                        "orders": order_count,
+                                        "totalDiscount": round(float(total_discount), 2),
+                                        "avgDiscountPerOrder": round(x, 2),
+                                        "offerValue": extracted_val,
+                                        "valueRealizationPercentage": ratio
+                                    }
+                            
+                            # TOTAL
+                            if date_discount_breakdown:
+                                all_orders = sum(v["orders"] for v in date_discount_breakdown.values())
+                                all_discount = sum(v["totalDiscount"] for v in date_discount_breakdown.values())
+                                date_discount_breakdown["TOTAL"] = {
+                                    "orders": int(all_orders),
+                                    "totalDiscount": round(all_discount, 2),
+                                }
+                    except Exception as e:
+                        logger.warning(f"Could not calculate Zomato discount breakdown for {report_date}: {e}")
 
             elif file_format == "swiggy":
                 gross_sale = day_df[found_cols["item_total"]].sum() + day_df[found_cols["packaging_charges"]].sum()
@@ -482,6 +495,54 @@ def lambda_handler(event, context):
                 )
                 payout = day_df[found_cols["payout"]].sum()
                 net_sale = payout - daily_ad_cost  # per-day net for z/s
+                
+                # --- Discount Breakdown for Swiggy (from ENTIRE FILE, not per-day) ---
+                if file_ext != ".csv" and len(day_df) > 0:
+                    try:
+                        disc_summary_df = pd.read_excel(
+                            tmp_path, engine="openpyxl", sheet_name="Discount Summary", skiprows=1
+                        )
+                        disc_summary_df.columns = disc_summary_df.columns.str.strip().str.replace("\n", " ", regex=False)
+                        
+                        share_col = next((c for c in disc_summary_df.columns if "Restaurant Share (%)" in c), None)
+                        orders_col = next((c for c in disc_summary_df.columns if "Total Orders" in c), None)
+                        discount_col = next((c for c in disc_summary_df.columns if "Total Discount Given" in c), None)
+                        
+                        if share_col and orders_col and discount_col:
+                            disc_summary_df[share_col] = disc_summary_df[share_col].fillna("Undefined").astype(str).str.strip()
+                            disc_summary_df.loc[disc_summary_df[share_col] == "", share_col] = "Undefined"
+                            
+                            grouped = disc_summary_df.groupby(disc_summary_df[share_col])
+                            
+                            for share, group in grouped:
+                                total_orders = group[orders_col].apply(safe_num).sum()
+                                total_discount = group[discount_col].apply(safe_num).sum()
+                                date_discount_breakdown[share] = {
+                                    "orders": int(total_orders),
+                                    "discount": round(float(total_discount), 2),
+                                }
+                            
+                            # Order the breakdown: numeric keys first, then Undefined, then TOTAL
+                            ordered_breakdown = {}
+                            for key in sorted([k for k in date_discount_breakdown if k not in ["Undefined"] and not k.upper().startswith("TOTAL")],
+                                              key=lambda x: float(re.sub(r'[^0-9.]', '', x)) if re.sub(r'[^0-9.]', '', x) else 0):
+                                ordered_breakdown[key] = date_discount_breakdown[key]
+                            
+                            if "Undefined" in date_discount_breakdown:
+                                ordered_breakdown["Undefined"] = date_discount_breakdown["Undefined"]
+                            
+                            # TOTAL always last
+                            total_orders_sum = sum(v["orders"] for k, v in date_discount_breakdown.items() if k not in ["TOTAL"])
+                            total_discount_sum = sum(v["discount"] for k, v in date_discount_breakdown.items() if k not in ["TOTAL"])
+                            ordered_breakdown["TOTAL"] = {
+                                "orders": int(total_orders_sum),
+                                "discount": round(float(total_discount_sum), 2),
+                            }
+                            
+                            date_discount_breakdown = ordered_breakdown
+                            logger.info(f"Swiggy discount breakdown calculated from entire file for {report_date}")
+                    except Exception as e:
+                        logger.warning(f"Could not calculate Swiggy discount breakdown for {report_date}: {e}")
 
             elif file_format == "takeaway":
                 gross_col = found_cols.get("gross_sale")
@@ -514,58 +575,196 @@ def lambda_handler(event, context):
             total_nbv += nbv
             total_net_sale += net_sale
 
-            if should_replace:
-                # Replace the existing data instead of accumulating
-                final_insight = {
-                    "platform": file_format,
-                    "restaurantId": restaurant_id,
-                    "reportDate": report_date.isoformat(),
-                    "processedOrdersCount": len(day_df),
-                    "grossSale": round(float(gross_sale), 2),
-                    "gstOnOrder": round(float(gst), 2),
-                    "discounts": round(float(discounts), 2),
-                    "packings": round(float(packings), 2),
-                    "commissionAndTaxes": round(float(comm_taxes), 2),
-                    "payout": round(float(payout), 2),
-                    "ads": round(float(daily_ad_cost), 2),
-                    "netSale": round(float(net_sale), 2),
-                    "nbv": round(float(nbv), 2),
-                    "processedFileHashes": [file_hash],  # Replace with new hash only
-                }
-            else:
-                # Accumulate with existing data (original behavior)
-                final_insight = {
-                    "platform": file_format,
-                    "restaurantId": restaurant_id,
-                    "reportDate": report_date.isoformat(),
-                    "processedOrdersCount": existing_insight.get("processedOrdersCount", 0) + len(day_df),
-                    "grossSale": round(existing_insight.get("grossSale", 0) + float(gross_sale), 2),
-                    "gstOnOrder": round(existing_insight.get("gstOnOrder", 0) + float(gst), 2),
-                    "discounts": round(existing_insight.get("discounts", 0) + float(discounts), 2),
-                    "packings": round(existing_insight.get("packings", 0) + float(packings), 2),
-                    "commissionAndTaxes": round(
-                        existing_insight.get("commissionAndTaxes", 0) + float(comm_taxes), 2
-                    ),
-                    "payout": round(existing_insight.get("payout", 0) + float(payout), 2),
-                    "ads": round(existing_insight.get("ads", 0) + float(daily_ad_cost), 2),
-                    "netSale": round(existing_insight.get("netSale", 0) + float(net_sale), 2),
-                    "nbv": round(existing_insight.get("nbv", 0) + float(nbv), 2),
-                    "processedFileHashes": list(set(processed_hashes + [file_hash])),
-                }
+            # Get the new order IDs from this batch
+            new_order_ids = day_df["_order_id_str"].tolist()
+            updated_order_ids = list(set(list(processed_order_ids) + new_order_ids))
+            
+            # Always accumulate data from new orders only (duplicates already filtered)
+            final_insight = {
+                "platform": file_format,
+                "restaurantId": current_restaurant_id,
+                "reportDate": report_date.isoformat(),
+                "processedOrdersCount": existing_insight.get("processedOrdersCount", 0) + len(day_df),
+                "grossSale": round(existing_insight.get("grossSale", 0) + float(gross_sale), 2),
+                "gstOnOrder": round(existing_insight.get("gstOnOrder", 0) + float(gst), 2),
+                "discounts": round(existing_insight.get("discounts", 0) + float(discounts), 2),
+                "packings": round(existing_insight.get("packings", 0) + float(packings), 2),
+                "commissionAndTaxes": round(
+                    existing_insight.get("commissionAndTaxes", 0) + float(comm_taxes), 2
+                ),
+                "payout": round(existing_insight.get("payout", 0) + float(payout), 2),
+                "ads": round(existing_insight.get("ads", 0) + float(daily_ad_cost), 2),
+                "netSale": round(existing_insight.get("netSale", 0) + float(net_sale), 2),
+                "nbv": round(existing_insight.get("nbv", 0) + float(nbv), 2),
+                "processedFileHashes": list(set(processed_hashes + [file_hash])),
+                "processedOrderIds": updated_order_ids,
+            }
 
-            if discount_breakdown:
-                final_insight["discountBreakdown"] = discount_breakdown
+            if date_discount_breakdown:
+                final_insight["discountBreakdown"] = date_discount_breakdown
 
+            logger.info(f"🪣 Writing daily insight to S3: {insights_key}")
             s3.put_object(
                 Bucket=BUCKET,
                 Key=insights_key,
                 Body=json.dumps(final_insight, default=str),
                 ContentType="application/json",
             )
+        
+        if corporate_df is not None and not corporate_df.empty:
+            bn_col = found_cols["branch_name"]
+            corporate_df[bn_col] = corporate_df[bn_col].astype(str).str.strip()
+            corporate_grouped = corporate_df.groupby([bn_col, date_col])
+            for group_key, day_df in corporate_grouped:
+                current_branch_name, report_date = group_key
+                # Sanitize branch name and add _CO suffix for S3 safety
+                safe_branch = re.sub(r"[^a-zA-Z0-9_\-]", "_", str(current_branch_name)) + "_CO"
+                current_restaurant_id = safe_branch
+
+                if user_folder:
+                    insights_key = f"users/{user_folder}/daily-insights/{current_restaurant_id}/{report_date.strftime('%Y-%m-%d')}.json"
+                else:
+                    insights_key = f"daily-insights/{current_restaurant_id}/{report_date.strftime('%Y-%m-%d')}.json"
+
+                existing_insight = {}
+                try:
+                    s3_object = s3.get_object(Bucket=BUCKET, Key=insights_key)
+                    existing_insight = json.loads(s3_object["Body"].read().decode("utf-8"))
+                except ClientError as e:
+                    if e.response.get("Error", {}).get("Code") == 'NoSuchKey':
+                        existing_insight = {}
+                    else:
+                        logger.warning(f"Unexpected error fetching {insights_key} from S3: {e}")
+                        existing_insight = {}
+
+                processed_hashes = existing_insight.get("processedFileHashes", [])
+                if file_hash in processed_hashes:
+                    logger.info(f"📝 File already processed for Corporate Orders at {current_branch_name} on {report_date}, skipping")
+                    continue
+                
+                processed_order_ids = set(existing_insight.get("processedOrderIds", []))
+                order_id_col = found_cols.get("order_id")
+                if not order_id_col:
+                    day_df["_temp_order_id"] = [f"{file_hash}_corp_{i}" for i in range(len(day_df))]
+                    order_id_col = "_temp_order_id"
+
+                day_df["_order_id_str"] = day_df[order_id_col].astype(str).str.strip()
+                new_orders_df = day_df[~day_df["_order_id_str"].isin(processed_order_ids)]
+
+                if len(new_orders_df) == 0:
+                    continue
+                
+                day_df = new_orders_df
+                all_new_orders.append(day_df)
+
+                # --- Calculation for corporate orders ---
+                gross_col = found_cols.get("gross_sale")
+                gst_col = found_cols.get("gst_on_order")
+                disc_col = found_cols.get("discounts")
+                pack_col = found_cols.get("packings")
+                net_col = found_cols.get("net_sale")
+                other_charge_col = found_cols.get("Other_Charge_Amount")
+
+                gross_sale = ((day_df[gross_col].sum() if gross_col else 0.0) + (abs(day_df[other_charge_col].sum()) if other_charge_col else 0.0) - (day_df[gst_col].sum() if gst_col else 0.0))
+                gst = day_df[gst_col].sum() if gst_col else 0.0
+                discounts = abs(day_df[disc_col].sum()) if disc_col else 0.0
+                packings = day_df[pack_col].sum() if pack_col else 0.0
+                net_sale = day_df[net_col].sum() if net_col else 0.0
+                nbv = gst - discounts
+
+                # --- Update and Save insight ---
+                new_order_ids = day_df["_order_id_str"].tolist()
+                updated_order_ids = list(set(list(processed_order_ids) + new_order_ids))
+                final_insight = {
+                    "platform": "takeaway-corporate",
+                    "restaurantId": current_restaurant_id,
+                    "reportDate": report_date.isoformat(),
+                    "processedOrdersCount": existing_insight.get("processedOrdersCount", 0) + len(day_df),
+                    "grossSale": round(existing_insight.get("grossSale", 0) + float(gross_sale), 2),
+                    "gstOnOrder": round(existing_insight.get("gstOnOrder", 0) + float(gst), 2),
+                    "discounts": round(existing_insight.get("discounts", 0) + float(discounts), 2),
+                    "packings": round(existing_insight.get("packings", 0) + float(packings), 2),
+                    "commissionAndTaxes": 0, "payout": 0, "ads": 0,
+                    "netSale": round(existing_insight.get("netSale", 0) + float(net_sale), 2),
+                    "nbv": round(existing_insight.get("nbv", 0) + float(nbv), 2),
+                    "processedFileHashes": list(set(processed_hashes + [file_hash])),
+                    "processedOrderIds": updated_order_ids,
+                }
+                logger.info(f"🪣 Writing Corporate Order insight to S3: {insights_key}")
+                s3.put_object(Bucket=BUCKET, Key=insights_key, Body=json.dumps(final_insight, default=str), ContentType="application/json")
+
+
+        # ---------------- Calculate Aggregate Discount Breakdown for Response ----------------
+        aggregate_discount_breakdown = {}
+        if len(all_new_orders) > 0:
+            combined_new_orders = pd.concat(all_new_orders, ignore_index=True)
+            
+            if file_format == "swiggy" and file_ext != ".csv":
+                # For Swiggy, discount breakdown is already calculated from entire file and saved per-day
+                # No need to recalculate aggregate since it's the same for all days from the same file
+                logger.info("Swiggy aggregate discount breakdown skipped (already calculated from entire file per-day)")
+            
+            elif file_format == "zomato" and file_ext != ".csv":
+                try:
+                    promo_col = found_cols.get("discount_promo")
+                    other_discount_col = found_cols.get("discount_other")
+                    offer_col = next((c for c in combined_new_orders.columns if "discount construct" in c.lower()), None)
+                    
+                    if offer_col and promo_col and other_discount_col:
+                        disc_df = combined_new_orders.copy()
+                        disc_df[offer_col] = disc_df[offer_col].fillna("Undefined").astype(str).str.strip()
+                        
+                        # Other Discounts
+                        total_other_discounts = disc_df[other_discount_col].sum()
+                        if total_other_discounts > 0:
+                            orders_with_other_discount = len(disc_df[disc_df[other_discount_col] > 0])
+                            aggregate_discount_breakdown["Other Discounts (BOGO, Freebies, etc.)"] = {
+                                "orders": orders_with_other_discount,
+                                "totalDiscount": round(float(total_other_discounts), 2)
+                            }
+                        
+                        # Promo discounts
+                        disc_df["_clean_offer"] = disc_df[offer_col].str.replace(r"\s*\(.*?\)", "", regex=True).str.strip()
+                        grouped = disc_df.groupby("_clean_offer")
+                        
+                        for offer, group in grouped:
+                            if offer == "Undefined":
+                                continue
+                            
+                            total_discount = group[promo_col].sum()
+                            order_count = len(group)
+                            
+                            if total_discount > 0:
+                                x = total_discount / order_count if order_count > 0 else 0.0
+                                match = re.search(r"₹\s*(\d+)", offer)
+                                extracted_val = float(match.group(1)) if match else None
+                                ratio = None
+                                if extracted_val and extracted_val > 0:
+                                    ratio = round((x / extracted_val) * 100, 2)
+                                
+                                aggregate_discount_breakdown[offer] = {
+                                    "orders": order_count,
+                                    "totalDiscount": round(float(total_discount), 2),
+                                    "avgDiscountPerOrder": round(x, 2),
+                                    "offerValue": extracted_val,
+                                    "valueRealizationPercentage": ratio
+                                }
+                        
+                        # TOTAL
+                        if aggregate_discount_breakdown:
+                            all_orders = sum(v["orders"] for v in aggregate_discount_breakdown.values())
+                            all_discount = sum(v["totalDiscount"] for v in aggregate_discount_breakdown.values())
+                            aggregate_discount_breakdown["TOTAL"] = {
+                                "orders": int(all_orders),
+                                "totalDiscount": round(all_discount, 2),
+                            }
+                except Exception as e:
+                    logger.warning(f"Could not calculate aggregate discount breakdown: {e}")
 
         # ---------------- DynamoDB Job Tracking ----------------
         if job_id:
             jobs_table = dynamodb.Table(JOBS_TABLE_NAME)
+            logger.info(f"🧾 Updating DynamoDB job record for jobId={job_id}")
             response = jobs_table.update_item(
                 Key={"jobId": job_id},
                 UpdateExpression="SET processedCount = processedCount + :val",
@@ -605,10 +804,11 @@ def lambda_handler(event, context):
                 "netSale": round(total_net_sale, 2),  # aggregated per-day net
                 "nbv": round(total_nbv, 2),
             },
-            "discountBreakdown": discount_breakdown,
+            "discountBreakdown": aggregate_discount_breakdown,
 
         }
 
+        logger.info("✅ Lambda completed successfully")
         return {
             "statusCode": 200,
             "headers": {
