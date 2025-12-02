@@ -77,6 +77,13 @@ body {
     -moz-osx-font-smoothing: grayscale;
 }
 
+/* App Container with Navigation */
+.app-container {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
 /* Layout */
 .main-layout {
     display: grid;
@@ -85,7 +92,7 @@ body {
     max-width: 1900px;
     margin: 2rem auto;
     padding: 0 1.5rem;
-    min-height: calc(100vh - 4rem);
+    min-height: calc(100vh - 8rem);
 }
 
 .controls-column {
@@ -118,6 +125,9 @@ body {
 
 .dashboard-column {
     min-height: 60vh;
+    width: 1032px;
+    max-width: 100%;
+    flex-shrink: 0;
 }
 
 /* Cards and Containers */
@@ -1767,5 +1777,56 @@ body {
     .breakdown-btn {
         font-size: 0.7rem;
         padding: 0.4rem 0.6rem;
+    }
+}
+
+/* ============================================
+   COSTING MODULE STYLES
+   ============================================ */
+
+.costing-module {
+    background: var(--bg-primary);
+    min-height: calc(100vh - 4rem);
+}
+
+.costing-module h1,
+.costing-module h2,
+.costing-module h3,
+.costing-module h4 {
+    color: var(--text-primary);
+}
+
+.costing-module select,
+.costing-module input[type="text"],
+.costing-module input[type="number"],
+.costing-module input[type="date"] {
+    font-family: inherit;
+    font-size: 0.9rem;
+}
+
+.costing-module table {
+    font-size: 0.9rem;
+}
+
+.costing-module table th,
+.costing-module table td {
+    text-align: left;
+}
+
+/* Costing module responsive adjustments */
+@media (max-width: 1024px) {
+    .costing-module > div[style*="grid-template-columns"] {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+@media (max-width: 768px) {
+    .costing-module header {
+        flex-direction: column;
+        align-items: stretch !important;
+    }
+    
+    .costing-module header > div:last-child {
+        margin-top: 1rem;
     }
 }

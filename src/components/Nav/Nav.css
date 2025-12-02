@@ -1,0 +1,142 @@
+.main-nav {
+    background: linear-gradient(135deg, var(--primary-purple) 0%, var(--accent-blue) 100%);
+    padding: 0.75rem 2rem;
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+    box-shadow: var(--shadow-lg);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    flex-wrap: wrap;
+}
+
+.nav-brand {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.nav-logo {
+    font-size: 1.5rem;
+}
+
+.nav-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: white;
+    letter-spacing: 0.025em;
+}
+
+.nav-links {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.nav-link {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.25rem;
+    border-radius: 10px;
+    color: rgba(255, 255, 255, 0.85);
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.95rem;
+    transition: all 0.2s ease;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid transparent;
+}
+
+.nav-link:hover {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    transform: translateY(-1px);
+}
+
+.nav-link.active {
+    background: white;
+    color: var(--primary-purple);
+    box-shadow: var(--shadow-md);
+}
+
+.nav-link.active:hover {
+    transform: translateY(-1px);
+}
+
+.nav-icon {
+    font-size: 1.1rem;
+}
+
+/* Sub-navigation for Costing Module */
+.nav-subnav {
+    display: flex;
+    gap: 0.25rem;
+    margin-left: auto;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 0.25rem;
+    border-radius: 8px;
+}
+
+.subnav-link {
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    color: rgba(255, 255, 255, 0.85);
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 0.875rem;
+    transition: all 0.2s ease;
+}
+
+.subnav-link:hover {
+    background: rgba(255, 255, 255, 0.15);
+    color: white;
+}
+
+.subnav-link.active {
+    background: rgba(255, 255, 255, 0.95);
+    color: var(--primary-purple);
+}
+
+/* Responsive adjustments */
+@media (max-width: 1024px) {
+    .main-nav {
+        padding: 0.75rem 1rem;
+        gap: 1rem;
+    }
+    
+    .nav-subnav {
+        margin-left: 0;
+        width: 100%;
+        justify-content: center;
+        margin-top: 0.5rem;
+    }
+}
+
+@media (max-width: 640px) {
+    .main-nav {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .nav-brand {
+        justify-content: center;
+    }
+    
+    .nav-links {
+        justify-content: center;
+    }
+    
+    .nav-link span:last-child {
+        display: none;
+    }
+    
+    .nav-link {
+        padding: 0.75rem;
+    }
+    
+    .nav-subnav {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+}

@@ -1,12 +1,16 @@
 import React, { useState, useEffect } from 'react'
+import { Routes, Route } from 'react-router-dom'
 import ControlsPanel from './components/Controls/ControlsPanel.jsx'
 import Dashboard from './components/Dashboard/Dashboard.jsx'
+import Nav from './components/Nav/Nav.jsx'
+import { CostingDashboard, ManualEntry, UploadInvoice } from './pages/costing'
 import { RESTAURANT_ID_MAP } from './utils/constants'
 import { reportService } from './services/api'
 import { autoLoadService } from './services/autoLoadService'
 
 
-function App() {
+// Sales Analyzer Module Component
+function SalesAnalyzer() {
     const [dashboardData, setDashboardData] = useState(() => {
         // Try to load persisted data on initialization
         const savedData = localStorage.getItem('salesDashboardData')
@@ -272,6 +276,24 @@ function App() {
                     </div>
                 )}
             </div>
+        </div>
+    )
+}
+
+// Main App Component with Navigation and Routing
+function App() {
+    return (
+        <div className="app-container">
+            <Nav />
+            <Routes>
+                {/* Sales Analyzer Routes */}
+                <Route path="/" element={<SalesAnalyzer />} />
+                
+                {/* Costing Module Routes */}
+                <Route path="/costing" element={<CostingDashboard />} />
+                <Route path="/costing/upload" element={<UploadInvoice />} />
+                <Route path="/costing/manual-entry" element={<ManualEntry />} />
+            </Routes>
         </div>
     )
 }

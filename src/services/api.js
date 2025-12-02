@@ -146,3 +146,67 @@ export const expenseService = {
         return response.json();
     }
 };
+
+export const ristaService = {
+    // Lambda endpoint base URL - update this after deploying the Lambda functions
+    RISTA_LAMBDA_URL: 'https://xiphvj43ij.execute-api.ap-south-1.amazonaws.com/Prod',
+    
+    // Get credentials from environment
+    getCredentials() {
+        return {
+            apiKey: import.meta.env.VITE_RISTA_API_KEY,
+            secretKey: import.meta.env.VITE_RISTA_SECRET_KEY
+        }
+    },
+
+    // Fetch branches using API credentials from .env via Lambda
+    async fetchBranches() {
+        const { apiKey, secretKey } = this.getCredentials()
+        const response = await fetch(`${this.RISTA_LAMBDA_URL}/rista-branches`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ apiKey, secretKey })
+        })
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}))
+            throw new Error(errorData.error || `Failed to fetch branches: ${response.status}`)
+        }
+
+        const data = await response.json()
+        // Handle Lambda response format (body might be stringified)
+        if (typeof data.body === 'string') {
+            return JSON.parse(data.body)
+        }
+        return data.body || data
+    },
+
+    // Fetch sales data for a specific branch and channel via Lambda
+    async fetchSalesData(branchId, startDate, endDate, channelName) {
+        const { apiKey, secretKey } = this.getCredentials()
+        const response = await fetch(`${this.RISTA_LAMBDA_URL}/rista-sales`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                apiKey,
+                secretKey,
+                branchId,
+                startDate,
+                endDate,
+                channelName
+            })
+        })
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}))
+            throw new Error(errorData.error || `Failed to fetch sales data: ${response.status}`)
+        }
+
+        const data = await response.json()
+        // Handle Lambda response format (body might be stringified)
+        if (typeof data.body === 'string') {
+            return JSON.parse(data.body)
+        }
+        return data.body || data
+    }
+}

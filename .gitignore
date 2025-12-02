@@ -85,6 +85,9 @@ pip-wheel-metadata/
 # Lambda-specific
 lambda/__pycache__/
 lambda/*.pyc
+python_lambda_package/
+lambda_function.zip
+lambda-package/
 
 # Secrets
 secrets.json

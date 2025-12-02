@@ -1,10 +1,9 @@
-import os
 import json
 import time
+import re
 from datetime import datetime, timedelta
 import jwt
 import requests
-import re
 
 # --- Helper Functions ---
 
@@ -19,11 +18,10 @@ def get_dates_in_range(start_date_str, end_date_str):
             day = start_date + timedelta(days=i)
             dates.append(day.strftime('%Y-%m-%d'))
     except ValueError:
-        # Handle invalid date format
         return []
     return dates
 
-def fetch_sales_page(day, branch_id, api_key, secret_key, api_url, last_key=None):
+def fetch_sales_page(day, branch_id, api_key, secret_key, last_key=None):
     """Fetches a single page of sales data for a given day."""
     payload = {
         "iss": api_key,
@@ -32,23 +30,21 @@ def fetch_sales_page(day, branch_id, api_key, secret_key, api_url, last_key=None
     }
     token = jwt.encode(payload, secret_key, algorithm="HS256")
     
-    base_url = re.sub(r'/$', '', api_url)
-    endpoint_path = f"/sales/page?branch={branch_id}&day={day}"
+    url = f"https://api.ristaapps.com/v1/sales/page?branch={branch_id}&day={day}"
     if last_key:
-        endpoint_path += f"&lastKey={last_key}"
+        url += f"&lastKey={last_key}"
         
-    full_url = f"{base_url}{endpoint_path}"
     headers = {
         "x-api-token": token,
         "x-api-key": api_key,
         "Content-Type": "application/json"
     }
     
-    response = requests.get(full_url, headers=headers, timeout=20)
+    response = requests.get(url, headers=headers, timeout=20)
     response.raise_for_status()
     return response.json()
 
-def fetch_sales_for_day(day, branch_id, api_key, secret_key, api_url):
+def fetch_sales_for_day(day, branch_id, api_key, secret_key):
     """Fetches all pages of sales data for a given day."""
     all_orders = []
     last_key = None
@@ -56,7 +52,7 @@ def fetch_sales_for_day(day, branch_id, api_key, secret_key, api_url):
 
     while has_more:
         try:
-            response_data = fetch_sales_page(day, branch_id, api_key, secret_key, api_url, last_key)
+            response_data = fetch_sales_page(day, branch_id, api_key, secret_key, last_key)
             if response_data and isinstance(response_data.get('data'), list):
                 all_orders.extend(response_data['data'])
             
@@ -67,71 +63,94 @@ def fetch_sales_for_day(day, branch_id, api_key, secret_key, api_url):
                 has_more = False
         except requests.exceptions.RequestException as e:
             print(f"Error fetching page for day {day} with lastKey {last_key}: {e}")
-            has_more = False # Stop paginating on error
-            # Optionally re-raise to fail the whole lambda
-            # raise e 
+            has_more = False
     return all_orders
 
 # --- Main Lambda Handler ---
 
 def lambda_handler(event, context):
+    """
+    Lambda function to fetch sales data from Rista API.
+    Expects apiKey, secretKey, branchId, startDate, endDate, channelName in the request body.
+    """
     print(f"Received event: {json.dumps(event)}")
-    api_key = os.environ.get("VITE_RISTA_API_KEY")
-    secret_key = os.environ.get("VITE_RISTA_SECRET_KEY")
-    api_url = os.environ.get("VITE_RISTA_API_URL")
-
-    if not all([api_key, secret_key, api_url]):
-        return {"statusCode": 500, "body": json.dumps({"message": "Missing required environment variables"})}
-
-    params = event.get("queryStringParameters", {})
-    branch_id = params.get("branchId")
-    start_date = params.get("startDate")
-    end_date = params.get("endDate")
-    channel = params.get("channel")  # New channel parameter
-
-    if not all([branch_id, start_date, end_date, channel]):
-        return {"statusCode": 400, "body": json.dumps({"message": "Missing required query parameters: branchId, startDate, endDate, channel"})}
-
-    # Map frontend channel value to the value in the Rista data
-    channel_map = {
-        "takeaway": "Takeaway - Swap",
-        "corporate": "Corporate Orders"
+    
+    # CORS headers
+    cors_headers = {
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Headers": "Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token",
+        "Access-Control-Allow-Methods": "OPTIONS,POST,GET"
     }
-    rista_channel_name = channel_map.get(channel.lower())
-
-    print(f"Received channel parameter: '{channel}'. Mapped to Rista channel name: '{rista_channel_name}'")
-
-    if not rista_channel_name:
-        return {"statusCode": 400, "body": json.dumps({"message": f"Invalid channel specified: {channel}"})}
-
+    
+    # Handle OPTIONS preflight request
+    if event.get("httpMethod") == "OPTIONS":
+        return {
+            "statusCode": 200,
+            "headers": cors_headers,
+            "body": json.dumps({"message": "OK"})
+        }
+    
     try:
+        # Parse request body
+        body = event.get("body", "{}")
+        if isinstance(body, str):
+            body = json.loads(body)
+        
+        api_key = body.get("apiKey")
+        secret_key = body.get("secretKey")
+        branch_id = body.get("branchId")
+        start_date = body.get("startDate")
+        end_date = body.get("endDate")
+        channel_name = body.get("channelName")
+        
+        if not all([api_key, secret_key, branch_id, start_date, end_date, channel_name]):
+            return {
+                "statusCode": 400,
+                "headers": cors_headers,
+                "body": json.dumps({
+                    "error": "Missing required parameters",
+                    "required": ["apiKey", "secretKey", "branchId", "startDate", "endDate", "channelName"]
+                })
+            }
+        
+        # Get dates in range
         dates = get_dates_in_range(start_date, end_date)
         if not dates:
-            return {"statusCode": 400, "body": json.dumps({"message": "Invalid date range or format. Use YYYY-MM-DD."})}
-
-        daily_results = [fetch_sales_for_day(day, branch_id, api_key, secret_key, api_url) for day in dates]
+            return {
+                "statusCode": 400,
+                "headers": cors_headers,
+                "body": json.dumps({"error": "Invalid date range or format. Use YYYY-MM-DD."})
+            }
         
+        # Fetch sales data for all dates
+        daily_results = [fetch_sales_for_day(day, branch_id, api_key, secret_key) for day in dates]
+        
+        # Consolidate results
         consolidated = {
-            "noOfOrders": 0, "grossSale": 0, "gstOnOrder": 0,
-            "discounts": 0, "packings": 0, "netSale": 0,
+            "noOfOrders": 0,
+            "grossSale": 0,
+            "gstOnOrder": 0,
+            "discounts": 0,
+            "packings": 0,
+            "netSale": 0,
         }
-        restaurant_id = ""
+        restaurant_name = ""
 
         for orders_for_one_day in daily_results:
             if orders_for_one_day and isinstance(orders_for_one_day, list):
                 for order in orders_for_one_day:
-                    # DYNAMICALLY filter by channel, and always exclude voided
-                    if order.get("channel") != rista_channel_name or order.get("status") == "Voided":
+                    # Filter by channel name and exclude voided orders
+                    if order.get("channel") != channel_name or order.get("status") == "Voided":
                         continue
 
-                    if not restaurant_id and order.get("branchName"):
-                        restaurant_id = order.get("branchName")
+                    if not restaurant_name and order.get("branchName"):
+                        restaurant_name = order.get("branchName")
 
                     tax_amount = order.get("taxAmount", 0) or 0
                     charge_amount = order.get("chargeAmount", 0) or 0
                     gross_amount = order.get("grossAmount", 0) or 0
                     total_discount_amount = order.get("totalDiscountAmount", 0) or 0
-                    total_amount = order.get("totalAmount", 0) or 0
 
                     consolidated["noOfOrders"] += 1
                     consolidated["grossSale"] += gross_amount + charge_amount
@@ -144,9 +163,9 @@ def lambda_handler(event, context):
         discount_percent = (consolidated["discounts"] / consolidated["grossSale"] * 100) if consolidated["grossSale"] > 0 else 0
 
         response_body = {
-            "restaurantId": restaurant_id,
+            "restaurantId": restaurant_name,
             "startDate": start_date,
-            "endDate": endDate,
+            "endDate": end_date,
             "body": {
                 "consolidatedInsights": {
                     "noOfOrders": consolidated["noOfOrders"],
@@ -168,10 +187,20 @@ def lambda_handler(event, context):
 
         return {
             "statusCode": 200,
-            "headers": { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+            "headers": cors_headers,
             "body": json.dumps(response_body)
         }
 
+    except json.JSONDecodeError as e:
+        return {
+            "statusCode": 400,
+            "headers": cors_headers,
+            "body": json.dumps({"error": f"Invalid JSON: {str(e)}"})
+        }
     except Exception as e:
-        print(f"An error occurred: {e}")
-        return { "statusCode": 500, "body": json.dumps({"message": f"An internal server error occurred: {str(e)}"}) }
+        print(f"Error: {str(e)}")
+        return {
+            "statusCode": 500,
+            "headers": cors_headers,
+            "body": json.dumps({"error": f"Internal server error: {str(e)}"})
+        }

@@ -7,7 +7,16 @@ export default defineConfig({
     base: '/', // Use '/' for root domain or '/subfolder/' for subdirectory
     server: {
         port: 3000,
-        open: true
+        open: true,
+        proxy: {
+            // Proxy Rista API requests to avoid CORS issues
+            '/rista-api': {
+                target: 'https://api.ristaapps.com',
+                changeOrigin: true,
+                rewrite: (path) => path.replace(/^\/rista-api/, '/v1'),
+                secure: true
+            }
+        }
     },
     build: {
         outDir: 'dist',
