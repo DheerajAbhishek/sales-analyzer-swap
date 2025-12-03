@@ -11,18 +11,18 @@ export default function Nav() {
             <div className="nav-brand">
                 <span className="nav-title">Swap Analytics</span>
             </div>
-            
+
             <div className="nav-links">
-                <NavLink 
-                    to="/" 
+                <NavLink
+                    to="/"
                     className={({ isActive }) => `nav-link ${isActive && !isCostingModule ? 'active' : ''}`}
                     end
                 >
                     <span>Sales Analyzer</span>
                 </NavLink>
-                
-                <NavLink 
-                    to="/costing" 
+
+                <NavLink
+                    to="/costing"
                     className={({ isActive }) => `nav-link ${isActive || isCostingModule ? 'active' : ''}`}
                 >
                     <span>Costing Module</span>
@@ -32,21 +32,21 @@ export default function Nav() {
             {/* Sub-navigation for Costing Module */}
             {isCostingModule && (
                 <div className="nav-subnav">
-                    <NavLink 
-                        to="/costing" 
+                    <NavLink
+                        to="/costing"
                         className={({ isActive }) => `subnav-link ${isActive ? 'active' : ''}`}
                         end
                     >
                         Dashboard
                     </NavLink>
-                    <NavLink 
-                        to="/costing/upload" 
+                    <NavLink
+                        to="/costing/upload"
                         className={({ isActive }) => `subnav-link ${isActive ? 'active' : ''}`}
                     >
                         Upload Invoice
                     </NavLink>
-                    <NavLink 
-                        to="/costing/manual-entry" 
+                    <NavLink
+                        to="/costing/manual-entry"
                         className={({ isActive }) => `subnav-link ${isActive ? 'active' : ''}`}
                     >
                         Manual Entry

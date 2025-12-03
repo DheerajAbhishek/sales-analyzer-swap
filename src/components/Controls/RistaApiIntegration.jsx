@@ -9,14 +9,14 @@ const RistaApiIntegration = ({ onFetchComplete, loading: parentLoading }) => {
     const [branchesLoaded, setBranchesLoaded] = useState(false)
     const [selectedBranches, setSelectedBranches] = useState([])
     const [branchChannels, setBranchChannels] = useState({})
-    
+
     // Selected channels per branch
     const [selectedChannels, setSelectedChannels] = useState({})
-    
+
     // Date range state
     const [startDate, setStartDate] = useState('')
     const [endDate, setEndDate] = useState('')
-    
+
     // Loading/Error state
     const [fetchingBranches, setFetchingBranches] = useState(false)
     const [fetchingSales, setFetchingSales] = useState(false)
@@ -53,7 +53,7 @@ const RistaApiIntegration = ({ onFetchComplete, loading: parentLoading }) => {
 
         try {
             const result = await ristaService.fetchBranches()
-            
+
             if (result && Array.isArray(result) && result.length > 0) {
                 const processedBranches = result.map(branch => ({
                     branchName: branch.branchName,
@@ -62,15 +62,15 @@ const RistaApiIntegration = ({ onFetchComplete, loading: parentLoading }) => {
                     businessName: branch.businessName,
                     status: branch.status
                 }))
-                
+
                 setBranches(processedBranches)
-                
+
                 const channelMap = {}
                 processedBranches.forEach(branch => {
                     channelMap[branch.branchCode] = branch.channels.map(ch => ch.name)
                 })
                 setBranchChannels(channelMap)
-                
+
                 setBranchesLoaded(true)
                 setError(null)
             } else {
@@ -91,10 +91,10 @@ const RistaApiIntegration = ({ onFetchComplete, loading: parentLoading }) => {
             const branch = branches.find(b => b.branchCode === selectedOption.value)
             if (branch) {
                 setSelectedBranches(prev => [...prev, branch])
-                
+
                 const branchChannelList = branchChannels[branch.branchCode] || []
                 const takeawayChannel = branchChannelList.find(ch => /takeaway/i.test(ch))
-                
+
                 if (takeawayChannel) {
                     setSelectedChannels(prev => ({
                         ...prev,
@@ -131,10 +131,10 @@ const RistaApiIntegration = ({ onFetchComplete, loading: parentLoading }) => {
             return
         }
 
-        const hasSelectedChannels = selectedBranches.some(branch => 
+        const hasSelectedChannels = selectedBranches.some(branch =>
             (selectedChannels[branch.branchCode] || []).length > 0
         )
-        
+
         if (!hasSelectedChannels) {
             setError('Please select at least one channel for the selected branches')
             return
@@ -154,13 +154,13 @@ const RistaApiIntegration = ({ onFetchComplete, loading: parentLoading }) => {
 
             for (const branch of selectedBranches) {
                 const channels = selectedChannels[branch.branchCode] || []
-                
+
                 for (const channel of channels) {
                     try {
                         const result = await ristaService.fetchSalesData(
                             branch.branchCode, startDate, endDate, channel
                         )
-                        
+
                         allResults.push(result)
                         allDetails.push({
                             id: branch.branchCode,
@@ -250,7 +250,7 @@ const RistaApiIntegration = ({ onFetchComplete, loading: parentLoading }) => {
     return (
         <div className="card">
             <h2 className="card-header">Rista Sales Data</h2>
-            
+
             {error && (
                 <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', padding: '12px', marginBottom: '1rem', color: '#dc2626', fontSize: '0.9rem' }}>
                     ⚠️ {error}
@@ -276,21 +276,21 @@ const RistaApiIntegration = ({ onFetchComplete, loading: parentLoading }) => {
                                 {selectedBranches.map(branch => {
                                     const channels = branchChannels[branch.branchCode] || []
                                     const selected = selectedChannels[branch.branchCode] || []
-                                    
+
                                     return (
                                         <div key={branch.branchCode} className="selected-tag" style={{ display: 'block', padding: '1rem', marginBottom: '0.5rem' }}>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
                                                 <strong>{branch.branchName}</strong>
                                                 <button type="button" className="remove-tag" onClick={() => removeBranch(branch.branchCode)} title="Remove branch">✕</button>
                                             </div>
-                                            
+
                                             <div style={{ fontSize: '0.85rem' }}>
                                                 <span style={{ color: '#e2e8f0', marginBottom: '0.5rem', display: 'block' }}>Select channels:</span>
                                                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
                                                     {channels.map(channelName => {
                                                         const isSelected = selected.includes(channelName)
                                                         const isTakeaway = /takeaway/i.test(channelName)
-                                                        
+
                                                         return (
                                                             <label key={channelName} style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 8px', background: isSelected ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.1)', borderRadius: '4px', cursor: 'pointer', border: isTakeaway ? '1px solid #4ade80' : '1px solid transparent' }}>
                                                                 <input type="checkbox" checked={isSelected} onChange={(e) => handleChannelToggle(branch.branchCode, channelName, e.target.checked)} style={{ marginRight: '4px' }} />

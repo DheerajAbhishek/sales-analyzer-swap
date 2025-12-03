@@ -103,14 +103,14 @@ export const reportService = {
     async getOnDemandInsights(branchId, startDate, endDate, channel) {
         const ON_DEMAND_API_URL = 'https://xiphvj43ij.execute-api.ap-south-1.amazonaws.com/Prod/fetch-from-rista';
         const apiUrl = `${ON_DEMAND_API_URL}?branchId=${branchId}&startDate=${startDate}&endDate=${endDate}&channel=${channel}`;
-        
+
         const response = await fetch(apiUrl);
-    
+
         if (!response.ok) {
             const error = await response.json();
             throw new Error(error.error || 'Failed to get on-demand insights from Rista API');
         }
-    
+
         return response.json();
     }
 };
@@ -150,7 +150,7 @@ export const expenseService = {
 export const ristaService = {
     // Lambda endpoint base URL - update this after deploying the Lambda functions
     RISTA_LAMBDA_URL: 'https://xiphvj43ij.execute-api.ap-south-1.amazonaws.com/Prod',
-    
+
     // Get credentials from environment
     getCredentials() {
         return {
