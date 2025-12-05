@@ -130,7 +130,7 @@ const RistaApiIntegration = ({ onFetchComplete, loading: parentLoading }) => {
         const chunks = []
         const startD = new Date(start)
         const endD = new Date(end)
-        
+
         let chunkStart = new Date(startD)
         while (chunkStart <= endD) {
             let chunkEnd = new Date(chunkStart)
@@ -236,34 +236,34 @@ const RistaApiIntegration = ({ onFetchComplete, loading: parentLoading }) => {
                     }
                 }
             }
-            
+
             console.log(`📊 Total fetch requests to make: ${fetchRequests.length}`)
 
             // Execute requests with staggered timing to avoid rate limiting
             const STAGGER_DELAY = 300 // 300ms between batch starts
             const BATCH_SIZE = 5 // Process 5 requests at a time
-            
+
             const allFetchResults = []
-            
+
             for (let i = 0; i < fetchRequests.length; i += BATCH_SIZE) {
                 const batch = fetchRequests.slice(i, i + BATCH_SIZE)
-                
+
                 // Add delay between batches (except first)
                 if (i > 0) {
                     await new Promise(resolve => setTimeout(resolve, STAGGER_DELAY))
                 }
-                
+
                 // Execute batch in parallel
-                const batchPromises = batch.map(req => 
+                const batchPromises = batch.map(req =>
                     ristaService.fetchSalesData(
-                        req.branch.branchCode, 
-                        req.chunk.startDate, 
-                        req.chunk.endDate, 
+                        req.branch.branchCode,
+                        req.chunk.startDate,
+                        req.chunk.endDate,
                         req.channel
                     ).then(result => ({ ...req, result, status: 'fulfilled' }))
-                     .catch(error => ({ ...req, error, status: 'rejected' }))
+                        .catch(error => ({ ...req, error, status: 'rejected' }))
                 )
-                
+
                 const batchResults = await Promise.all(batchPromises)
                 allFetchResults.push(...batchResults)
             }

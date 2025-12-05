@@ -105,7 +105,7 @@ export const reportService = {
         const chunks = []
         const startD = new Date(startDate)
         const endD = new Date(endDate)
-        
+
         let chunkStart = new Date(startD)
         while (chunkStart <= endD) {
             let chunkEnd = new Date(chunkStart)
@@ -169,7 +169,7 @@ export const reportService = {
 
     async getOnDemandInsights(branchId, startDate, endDate, channel) {
         const ON_DEMAND_API_URL = 'https://xiphvj43ij.execute-api.ap-south-1.amazonaws.com/Prod/fetch-from-rista';
-        
+
         // Split into weekly chunks for faster fetching
         const weeklyChunks = this.getWeeklyChunks(startDate, endDate)
         console.log(`🔄 Splitting ${startDate} to ${endDate} into ${weeklyChunks.length} weekly chunks for ${branchId}/${channel}`)
@@ -180,7 +180,7 @@ export const reportService = {
 
         for (let i = 0; i < weeklyChunks.length; i++) {
             const chunk = weeklyChunks[i]
-            
+
             // Add delay between requests (except first)
             if (i > 0) {
                 await new Promise(resolve => setTimeout(resolve, STAGGER_DELAY))
