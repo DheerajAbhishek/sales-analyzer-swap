@@ -102,7 +102,7 @@ def lambda_handler(event, context):
             UpdateExpression='SET watch_history_id = :hid, watch_expiration = :exp, watch_updated_at = :updated',
             ExpressionAttributeValues={
                 ':hid': watch_response['historyId'],
-                ':exp': int(watch_response['expiration']),
+                ':exp': int(watch_response['expiration']) // 1000,  # Store as seconds
                 ':updated': int(datetime.now().timestamp())
             }
         )

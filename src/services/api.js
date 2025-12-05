@@ -438,3 +438,218 @@ export const restaurantMappingService = {
     }
   },
 };
+
+// Rista API Service - for fetching restaurant data from Rista POS
+export const ristaService = {
+  /**
+   * Fetch branches from Rista API using the user's API credentials
+   * @param {string} apiKey - Rista API key
+   * @param {string} apiSecret - Rista API secret
+   * @returns {Promise<{success: boolean, branches?: Array, error?: string}>}
+   */
+  async fetchBranches(apiKey, apiSecret) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/rista-branches`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          apiKey,
+          secretKey: apiSecret,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return {
+          success: false,
+          error: data.error || "Failed to fetch branches",
+        };
+      }
+
+      // Parse response body if needed
+      const result = data.body ? JSON.parse(data.body) : data;
+
+      return {
+        success: true,
+        branches: result.branches || [],
+      };
+    } catch (error) {
+      console.error("Error fetching Rista branches:", error);
+      return {
+        success: false,
+        error: error.message || "Failed to connect to Rista API",
+      };
+    }
+  },
+
+  /**
+   * Fetch sales data from Rista API for specified branches, channels, and date range
+   * @param {string} apiKey - Rista API key
+   * @param {string} apiSecret - Rista API secret
+   * @param {Array<string>} branchIds - Array of branch IDs to fetch
+   * @param {Array<string>} channels - Array of channel names (e.g., ["Takeaway"])
+   * @param {string} startDate - Start date (YYYY-MM-DD)
+   * @param {string} endDate - End date (YYYY-MM-DD)
+   * @returns {Promise<{success: boolean, data?: Object, error?: string}>}
+   */
+  async fetchSales(apiKey, apiSecret, branchIds, channels, startDate, endDate) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/rista-sales`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          apiKey,
+          secretKey: apiSecret,
+          branchIds,
+          channels,
+          startDate,
+          endDate,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        return {
+          success: false,
+          error: data.error || "Failed to fetch sales data",
+        };
+      }
+
+      // Parse response body if needed
+      const result = data.body ? JSON.parse(data.body) : data;
+
+      // Response now matches consolidated-insights format
+      return {
+        success: true,
+        data: result,  // Contains: restaurantId, consolidatedInsights, discountBreakdown, etc.
+      };
+    } catch (error) {
+      console.error("Error fetching Rista sales:", error);
+      return {
+        success: false,
+        error: error.message || "Failed to fetch sales data",
+      };
+    }
+  },
+
+  /**
+   * Get stored Rista credentials for the current user
+   * @returns {Promise<{success: boolean, hasCredentials: boolean, apiKey?: string, apiSecret?: string}>}
+   */
+  async getCredentials() {
+    try {
+      const user = getUserInfo();
+      if (!user?.businessEmail) {
+        return { success: false, error: "User not logged in" };
+      }
+
+      const response = await fetch(
+        `${API_BASE_URL}/rista-credentials?businessEmail=${encodeURIComponent(user.businessEmail)}`,
+        {
+          method: "GET",
+          headers: getAuthHeaders(),
+        }
+      );
+
+      const data = await response.json();
+      const result = data.body ? JSON.parse(data.body) : data;
+
+      return result;
+    } catch (error) {
+      console.error("Error fetching Rista credentials:", error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  /**
+   * Save Rista credentials for the current user
+   * @param {string} apiKey - Rista API key
+   * @param {string} apiSecret - Rista API secret
+   * @returns {Promise<{success: boolean, message?: string, error?: string}>}
+   */
+  async saveCredentials(apiKey, apiSecret) {
+    try {
+      const user = getUserInfo();
+      if (!user?.businessEmail) {
+        return { success: false, error: "User not logged in" };
+      }
+
+      const response = await fetch(`${API_BASE_URL}/rista-credentials`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ apiKey, apiSecret }),
+      });
+
+      const data = await response.json();
+      const result = data.body ? JSON.parse(data.body) : data;
+
+      return result;
+    } catch (error) {
+      console.error("Error saving Rista credentials:", error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  /**
+   * Get stored Rista branch mappings for the current user
+   * @returns {Promise<{success: boolean, mappings?: Array}>}
+   */
+  async getMappings() {
+    try {
+      const user = getUserInfo();
+      if (!user?.businessEmail) {
+        return { success: false, error: "User not logged in" };
+      }
+
+      const response = await fetch(
+        `${API_BASE_URL}/rista-mappings?businessEmail=${encodeURIComponent(user.businessEmail)}`,
+        {
+          method: "GET",
+          headers: getAuthHeaders(),
+        }
+      );
+
+      const data = await response.json();
+      const result = data.body ? JSON.parse(data.body) : data;
+
+      return result;
+    } catch (error) {
+      console.error("Error fetching Rista mappings:", error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  /**
+   * Save Rista branch mappings for the current user
+   * @param {Array} mappings - Array of mapping objects
+   * @returns {Promise<{success: boolean, message?: string}>}
+   */
+  async saveMappings(mappings) {
+    try {
+      const user = getUserInfo();
+      if (!user?.businessEmail) {
+        return { success: false, error: "User not logged in" };
+      }
+
+      const response = await fetch(`${API_BASE_URL}/rista-mappings`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ mappings }),
+      });
+
+      const data = await response.json();
+      const result = data.body ? JSON.parse(data.body) : data;
+
+      return result;
+    } catch (error) {
+      console.error("Error saving Rista mappings:", error);
+      return { success: false, error: error.message };
+    }
+  },
+};

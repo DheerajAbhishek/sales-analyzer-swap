@@ -17,7 +17,7 @@ import PrivacyPolicy from "./components/Legal/PrivacyPolicy.jsx";
 import TermsOfService from "./components/Legal/TermsOfService.jsx";
 import MobileNavigation from "./components/MobileNavigation.jsx";
 import CollapsibleControlsPanel from "./components/CollapsibleControlsPanel.jsx";
-import { reportService, restaurantService } from "./services/api";
+import { reportService, restaurantService, ristaService } from "./services/api";
 import { authService } from "./services/authService";
 import { restaurantMetadataService } from "./services/restaurantMetadataService";
 import { autoEmailProcessingService } from "./services/autoEmailProcessingService";
@@ -471,6 +471,9 @@ const DashboardPage = () => {
             groupBy,
             thresholds,
             restaurantInfo,
+            ristaMappings,
+            ristaChannels,
+            hasRistaData,
         } = selections;
 
         setLoading(true);
@@ -516,67 +519,117 @@ const DashboardPage = () => {
                 });
             });
 
-            if (restaurantDetails.length === 0) {
-                throw new Error("No restaurants selected.");
-            }
+            let parsedResults = [];
+            let successfulDetails = [];
+            let failedResults = [];
 
-            // Fetch data for all restaurant IDs with error handling
-            const apiGroupBy = groupBy === "total" ? null : groupBy;
-            const fetchPromises = restaurantDetails.map(async (detail) => {
-                try {
-                    const result = await reportService.getConsolidatedInsights(
-                        detail.id,
-                        startDate,
-                        endDate,
-                        apiGroupBy,
-                    );
-                    return {
-                        success: true,
-                        data: result,
-                        detail: detail,
-                    };
-                } catch (error) {
-                    // Return failed request info instead of throwing
-                    return {
-                        success: false,
-                        error: error.message,
-                        detail: detail,
-                    };
-                }
-            });
+            // Fetch regular platform data (if any restaurants selected for regular channels)
+            if (restaurantDetails.length > 0) {
+                // Fetch data for all restaurant IDs with error handling
+                const apiGroupBy = groupBy === "total" ? null : groupBy;
+                const fetchPromises = restaurantDetails.map(async (detail) => {
+                    try {
+                        const result = await reportService.getConsolidatedInsights(
+                            detail.id,
+                            startDate,
+                            endDate,
+                            apiGroupBy,
+                        );
+                        return {
+                            success: true,
+                            data: result,
+                            detail: detail,
+                        };
+                    } catch (error) {
+                        // Return failed request info instead of throwing
+                        return {
+                            success: false,
+                            error: error.message,
+                            detail: detail,
+                        };
+                    }
+                });
 
-            const results = await Promise.all(fetchPromises);
+                const results = await Promise.all(fetchPromises);
 
-            // Filter successful results
-            const successfulResults = results.filter((result) => result.success);
-            const failedResults = results.filter((result) => !result.success);
+                // Filter successful results
+                const successfulResultsArr = results.filter((result) => result.success);
+                failedResults = results.filter((result) => !result.success);
 
-            if (successfulResults.length === 0) {
-                throw new Error("No data available for any selected restaurants");
-            }
+                // Parse successful results
+                parsedResults = successfulResultsArr.map((result) => {
+                    const res = result.data;
+                    if (typeof res.body === "string") return JSON.parse(res.body);
+                    return res;
+                });
 
-            // Parse successful results
-            const parsedResults = successfulResults.map((result) => {
-                const res = result.data;
-                if (typeof res.body === "string") return JSON.parse(res.body);
-                return res;
-            });
-
-            parsedResults.forEach((result, index) => {
-
-            });
-
-            // Get successful details
-            const successfulDetails = successfulResults.map(
-                (result) => result.detail,
-            );
-
-            // Show notification about failed restaurants if any
-            if (failedResults.length > 0) {
-                const failedRestaurants = failedResults.map(
-                    (result) => result.detail.name,
+                // Get successful details
+                successfulDetails = successfulResultsArr.map(
+                    (result) => result.detail,
                 );
-                console.info(`Data not available for: ${failedRestaurants.join(", ")}`);
+
+                // Show notification about failed restaurants if any
+                if (failedResults.length > 0) {
+                    const failedRestaurants = failedResults.map(
+                        (result) => result.detail.name,
+                    );
+                    console.info(`Data not available for: ${failedRestaurants.join(", ")}`);
+                }
+            }
+
+            // Fetch Rista data if Rista channels are selected
+            let ristaResults = [];
+            if (hasRistaData && ristaMappings && ristaMappings.length > 0 && ristaChannels && ristaChannels.length > 0) {
+                try {
+                    // Get credentials
+                    const credResult = await ristaService.getCredentials();
+                    if (credResult.success && credResult.hasCredentials) {
+                        // Get branch IDs that have any of the selected channels
+                        const branchIds = ristaMappings
+                            .filter(m => m.selectedChannels && m.selectedChannels.some(ch => ristaChannels.includes(ch)))
+                            .map(m => m.branchCode);
+
+                        if (branchIds.length > 0) {
+                            const ristaSalesResult = await ristaService.fetchSales(
+                                credResult.apiKey,
+                                credResult.apiSecret,
+                                branchIds,
+                                ristaChannels,
+                                startDate,
+                                endDate
+                            );
+
+                            // Response now matches consolidated-insights format
+                            if (ristaSalesResult.success && ristaSalesResult.data) {
+                                const ristaData = ristaSalesResult.data;
+
+                                // Add to parsed results - format matches consolidated-insights
+                                parsedResults.push(ristaData);
+
+                                // Get restaurant name from mappings
+                                const mapping = ristaMappings.find(m => branchIds.includes(m.branchCode));
+                                const restaurantName = mapping?.restaurantGroupName || mapping?.branchName || `Rista: ${ristaChannels.join(", ")}`;
+
+                                // Add Rista detail
+                                successfulDetails.push({
+                                    id: ristaData.restaurantId || `rista_${branchIds.join("_")}`,
+                                    name: restaurantName,
+                                    platform: 'rista',
+                                    key: `rista_${branchIds.join("_")}`,
+                                });
+
+                                ristaResults = [ristaData];
+                            }
+                        }
+                    }
+                } catch (ristaError) {
+                    console.error("Error fetching Rista data:", ristaError);
+                    // Continue with regular data even if Rista fails
+                }
+            }
+
+            if (parsedResults.length === 0) {
+                throw new Error("No data available for any selected restaurants or channels");
             }
 
             updateDashboardData(
@@ -592,6 +645,7 @@ const DashboardPage = () => {
                         platform: result.detail.platform,
                         reason: result.error,
                     })),
+                    ristaResults: ristaResults,
                 },
                 true,
             ); // Mark as manually fetched

@@ -1,6 +1,7 @@
 ﻿import React, { useState, useEffect, useRef } from "react";
 import { authService } from "../services/authService";
 import { restaurantMappingService } from "../services/api";
+import RistaApiIntegration from "./RistaApiIntegration";
 
 const ProfilePage = ({ user, onLogout, onBack }) => {
   const [platformIds, setPlatformIds] = useState([]);
@@ -1142,6 +1143,21 @@ const ProfilePage = ({ user, onLogout, onBack }) => {
             </div>
           </div>
         </div>
+
+        {/* Rista POS Integration Section */}
+        <RistaApiIntegration
+          restaurants={restaurants}
+          onRestaurantsUpdate={async (updatedRestaurants) => {
+            setRestaurants(updatedRestaurants);
+            // Save to backend
+            const result = await restaurantMappingService.saveRestaurantMappings(updatedRestaurants);
+            if (result.success) {
+              localStorage.setItem("restaurantMappings", JSON.stringify(updatedRestaurants));
+              updateUnusedPlatformIds(updatedRestaurants, platformIds);
+            }
+            return result;
+          }}
+        />
       </div>
 
       {/* Conflict Resolution Dialog */}

@@ -82,6 +82,10 @@ pip-wheel-metadata/
 .aws-sam/
 .serverless/
 
+# Lambda packaging (build artifacts)
+lambda-package/
+*.zip
+
 # Lambda-specific
 lambda/__pycache__/
 lambda/*.pyc
@@ -89,13 +93,8 @@ lambda/*.pyc
 # Secrets
 secrets.json
 
-# Misc
-coverage/
-
-# Lock editorconfig if present
-.editorconfig
-
-# Ignore local test artifacts
+# Output/temp files
+output.json
 *.local
 
 # End of file

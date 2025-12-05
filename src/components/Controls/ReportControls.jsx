@@ -6,6 +6,7 @@ import { thresholdService } from "../../services/thresholdService";
 import { userRestaurantMappingService } from "../../services/userRestaurantMappingService";
 import { authService } from "../../services/authService";
 import { securePost } from "../../utils/secureApiClient";
+import { ristaService } from "../../services/api";
 import flatpickr from "flatpickr";
 
 const ReportControls = ({ onGetReport, loading, userRestaurants }) => {
@@ -25,6 +26,42 @@ const ReportControls = ({ onGetReport, loading, userRestaurants }) => {
   const [optionsLoading, setOptionsLoading] = useState(false);
   const [selectedRestaurantInfo, setSelectedRestaurantInfo] = useState({});
   const [restaurantMappings, setRestaurantMappings] = useState([]);
+  const [ristaMappings, setRistaMappings] = useState([]);
+  const [ristaChannels, setRistaChannels] = useState([]);
+
+  // Fetch Rista mappings on mount to populate Rista channels
+  useEffect(() => {
+    const fetchRistaMappings = async () => {
+      try {
+        const result = await ristaService.getMappings();
+        if (result.success && result.mappings && result.mappings.length > 0) {
+          setRistaMappings(result.mappings);
+
+          // Extract unique Rista channels from mappings
+          const uniqueChannels = new Set();
+          result.mappings.forEach(mapping => {
+            if (mapping.selectedChannels && Array.isArray(mapping.selectedChannels)) {
+              mapping.selectedChannels.forEach(channel => uniqueChannels.add(channel));
+            }
+          });
+
+          // Convert to array of channel objects prefixed with "rista_"
+          const ristaChannelOptions = Array.from(uniqueChannels).map(channel => ({
+            value: `rista_${channel.toLowerCase().replace(/\s+/g, '_')}`,
+            label: `Rista: ${channel}`,
+            isRista: true,
+            originalChannel: channel
+          }));
+
+          setRistaChannels(ristaChannelOptions);
+        }
+      } catch (error) {
+        console.error("Error fetching Rista mappings:", error);
+      }
+    };
+
+    fetchRistaMappings();
+  }, []);
 
   useEffect(() => {
     let flatpickrInstance = null;
@@ -521,30 +558,44 @@ const ReportControls = ({ onGetReport, loading, userRestaurants }) => {
       return;
     }
 
-    // Recalculate platform IDs to ensure they're up to date
+    // Separate Rista channels from regular channels
+    const regularChannels = selectedChannels.filter(ch => !ch.startsWith("rista_"));
+    const selectedRistaChannels = selectedChannels.filter(ch => ch.startsWith("rista_"));
+
+    // Get original Rista channel names (without the rista_ prefix)
+    const ristaChannelNames = selectedRistaChannels.map(ch => {
+      const ristaChannel = ristaChannels.find(rc => rc.value === ch);
+      return ristaChannel?.originalChannel || ch.replace("rista_", "").replace(/_/g, " ");
+    });
+
+    // Recalculate platform IDs for regular channels
     const platformIds = [];
     selectedRestaurants.forEach((restaurantId) => {
       const restaurant = restaurantMappings.find((r) => r.id === restaurantId);
 
       if (restaurant) {
-        // Restaurant group - get platform IDs for selected channels
-        selectedChannels.forEach((channel) => {
+        // Restaurant group - get platform IDs for selected regular channels
+        regularChannels.forEach((channel) => {
           const platformId = restaurant.platforms[channel];
           if (platformId && platformId.trim() !== "") {
             platformIds.push(platformId);
           }
         });
       } else {
-        // Direct platform ID - check if it matches selected channels
+        // Direct platform ID - check if it matches selected regular channels
         const guessedChannel =
           userRestaurantMappingService.guessChannelForId(restaurantId);
-        if (selectedChannels.includes(guessedChannel)) {
+        if (regularChannels.includes(guessedChannel)) {
           platformIds.push(restaurantId);
         }
       }
     });
 
-    if (platformIds.length === 0) {
+    // Check if we have any data to fetch (either regular platform IDs or Rista channels)
+    const hasRegularData = platformIds.length > 0;
+    const hasRistaData = selectedRistaChannels.length > 0 && ristaMappings.length > 0;
+
+    if (!hasRegularData && !hasRistaData) {
       alert(
         "No data available for the selected restaurants and channels. Please check your channel selections.",
       );
@@ -553,7 +604,7 @@ const ReportControls = ({ onGetReport, loading, userRestaurants }) => {
 
     onGetReport({
       restaurants: platformIds,
-      channels: selectedChannels,
+      channels: regularChannels,
       startDate,
       endDate,
       groupBy,
@@ -562,15 +613,20 @@ const ReportControls = ({ onGetReport, loading, userRestaurants }) => {
         ads: adsThreshold,
       },
       restaurantInfo: selectedRestaurantInfo,
+      ristaMappings: ristaMappings,
+      ristaChannels: ristaChannelNames,
+      hasRistaData: hasRistaData,
     });
   };
 
-  const channels = [
+  // Base channels (Zomato, Swiggy)
+  const baseChannels = [
     { value: "zomato", label: "Zomato" },
     { value: "swiggy", label: "Swiggy" },
-    // { value: 'takeaway', label: 'Takeaway' },
-    // { value: 'subs', label: 'Subscriptions' }
   ];
+
+  // Combine base channels with dynamic Rista channels
+  const channels = [...baseChannels, ...ristaChannels];
 
   const groupByOptions = [
     { value: "total", label: "Total Summary" },
@@ -879,7 +935,9 @@ const ReportControls = ({ onGetReport, loading, userRestaurants }) => {
               Select All Channels
             </label>
           </div>
-          {channels.map((channel) => (
+
+          {/* Base Channels (Zomato, Swiggy) */}
+          {baseChannels.map((channel) => (
             <div key={channel.value} className="checkbox-item">
               <input
                 type="checkbox"
@@ -894,6 +952,49 @@ const ReportControls = ({ onGetReport, loading, userRestaurants }) => {
               </label>
             </div>
           ))}
+
+          {/* Rista Channels - shown only if user has Rista integration */}
+          {ristaChannels.length > 0 && (
+            <>
+              <div
+                style={{
+                  borderTop: "1px dashed #e2e8f0",
+                  margin: "0.75rem 0",
+                  paddingTop: "0.75rem",
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: "0.8rem",
+                    color: "#6366f1",
+                    fontWeight: "600",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.5px",
+                  }}
+                >
+                  🔗 Rista POS Channels
+                </span>
+              </div>
+              {ristaChannels.map((channel) => (
+                <div key={channel.value} className="checkbox-item">
+                  <input
+                    type="checkbox"
+                    id={`channel-${channel.value}`}
+                    checked={selectedChannels.includes(channel.value)}
+                    onChange={(e) =>
+                      handleChannelChange(channel.value, e.target.checked)
+                    }
+                  />
+                  <label
+                    htmlFor={`channel-${channel.value}`}
+                    style={{ color: "#059669" }}
+                  >
+                    {channel.label}
+                  </label>
+                </div>
+              ))}
+            </>
+          )}
         </div>
       </div>
 
