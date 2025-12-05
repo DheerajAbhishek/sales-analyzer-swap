@@ -236,7 +236,6 @@ const MissingDatesIndicator = ({
                     {expanded ? 'Hide' : 'Show'} Details
                 </button>
             </div>
-
             {expanded && (
                 <div style={{
                     background: 'rgba(255, 255, 255, 0.5)',

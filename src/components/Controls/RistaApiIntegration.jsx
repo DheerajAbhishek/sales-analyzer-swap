@@ -125,6 +125,74 @@ const RistaApiIntegration = ({ onFetchComplete, loading: parentLoading }) => {
         })
     }
 
+    // Helper function to split date range into weekly chunks
+    const getWeeklyChunks = (start, end) => {
+        const chunks = []
+        const startD = new Date(start)
+        const endD = new Date(end)
+        
+        let chunkStart = new Date(startD)
+        while (chunkStart <= endD) {
+            let chunkEnd = new Date(chunkStart)
+            chunkEnd.setDate(chunkEnd.getDate() + 6) // 7-day chunks
+            if (chunkEnd > endD) {
+                chunkEnd = new Date(endD)
+            }
+            chunks.push({
+                startDate: chunkStart.toISOString().split('T')[0],
+                endDate: chunkEnd.toISOString().split('T')[0]
+            })
+            chunkStart = new Date(chunkEnd)
+            chunkStart.setDate(chunkStart.getDate() + 1)
+        }
+        return chunks
+    }
+
+    // Helper to merge multiple results for same branch/channel
+    const mergeResults = (results) => {
+        if (results.length === 0) return null
+        if (results.length === 1) return results[0]
+
+        const merged = {
+            ...results[0],
+            body: {
+                consolidatedInsights: {
+                    noOfOrders: 0,
+                    grossSale: 0,
+                    gstOnOrder: 0,
+                    discounts: 0,
+                    packings: 0,
+                    ads: 0,
+                    commissionAndTaxes: 0,
+                    netSale: 0,
+                    nbv: 0
+                },
+                discountBreakdown: {}
+            }
+        }
+
+        for (const result of results) {
+            const insights = result?.body?.consolidatedInsights || {}
+            merged.body.consolidatedInsights.noOfOrders += insights.noOfOrders || 0
+            merged.body.consolidatedInsights.grossSale += insights.grossSale || 0
+            merged.body.consolidatedInsights.gstOnOrder += insights.gstOnOrder || 0
+            merged.body.consolidatedInsights.discounts += insights.discounts || 0
+            merged.body.consolidatedInsights.packings += insights.packings || 0
+            merged.body.consolidatedInsights.ads += insights.ads || 0
+            merged.body.consolidatedInsights.commissionAndTaxes += insights.commissionAndTaxes || 0
+            merged.body.consolidatedInsights.netSale += insights.netSale || 0
+        }
+
+        // Recalculate derived values
+        const c = merged.body.consolidatedInsights
+        c.nbv = c.grossSale - c.discounts
+        c.discountPercent = c.grossSale > 0 ? (c.discounts / c.grossSale * 100) : 0
+        c.commissionPercent = c.grossSale > 0 ? (c.commissionAndTaxes / c.grossSale * 100) : 0
+        c.adsPercent = c.grossSale > 0 ? (c.ads / c.grossSale * 100) : 0
+
+        return merged
+    }
+
     const handleFetchSales = async () => {
         if (selectedBranches.length === 0) {
             setError('Please select at least one branch')
@@ -149,28 +217,89 @@ const RistaApiIntegration = ({ onFetchComplete, loading: parentLoading }) => {
         setError(null)
 
         try {
+            // Split date range into weekly chunks
+            const weeklyChunks = getWeeklyChunks(startDate, endDate)
+            console.log(`🔄 Splitting ${startDate} to ${endDate} into ${weeklyChunks.length} weekly chunks:`, weeklyChunks)
+
+            // Build all fetch requests (branch × channel × week)
+            const fetchRequests = []
+            for (const branch of selectedBranches) {
+                const channels = selectedChannels[branch.branchCode] || []
+                for (const channel of channels) {
+                    for (const chunk of weeklyChunks) {
+                        fetchRequests.push({
+                            branch,
+                            channel,
+                            chunk,
+                            key: `${branch.branchCode}_${channel}`
+                        })
+                    }
+                }
+            }
+            
+            console.log(`📊 Total fetch requests to make: ${fetchRequests.length}`)
+
+            // Execute requests with staggered timing to avoid rate limiting
+            const STAGGER_DELAY = 300 // 300ms between batch starts
+            const BATCH_SIZE = 5 // Process 5 requests at a time
+            
+            const allFetchResults = []
+            
+            for (let i = 0; i < fetchRequests.length; i += BATCH_SIZE) {
+                const batch = fetchRequests.slice(i, i + BATCH_SIZE)
+                
+                // Add delay between batches (except first)
+                if (i > 0) {
+                    await new Promise(resolve => setTimeout(resolve, STAGGER_DELAY))
+                }
+                
+                // Execute batch in parallel
+                const batchPromises = batch.map(req => 
+                    ristaService.fetchSalesData(
+                        req.branch.branchCode, 
+                        req.chunk.startDate, 
+                        req.chunk.endDate, 
+                        req.channel
+                    ).then(result => ({ ...req, result, status: 'fulfilled' }))
+                     .catch(error => ({ ...req, error, status: 'rejected' }))
+                )
+                
+                const batchResults = await Promise.all(batchPromises)
+                allFetchResults.push(...batchResults)
+            }
+
+            // Group results by branch/channel key and merge
+            const groupedResults = {}
+            for (const fetchResult of allFetchResults) {
+                if (fetchResult.status === 'fulfilled') {
+                    if (!groupedResults[fetchResult.key]) {
+                        groupedResults[fetchResult.key] = {
+                            branch: fetchResult.branch,
+                            channel: fetchResult.channel,
+                            results: []
+                        }
+                    }
+                    groupedResults[fetchResult.key].results.push(fetchResult.result)
+                } else {
+                    console.error('Error fetching sales for', fetchResult.branch.branchName, fetchResult.channel, fetchResult.chunk, fetchResult.error)
+                }
+            }
+
+            // Merge weekly results and build final output
             const allResults = []
             const allDetails = []
 
-            for (const branch of selectedBranches) {
-                const channels = selectedChannels[branch.branchCode] || []
-
-                for (const channel of channels) {
-                    try {
-                        const result = await ristaService.fetchSalesData(
-                            branch.branchCode, startDate, endDate, channel
-                        )
-
-                        allResults.push(result)
-                        allDetails.push({
-                            id: branch.branchCode,
-                            name: branch.branchName,
-                            platform: channel.toLowerCase().replace(/[^a-z0-9]/g, '_'),
-                            key: `${branch.branchCode}_${channel}`
-                        })
-                    } catch (err) {
-                        console.error('Error fetching sales for', branch.branchName, channel, err)
-                    }
+            for (const key of Object.keys(groupedResults)) {
+                const group = groupedResults[key]
+                const mergedResult = mergeResults(group.results)
+                if (mergedResult) {
+                    allResults.push(mergedResult)
+                    allDetails.push({
+                        id: group.branch.branchCode,
+                        name: group.branch.branchName,
+                        platform: group.channel.toLowerCase().replace(/[^a-z0-9]/g, '_'),
+                        key: key
+                    })
                 }
             }
 

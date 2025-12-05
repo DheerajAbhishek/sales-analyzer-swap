@@ -25,7 +25,7 @@ const Dashboard = ({ data }) => {
             // Check if P&L should be shown
             const { restaurants, channels, startDate, endDate } = selections
             const shouldShowPnL = restaurants.length === 1 &&
-                channels.length === 4 &&
+                channels.length === 5 &&
                 isFullMonthSelection(startDate, endDate)
             setShowPnL(shouldShowPnL)
         } else {
@@ -400,6 +400,7 @@ const Dashboard = ({ data }) => {
                             groupBy={groupBy}
                         />
                     )}
+
                 </>
 
             )}

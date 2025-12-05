@@ -11,7 +11,8 @@ export const RESTAURANT_ID_MAP = {
         swiggy: '224899',
         takeaway: 'MK',
         corporate: 'MK',
-        subs: 'subsMK'
+        subs: 'subsMK',
+        ristaBranchCode: 'MK'
     },
     'madhapur': {
         name: 'Madhapur',
@@ -19,7 +20,8 @@ export const RESTAURANT_ID_MAP = {
         swiggy: '366522',
         takeaway: 'MADH',
         corporate: 'MADH',
-        subs: 'subsMadhapur'
+        subs: 'subsMadhapur',
+        ristaBranchCode: 'MADH'
     },
     'banjara_hills': {
         name: 'Banjara Hills',
@@ -27,7 +29,8 @@ export const RESTAURANT_ID_MAP = {
         swiggy: '977488',
         takeaway: 'SMF',
         corporate: 'SMF',
-        subs: 'subsBH'
+        subs: 'subsBH',
+        ristaBranchCode: 'BH'
     },
     'madhurawada_vuda_colony': {
         name: 'Madhurawada',
@@ -35,7 +38,8 @@ export const RESTAURANT_ID_MAP = {
         swiggy: '547103',
         takeaway: 'MAD',
         corporate: 'MAD',
-        subs: ''
+        subs: '',
+        ristaBranchCode: 'MAD'
     },
     'kondapur': {
         name: 'Kondapur',
@@ -43,7 +47,8 @@ export const RESTAURANT_ID_MAP = {
         swiggy: '662306',
         takeaway: 'KDPR',
         corporate: 'KDPR',
-        subs: 'subsKDPR'
+        subs: 'subsKDPR',
+        ristaBranchCode: 'KDPR'
     },
     'nad': {
         name: 'NAD',
@@ -51,7 +56,8 @@ export const RESTAURANT_ID_MAP = {
         swiggy: '492064',
         takeaway: '',
         corporate: '',
-        subs: 'subsNAD'
+        subs: 'subsNAD',
+        ristaBranchCode: 'NAD'
     },
     'bellandur': {
         name: 'Bellandur',
@@ -59,7 +65,8 @@ export const RESTAURANT_ID_MAP = {
         swiggy: '785991',
         takeaway: '',
         corporate: '',
-        subs: 'subsBLR'
+        subs: 'subsBLR',
+        ristaBranchCode: 'BLR'
     },
     'tirupathi': {
         name: 'Tirupathi',
@@ -67,7 +74,8 @@ export const RESTAURANT_ID_MAP = {
         swiggy: '590420',
         takeaway: '',
         corporate: '',
-        subs: ''
+        subs: '',
+        ristaBranchCode: 'TPT'
     },
     'vijayawada': {
         name: 'Vijayawada',
@@ -75,7 +83,8 @@ export const RESTAURANT_ID_MAP = {
         swiggy: '793916',
         takeaway: 'VJWD',
         corporate: 'VJWD',
-        subs: 'subsVJWD'
+        subs: 'subsVJWD',
+        ristaBranchCode: 'VJWD'
     },
     'hyderabad_whitefields': {
         name: 'Hyderabad Whitefields',
@@ -83,7 +92,8 @@ export const RESTAURANT_ID_MAP = {
         swiggy: '994656',
         takeaway: '',
         corporate: '',
-        subs: ''
+        subs: '',
+        ristaBranchCode: 'WF'
     },
     'banglore_koramangala': {
         name: 'Bangalore Koramangala',
@@ -91,7 +101,8 @@ export const RESTAURANT_ID_MAP = {
         swiggy: '1181549',
         takeaway: 'KRMG',
         corporate: 'KRMG',
-        subs: 'subsBLR'
+        subs: 'subsBLR',
+        ristaBranchCode: 'KRMG'
     },
     'Animal Fitness': {
         name: 'Animal Fitness',
@@ -99,7 +110,8 @@ export const RESTAURANT_ID_MAP = {
         swiggy: '',
         takeaway: 'AF',
         corporate: 'AF',
-        subs: ''
+        subs: '',
+        ristaBranchCode: 'AF'
     },
     'Apple Fitness': {
         name: 'Apple Fitness',
@@ -107,7 +119,8 @@ export const RESTAURANT_ID_MAP = {
         swiggy: '',
         takeaway: 'SAF',
         corporate: 'SAF',
-        subs: ''
+        subs: '',
+        ristaBranchCode: 'SAF'
     },
     'Swap - millennium Fitness': {
         name: 'Swap - Millennium Fitness',
@@ -115,7 +128,8 @@ export const RESTAURANT_ID_MAP = {
         swiggy: '',
         takeaway: 'SMF',
         corporate: 'SMF',
-        subs: ''
+        subs: '',
+        ristaBranchCode: 'SMF'
     },
     'Fit Nation': {
         name: 'Fit Nation',
@@ -123,7 +137,8 @@ export const RESTAURANT_ID_MAP = {
         swiggy: '',
         takeaway: 'SFN',
         corporate: 'SFN',
-        subs: ''
+        subs: '',
+        ristaBranchCode: 'SFN'
     },
     'WeWork Kondapur': {
         name: 'WeWork Kondapur',
@@ -131,7 +146,8 @@ export const RESTAURANT_ID_MAP = {
         swiggy: '',
         takeaway: 'WWK',
         corporate: 'WWK',
-        subs: ''
+        subs: '',
+        ristaBranchCode: 'WWK'
     },
     'WeWork Roshni': {
         name: 'WeWork Roshni',
@@ -139,7 +155,8 @@ export const RESTAURANT_ID_MAP = {
         swiggy: '',
         takeaway: 'WWR',
         corporate: 'WWR',
-        subs: ''
+        subs: '',
+        ristaBranchCode: 'WWR'
     },
     'WeWork Vaishnavi Signature': {
         name: 'WeWork Vaishnavi Signature',
@@ -147,7 +164,8 @@ export const RESTAURANT_ID_MAP = {
         swiggy: '',
         takeaway: 'WWVS',
         corporate: 'WWVS',
-        subs: ''
+        subs: '',
+        ristaBranchCode: 'WWVS'
     },
     'Wework Rajapushpa': {
         name: 'WeWork Rajapushpa',
@@ -155,7 +173,8 @@ export const RESTAURANT_ID_MAP = {
         swiggy: '',
         takeaway: 'RPS',
         corporate: 'RPS',
-        subs: ''
+        subs: '',
+        ristaBranchCode: 'RPS'
     },
     'Wework Symbiosis': {
         name: 'Wework Symbiosis',
@@ -163,7 +182,8 @@ export const RESTAURANT_ID_MAP = {
         swiggy: '',
         takeaway: 'BEN',
         corporate: 'BEN',
-        subs: ''
+        subs: '',
+        ristaBranchCode: 'BEN'
     }
 
 };
