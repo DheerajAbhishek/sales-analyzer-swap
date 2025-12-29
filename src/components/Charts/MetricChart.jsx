@@ -107,7 +107,7 @@ const MetricChart = ({ metric, type, data, periods = [], groupBy }) => {
                             const periodData = data[p]?.[platform] || {}
                             const direct = periodData?.[metric.key]
                             if (typeof direct === 'number') return direct
-                            
+
                             // Calculate percentage metrics if not present
                             if (metric.key === 'discountPercent' || metric.key === 'adsPercent') {
                                 const grossSaleAfterGST = periodData?.grossSaleAfterGST || periodData?.grossSale || 0
@@ -118,7 +118,7 @@ const MetricChart = ({ metric, type, data, periods = [], groupBy }) => {
                                     return grossSaleAfterGST > 0 ? (periodData?.ads || 0) / grossSaleAfterGST * 100 : 0
                                 }
                             }
-                            
+
                             if (metric.key === 'grossSaleWithGST') {
                                 const gross = typeof periodData?.grossSale === 'number' ? periodData.grossSale : 0
                                 const gst = typeof periodData?.gstOnOrder === 'number' ? periodData.gstOnOrder : 0

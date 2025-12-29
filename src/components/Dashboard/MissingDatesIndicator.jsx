@@ -115,11 +115,11 @@ const MissingDatesIndicator = ({
                             const currentMissing = new Set(mergedResults[key].missingDates);
                             const newMissing = new Set(result.missingDates);
                             const intersection = Array.from(currentMissing).filter(date => newMissing.has(date));
-                            
+
                             mergedResults[key].missingDates = intersection;
                             mergedResults[key].totalMissing = intersection.length;
                             mergedResults[key].channels.push(result.platform);
-                            
+
                             // Recalculate coverage after merging
                             const dateFrom = selections?.dateFrom || selections?.startDate;
                             const dateTo = selections?.dateTo || selections?.endDate;
@@ -128,7 +128,7 @@ const MissingDatesIndicator = ({
                                 const daysWithData = totalDays - mergedResults[key].totalMissing;
                                 mergedResults[key].dataCoverage = `${daysWithData}/${totalDays}`;
                             }
-                            
+
                             // Update platform display for merged entries
                             if (mergedResults[key].channels.length === 2) {
                                 mergedResults[key].platform = `${mergedResults[key].channels.join(' & ')}`;

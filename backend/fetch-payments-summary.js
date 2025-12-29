@@ -230,9 +230,9 @@ async function fetchPaymentsSummary() {
         console.log(`   Discount Amount: -₹${summary.totalDiscountAmount.toFixed(2)}`);
         console.log(`   Charge Amount:    ₹${summary.totalChargeAmount.toFixed(2)}`);
         console.log(`   Bill Amount:      ₹${summary.totalBillAmount.toFixed(2)}`);
-        
+
         // Calculate percentages
-        const discountPercent = summary.totalItemAmount > 0 ? 
+        const discountPercent = summary.totalItemAmount > 0 ?
             (summary.totalDiscountAmount / summary.totalItemAmount * 100).toFixed(2) : 0;
         console.log(`   Discount %:       ${discountPercent}%`);
 
@@ -390,7 +390,7 @@ async function fetchPaymentsSummary() {
         console.log('   MATCH VERIFICATION:\n');
 
         // Check Takeaway - Swap match
-        const takeawayMatch = 
+        const takeawayMatch =
             summary.byChannel['Takeaway - Swap']?.count === consolidatedTakeaway.noOfOrders &&
             Math.abs(summary.byChannel['Takeaway - Swap']?.itemAmount - consolidatedTakeaway.grossSale) < 0.01 &&
             Math.abs(summary.byChannel['Takeaway - Swap']?.taxAmount - consolidatedTakeaway.gstOnOrder) < 0.01;
@@ -403,7 +403,7 @@ async function fetchPaymentsSummary() {
         }
 
         // Check Corporate Orders match
-        const corporateMatch = 
+        const corporateMatch =
             summary.byChannel['Corporate Orders']?.count === consolidatedCorporate.noOfOrders &&
             Math.abs(summary.byChannel['Corporate Orders']?.itemAmount - consolidatedCorporate.grossSale) < 0.01 &&
             Math.abs(summary.byChannel['Corporate Orders']?.taxAmount - consolidatedCorporate.gstOnOrder) < 0.01;
@@ -416,7 +416,7 @@ async function fetchPaymentsSummary() {
         }
 
         // Check combined match
-        const combinedMatch = 
+        const combinedMatch =
             ristaNoAggregators.orders === consolidatedTotal.noOfOrders &&
             Math.abs(ristaNoAggregators.itemAmount - consolidatedTotal.grossSale) < 0.01 &&
             Math.abs(ristaNoAggregators.taxAmount - consolidatedTotal.gstOnOrder) < 0.01;

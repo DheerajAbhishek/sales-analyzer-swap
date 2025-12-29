@@ -4,7 +4,7 @@ import { METRICS_CONFIG } from '../../utils/constants'
 
 const ChartsGrid = ({ type, data, groupBy, selectedGraphs = [] }) => {
     // Filter metrics based on selectedGraphs
-    const metricsToDisplay = selectedGraphs.length > 0 
+    const metricsToDisplay = selectedGraphs.length > 0
         ? METRICS_CONFIG.filter(metric => selectedGraphs.includes(metric.key))
         : METRICS_CONFIG
 

@@ -80,7 +80,7 @@ const GraphSelector = ({ selectedGraphs, onGraphsChange }) => {
                     </button>
                 </div>
             </div>
-            
+
             <div style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
