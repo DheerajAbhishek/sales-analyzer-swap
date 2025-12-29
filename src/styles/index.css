@@ -1350,18 +1350,29 @@ body {
         min-height: 380px;
         padding: 1.25rem;
     }
+
+    .dashboard-column {
+        width: 100%;
+    }
 }
 
 @media (max-width: 1024px) {
     .main-layout {
         grid-template-columns: 1fr;
-        gap: 2rem;
+        gap: 1.5rem;
         margin: 1rem;
-        padding: 0;
+        padding: 0 0.75rem;
     }
 
     .controls-column {
         position: static;
+        height: auto;
+        overflow: visible;
+        padding-right: 0;
+    }
+
+    .dashboard-column {
+        width: 100%;
     }
 
     .charts-grid {
@@ -1374,25 +1385,374 @@ body {
 
     .summary-grid {
         grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+    }
+
+    .card {
+        padding: 1.5rem;
+        border-radius: 16px;
+    }
+
+    .form-group {
+        padding: 1.25rem;
+    }
+
+    .view-mode-options {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .monthly-data-grid {
+        grid-template-columns: repeat(2, 1fr);
     }
 }
 
-@media (max-width: 640px) {
+@media (max-width: 768px) {
+    body {
+        font-size: 14px;
+    }
+
+    .main-layout {
+        margin: 0.5rem;
+        padding: 0 0.5rem;
+        gap: 1rem;
+    }
+
     .card {
-        padding: 1.5rem;
-        margin-bottom: 1.5rem;
+        padding: 1.25rem;
+        margin-bottom: 1rem;
+        border-radius: 14px;
     }
 
     .card-header {
-        font-size: 1.125rem;
+        font-size: 1.1rem;
+        margin-bottom: 1rem;
+        padding-bottom: 0.75rem;
+    }
+
+    .form-group {
+        padding: 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .form-label {
+        font-size: 0.8rem;
+    }
+
+    .btn {
+        padding: 0.875rem 1.25rem;
+        font-size: 0.9rem;
+    }
+
+    .summary-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.75rem;
+    }
+
+    .summary-card {
+        padding: 1rem;
+        border-radius: 14px;
+    }
+
+    .summary-card h3 {
+        font-size: 0.75rem;
     }
 
     .summary-card p {
         font-size: 1.5rem;
     }
 
+    .chart-container {
+        min-height: 300px;
+        padding: 1rem;
+        border-radius: 14px;
+    }
+
+    .chart-container h3 {
+        font-size: 0.9rem;
+    }
+
+    .chart-values-grid {
+        grid-template-columns: 1fr;
+    }
+
     .dashboard-title {
-        font-size: 1.75rem;
+        font-size: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .custom-dropdown-trigger {
+        padding: 0.875rem 2.5rem 0.875rem 0.875rem;
+        font-size: 0.9rem;
+        min-height: 48px;
+    }
+
+    .custom-dropdown-menu {
+        max-height: 250px;
+    }
+
+    .custom-dropdown-option {
+        padding: 0.875rem 1rem;
+    }
+
+    .selected-items {
+        gap: 0.5rem;
+    }
+
+    .selected-tag {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.8rem;
+    }
+
+    .upload-box {
+        padding: 1.5rem 1rem;
+    }
+
+    .expenses-display th,
+    .expenses-display td {
+        padding: 0.75rem;
+        font-size: 0.85rem;
+    }
+
+    .view-mode-toggle {
+        padding: 1rem;
+    }
+
+    .view-mode-toggle h4 {
+        font-size: 0.9rem;
+    }
+
+    .monthly-comparison-card {
+        padding: 1rem;
+    }
+
+    .monthly-data-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 0.75rem;
+    }
+
+    .monthly-data-item {
+        padding: 0.75rem;
+    }
+
+    .monthly-data-value {
+        font-size: 1rem;
+    }
+
+    .breakdown-btn {
+        bottom: auto;
+        top: 0.75rem;
+        right: 0.75rem;
+        padding: 0.4rem 0.6rem;
+        font-size: 0.7rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .main-layout {
+        margin: 0.25rem;
+        padding: 0 0.25rem;
+        gap: 0.75rem;
+    }
+
+    .card {
+        padding: 1rem;
+        margin-bottom: 0.75rem;
+        border-radius: 12px;
+    }
+
+    .card-header {
+        font-size: 1rem;
+    }
+
+    .form-group {
+        padding: 0.875rem;
+        margin-bottom: 1rem;
+        border-radius: 12px;
+    }
+
+    .form-label {
+        font-size: 0.75rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .btn {
+        padding: 0.75rem 1rem;
+        font-size: 0.85rem;
+        border-radius: 10px;
+    }
+
+    .summary-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 0.5rem;
+    }
+
+    .summary-card {
+        padding: 0.875rem;
+        border-radius: 12px;
+    }
+
+    .summary-card h3 {
+        font-size: 0.7rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .summary-card p {
+        font-size: 1.25rem;
+    }
+
+    .chart-container {
+        min-height: 280px;
+        padding: 0.875rem;
+        border-radius: 12px;
+    }
+
+    .chart-container h3 {
+        font-size: 0.85rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .dashboard-title {
+        font-size: 1.25rem;
+        margin-bottom: 1rem;
+        padding-bottom: 0.75rem;
+    }
+
+    .custom-dropdown-trigger {
+        padding: 0.75rem 2.25rem 0.75rem 0.75rem;
+        font-size: 0.85rem;
+        min-height: 44px;
+        border-radius: 12px;
+    }
+
+    .custom-dropdown-arrow {
+        font-size: 1rem;
+    }
+
+    .custom-dropdown-menu {
+        border-radius: 12px;
+        max-height: 220px;
+    }
+
+    .custom-dropdown-option {
+        padding: 0.75rem 0.875rem;
+        border-radius: 8px;
+        margin: 3px;
+        font-size: 0.9rem;
+    }
+
+    .selected-tag {
+        padding: 0.4rem 0.6rem;
+        font-size: 0.75rem;
+        border-radius: 16px;
+    }
+
+    .remove-tag {
+        width: 18px;
+        height: 18px;
+        font-size: 0.9rem;
+    }
+
+    .upload-box {
+        padding: 1.25rem 0.75rem;
+        border-radius: 12px;
+    }
+
+    .upload-box p {
+        font-size: 0.85rem;
+    }
+
+    .file-name {
+        font-size: 0.8rem;
+        padding: 0.5rem;
+    }
+
+    .status {
+        padding: 0.75rem 1rem;
+        font-size: 0.85rem;
+        border-radius: 10px;
+    }
+
+    .expenses-display table {
+        font-size: 0.8rem;
+        border-radius: 10px;
+    }
+
+    .expenses-display th,
+    .expenses-display td {
+        padding: 0.6rem 0.5rem;
+    }
+
+    .chart-values {
+        margin-top: 1rem;
+        padding-top: 1rem;
+    }
+
+    .chart-value-item {
+        padding: 0.5rem;
+    }
+
+    .chart-value-label {
+        font-size: 0.75rem;
+    }
+
+    .chart-value-number {
+        font-size: 0.85rem;
+    }
+
+    .view-mode-toggle {
+        padding: 0.875rem;
+        border-radius: 12px;
+    }
+
+    .view-mode-toggle h4 {
+        font-size: 0.85rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .view-mode-option {
+        padding: 0.4rem;
+    }
+
+    .view-mode-option label {
+        font-size: 0.85rem;
+    }
+
+    .monthly-comparison-card {
+        padding: 0.875rem;
+        border-radius: 12px;
+    }
+
+    .monthly-metric-title {
+        font-size: 1rem;
+    }
+
+    .monthly-data-grid {
+        gap: 0.5rem;
+    }
+
+    .monthly-data-item {
+        padding: 0.6rem;
+        border-radius: 10px;
+    }
+
+    .monthly-data-month {
+        font-size: 0.75rem;
+    }
+
+    .monthly-data-value {
+        font-size: 0.9rem;
+    }
+
+    .monthly-growth-indicator {
+        padding: 0.5rem;
+        font-size: 0.8rem;
+    }
+
+    .clickable-card::after {
+        top: 0.5rem;
+        right: 0.5rem;
+        font-size: 1rem;
     }
 }
 
@@ -1744,7 +2104,7 @@ body {
     }
 
     .modal-overlay {
-        padding: 1rem;
+        padding: 0.75rem;
     }
 
     .modal-overlay.positioned-modal {
@@ -1764,6 +2124,10 @@ body {
         padding: 1rem;
     }
 
+    .modal-header h2 {
+        font-size: 1.1rem;
+    }
+
     .modal-body {
         padding: 1rem;
         max-height: 65vh;
@@ -1777,6 +2141,105 @@ body {
     .breakdown-btn {
         font-size: 0.7rem;
         padding: 0.4rem 0.6rem;
+    }
+
+    .breakdown-card {
+        padding: 1rem;
+    }
+
+    .breakdown-header h3 {
+        font-size: 1rem;
+    }
+
+    .breakdown-description {
+        font-size: 0.85rem;
+    }
+
+    .metric {
+        padding: 0.6rem;
+    }
+
+    .metric-label {
+        font-size: 0.85rem;
+    }
+
+    .metric-value {
+        font-size: 0.9rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .discount-breakdown-modal {
+        width: 100vw;
+        max-height: 90vh;
+        border-radius: 16px 16px 0 0;
+    }
+
+    .modal-overlay {
+        padding: 0;
+        align-items: flex-end;
+    }
+
+    .modal-content {
+        border-radius: 16px 16px 0 0;
+    }
+
+    .modal-header {
+        padding: 0.875rem;
+    }
+
+    .modal-header h2 {
+        font-size: 1rem;
+    }
+
+    .modal-close-btn {
+        font-size: 1.1rem;
+    }
+
+    .modal-body {
+        padding: 0.875rem;
+        max-height: 70vh;
+    }
+
+    .breakdown-card {
+        padding: 0.875rem;
+        border-radius: 10px;
+    }
+
+    .breakdown-header h3 {
+        font-size: 0.95rem;
+    }
+
+    .breakdown-description {
+        font-size: 0.8rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .breakdown-metrics {
+        gap: 0.75rem;
+    }
+
+    .metric {
+        padding: 0.5rem;
+        border-radius: 6px;
+    }
+
+    .metric-label {
+        font-size: 0.8rem;
+    }
+
+    .metric-value {
+        font-size: 0.85rem;
+    }
+
+    .loading-state,
+    .no-data-state {
+        padding: 2rem 1rem;
+    }
+
+    .loading-spinner {
+        width: 32px;
+        height: 32px;
     }
 }
 
@@ -1821,12 +2284,1290 @@ body {
 }
 
 @media (max-width: 768px) {
+    .costing-module {
+        min-height: calc(100vh - 6rem);
+        padding: 0.75rem !important;
+    }
+
     .costing-module header {
-        flex-direction: column;
+        flex-direction: column !important;
         align-items: stretch !important;
+        gap: 0.75rem !important;
+    }
+
+    .costing-module header>div {
+        width: 100% !important;
+        flex-wrap: wrap !important;
     }
 
     .costing-module header>div:last-child {
-        margin-top: 1rem;
+        margin-top: 0.5rem;
+    }
+
+    .costing-module h1 {
+        font-size: 1.25rem !important;
+    }
+
+    /* Grid containers inside costing module - force single column */
+    .costing-module>div[style*="grid"],
+    .costing-module div[style*="gridTemplateColumns"] {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 1rem !important;
+    }
+
+    /* Cards and panels in costing module */
+    .costing-module>div>div[style*="background"] {
+        padding: 1rem !important;
+        border-radius: 12px !important;
+    }
+
+    /* Pie chart container */
+    .costing-module [style*="width: 250"] {
+        width: 100% !important;
+        max-width: 200px !important;
+        margin: 0 auto !important;
+    }
+
+    .costing-module select,
+    .costing-module input[type="text"],
+    .costing-module input[type="number"],
+    .costing-module input[type="date"] {
+        font-size: 0.85rem;
+        padding: 0.6rem 0.75rem;
+        width: 100% !important;
+    }
+
+    .costing-module table {
+        font-size: 0.8rem;
+        display: block !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+    }
+
+    .costing-module table th,
+    .costing-module table td {
+        padding: 0.5rem !important;
+        white-space: nowrap !important;
+        min-width: 80px !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .costing-module {
+        padding: 0.5rem !important;
+    }
+
+    .costing-module h1 {
+        font-size: 1.1rem !important;
+    }
+
+    .costing-module header>div:first-child {
+        flex-direction: column !important;
+        text-align: center !important;
+    }
+
+    .costing-module select,
+    .costing-module input[type="text"],
+    .costing-module input[type="number"],
+    .costing-module input[type="date"] {
+        font-size: 0.8rem;
+        padding: 0.5rem 0.6rem;
+    }
+
+    .costing-module table {
+        font-size: 0.75rem !important;
+    }
+
+    .costing-module table th,
+    .costing-module table td {
+        padding: 0.4rem !important;
+        min-width: 60px !important;
+    }
+
+    /* Category expand sections */
+    .costing-module [style*="marginBottom: 18"] {
+        margin-bottom: 12px !important;
+        padding: 10px !important;
+    }
+}
+
+/* ============================================
+   INLINE GRID RESPONSIVE OVERRIDES
+   ============================================ */
+
+/* Force inline grid styles to be responsive */
+@media (max-width: 768px) {
+
+    /* Threshold grid in ReportControls */
+    .form-group div[style*="grid"] {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 0.75rem !important;
+    }
+
+    .form-group div[style*="grid"]>div {
+        width: 100% !important;
+    }
+}
+
+/* ============================================
+   INVENTORY SECTION MOBILE
+   ============================================ */
+
+@media (max-width: 768px) {
+
+    /* Inventory grids */
+    div[style*="repeat(auto-fit, minmax(200px"] {
+        grid-template-columns: 1fr 1fr !important;
+    }
+
+    div[style*="repeat(auto-fit, minmax(280px"],
+    div[style*="repeat(auto-fit, minmax(300px"] {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+@media (max-width: 480px) {
+
+    div[style*="repeat(auto-fit, minmax(180px"],
+    div[style*="repeat(auto-fit, minmax(200px"] {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+/* ============================================
+   UTILITY CLASSES FOR MOBILE
+   ============================================ */
+
+/* Hide on mobile */
+@media (max-width: 640px) {
+    .hide-mobile {
+        display: none !important;
+    }
+}
+
+/* Show only on mobile */
+.show-mobile {
+    display: none !important;
+}
+
+@media (max-width: 640px) {
+    .show-mobile {
+        display: block !important;
+    }
+}
+
+/* Touch-friendly targets */
+@media (max-width: 768px) {
+
+    button,
+    .btn,
+    input[type="checkbox"],
+    input[type="radio"],
+    select,
+    .nav-link,
+    .subnav-link {
+        min-height: 44px;
+        min-width: 44px;
+    }
+
+    input[type="checkbox"],
+    input[type="radio"] {
+        width: 20px;
+        height: 20px;
+    }
+}
+
+/* Improve scrolling performance on mobile */
+@media (max-width: 768px) {
+
+    .custom-dropdown-menu,
+    .modal-body,
+    .controls-column {
+        -webkit-overflow-scrolling: touch;
+        scroll-behavior: smooth;
+    }
+}
+
+/* Prevent horizontal scroll on mobile */
+@media (max-width: 768px) {
+
+    html,
+    body {
+        overflow-x: hidden;
+    }
+
+    .app-container {
+        overflow-x: hidden;
+    }
+}
+
+/* ============================================
+   COSTING MODULE MOBILE OVERRIDES
+   ============================================ */
+
+/* Override inline styles for costing module on mobile */
+@media (max-width: 768px) {
+    .costing-module {
+        padding: 0.75rem !important;
+    }
+
+    .costing-module header {
+        flex-direction: column !important;
+        gap: 1rem !important;
+        align-items: flex-start !important;
+    }
+
+    .costing-module header>div {
+        width: 100% !important;
+        flex-wrap: wrap !important;
+    }
+
+    .costing-module h1 {
+        font-size: 1.25rem !important;
+    }
+
+    /* Grid containers inside costing module */
+    .costing-module>div[style*="grid"] {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 1rem !important;
+    }
+
+    /* Cards and panels in costing module */
+    .costing-module>div>div[style*="background"] {
+        padding: 1rem !important;
+        border-radius: 12px !important;
+    }
+
+    /* Pie chart container */
+    .costing-module [style*="width: 250"] {
+        width: 100% !important;
+        max-width: 200px !important;
+        margin: 0 auto !important;
+    }
+
+    /* Tables in costing module */
+    .costing-module table {
+        display: block !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        font-size: 0.8rem !important;
+    }
+
+    .costing-module table th,
+    .costing-module table td {
+        padding: 0.5rem !important;
+        white-space: nowrap !important;
+        min-width: 80px !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .costing-module {
+        padding: 0.5rem !important;
+    }
+
+    .costing-module h1 {
+        font-size: 1.1rem !important;
+    }
+
+    .costing-module header>div:first-child {
+        flex-direction: column !important;
+        text-align: center !important;
+    }
+
+    .costing-module table {
+        font-size: 0.75rem !important;
+    }
+
+    .costing-module table th,
+    .costing-module table td {
+        padding: 0.4rem !important;
+        min-width: 60px !important;
+    }
+
+    .costing-module select,
+    .costing-module input {
+        width: 100% !important;
+        font-size: 0.8rem !important;
+    }
+
+    /* Category expand sections */
+    .costing-module [style*="marginBottom: 18"] {
+        margin-bottom: 12px !important;
+        padding: 10px !important;
+    }
+}
+
+/* ============================================
+   FLATPICKR MOBILE STYLES
+   ============================================ */
+
+@media (max-width: 768px) {
+    .flatpickr-calendar {
+        width: 100% !important;
+        max-width: 320px !important;
+    }
+
+    .flatpickr-days {
+        width: 100% !important;
+    }
+
+    .flatpickr-day {
+        max-width: none !important;
+        height: 38px !important;
+        line-height: 38px !important;
+    }
+}
+
+/* ============================================
+   MANUAL ENTRY PAGE MOBILE STYLES
+   ============================================ */
+
+/* Target via class name for reliability */
+@media (max-width: 768px) {
+    .manual-entry-page {
+        padding: 12px !important;
+        max-width: 100% !important;
+    }
+
+    .manual-entry-page>div {
+        padding: 16px !important;
+        border-radius: 14px !important;
+        margin-bottom: 16px !important;
+    }
+
+    .manual-entry-page h2 {
+        font-size: 18px !important;
+    }
+
+    .manual-entry-page h3 {
+        font-size: 16px !important;
+    }
+
+    .manual-entry-page p {
+        font-size: 13px !important;
+    }
+
+    /* Form grid - force single column */
+    .manual-entry-page div[style*="gridTemplateColumns"],
+    .manual-entry-page div[style*="grid-template-columns"] {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 12px !important;
+    }
+
+    /* Inputs and selects */
+    .manual-entry-page input,
+    .manual-entry-page select {
+        width: 100% !important;
+        padding: 10px 12px !important;
+        font-size: 16px !important;
+        /* Prevents iOS zoom */
+        border-radius: 10px !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Form field containers with conditional inputs */
+    .manual-entry-page .form-field-branch,
+    .manual-entry-page .form-field-vendor {
+        display: block !important;
+        overflow: visible !important;
+    }
+
+    /* New branch/vendor input fields - must be visible */
+    .manual-entry-page .new-branch-input,
+    .manual-entry-page .new-vendor-input {
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        position: relative !important;
+        z-index: 10 !important;
+        margin-top: 10px !important;
+        width: 100% !important;
+        padding: 14px 16px !important;
+        font-size: 16px !important;
+        border: 2px solid #667eea !important;
+        border-radius: 12px !important;
+        background: #fff !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Conditional "Add New" inputs for branch/vendor */
+    .manual-entry-page input[placeholder*="branch"],
+    .manual-entry-page input[placeholder*="vendor"],
+    .manual-entry-page input[placeholder*="Branch"],
+    .manual-entry-page input[placeholder*="Vendor"] {
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        margin-top: 10px !important;
+        width: 100% !important;
+        padding: 12px 14px !important;
+        font-size: 16px !important;
+        border: 2px solid #667eea !important;
+        background: #fff !important;
+    }
+
+    /* Form field containers - ensure children are visible */
+    .manual-entry-page>div>div>div {
+        overflow: visible !important;
+    }
+
+    /* Form grid container */
+    .manual-entry-page .form-grid {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 16px !important;
+        overflow: visible !important;
+    }
+
+    /* Table wrapper */
+    .manual-entry-page div[style*="overflowX"] {
+        margin: 0 -8px !important;
+        border-radius: 12px !important;
+    }
+
+    /* Table */
+    .manual-entry-page table {
+        min-width: 700px !important;
+    }
+
+    .manual-entry-page table th,
+    .manual-entry-page table td {
+        padding: 10px 8px !important;
+        font-size: 12px !important;
+    }
+
+    /* Table inputs - specific widths */
+    .manual-entry-page table input {
+        padding: 8px 10px !important;
+        font-size: 13px !important;
+        min-width: unset !important;
+        width: 100% !important;
+    }
+
+    .manual-entry-page table select {
+        padding: 8px 8px !important;
+        font-size: 13px !important;
+        min-width: 70px !important;
+    }
+
+    /* Action buttons at bottom */
+    .manual-entry-page>div:last-of-type>div[style*="display: \"flex\""] {
+        flex-direction: column !important;
+        gap: 10px !important;
+    }
+
+    .manual-entry-page>div:last-of-type button {
+        width: 100% !important;
+        padding: 12px 20px !important;
+    }
+
+    /* Icon in header */
+    .manual-entry-page div[style*="width: 56"] {
+        width: 44px !important;
+        height: 44px !important;
+        font-size: 22px !important;
+    }
+
+    /* Manage Items button */
+    .manual-entry-page button[style*="⚙️"],
+    .manual-entry-page div[style*="justifyContent: \"space-between\""] button {
+        padding: 8px 12px !important;
+        font-size: 12px !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .manual-entry-page {
+        padding: 8px !important;
+    }
+
+    .manual-entry-page>div {
+        padding: 12px !important;
+        border-radius: 12px !important;
+        margin-bottom: 12px !important;
+    }
+
+    .manual-entry-page h2 {
+        font-size: 16px !important;
+    }
+
+    /* Header icon and text stack */
+    .manual-entry-page>div:first-child>div {
+        flex-direction: column !important;
+        text-align: center !important;
+        gap: 10px !important;
+    }
+
+    .manual-entry-page div[style*="width: 56"] {
+        width: 40px !important;
+        height: 40px !important;
+        font-size: 20px !important;
+        margin: 0 auto !important;
+    }
+
+    .manual-entry-page table {
+        min-width: 600px !important;
+        font-size: 11px !important;
+    }
+
+    .manual-entry-page table th,
+    .manual-entry-page table td {
+        padding: 8px 6px !important;
+        font-size: 11px !important;
+    }
+
+    .manual-entry-page table input {
+        padding: 6px 8px !important;
+        font-size: 12px !important;
+    }
+
+    .manual-entry-page table select {
+        padding: 6px 6px !important;
+        font-size: 12px !important;
+        min-width: 60px !important;
+    }
+
+    /* Total column */
+    .manual-entry-page div[style*="minWidth: 80"] {
+        min-width: 55px !important;
+        padding: 8px !important;
+        font-size: 11px !important;
+    }
+
+    /* Delete button in table */
+    .manual-entry-page table button {
+        padding: 6px 8px !important;
+        font-size: 11px !important;
+    }
+}
+
+/* Mobile Card View Toggle for Manual Entry */
+/* Desktop: show table, hide cards */
+.manual-entry-page .desktop-table-view {
+    display: block !important;
+}
+
+.manual-entry-page .mobile-card-view {
+    display: none !important;
+}
+
+@media (max-width: 768px) {
+
+    /* Hide table on mobile, show cards */
+    .manual-entry-page .desktop-table-view {
+        display: none !important;
+    }
+
+    .manual-entry-page .mobile-card-view {
+        display: block !important;
+    }
+
+    /* Mobile card styles */
+    .manual-entry-page .mobile-card-view>div {
+        background: #fff !important;
+        border: 1px solid #e5e7eb !important;
+        border-radius: 16px !important;
+        padding: 16px !important;
+        margin-bottom: 12px !important;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04) !important;
+    }
+
+    .manual-entry-page .mobile-card-view>div:nth-child(even) {
+        background: #f9fafb !important;
+    }
+
+    /* Card inputs */
+    .manual-entry-page .mobile-card-view input,
+    .manual-entry-page .mobile-card-view select {
+        width: 100% !important;
+        padding: 12px !important;
+        border: 2px solid #e5e7eb !important;
+        border-radius: 10px !important;
+        font-size: 14px !important;
+        box-sizing: border-box !important;
+    }
+
+    .manual-entry-page .mobile-card-view input:focus,
+    .manual-entry-page .mobile-card-view select:focus {
+        border-color: #667eea !important;
+        outline: none !important;
+    }
+
+    /* Labels in card */
+    .manual-entry-page .mobile-card-view label {
+        display: block !important;
+        font-size: 12px !important;
+        font-weight: 600 !important;
+        color: #6b7280 !important;
+        margin-bottom: 4px !important;
+    }
+
+    /* Grand Total bar */
+    .manual-entry-page div[style*="linear-gradient"][style*="Grand Total"],
+    .manual-entry-page>div>div[style*="linear-gradient(135deg, #667eea 0%, #764ba2 100%)"][style*="marginTop: 20"] {
+        padding: 14px 16px !important;
+        border-radius: 12px !important;
+        flex-direction: column !important;
+        text-align: center !important;
+        gap: 8px !important;
+    }
+}
+
+@media (max-width: 480px) {
+
+    /* Smaller padding on mobile cards */
+    .manual-entry-page .mobile-card-view>div {
+        padding: 12px !important;
+        margin-bottom: 10px !important;
+        border-radius: 12px !important;
+    }
+
+    .manual-entry-page .mobile-card-view input,
+    .manual-entry-page .mobile-card-view select {
+        padding: 10px !important;
+        font-size: 13px !important;
+    }
+
+    /* Two column grid adjustments */
+    .manual-entry-page .mobile-card-view div[style*="gridTemplateColumns: \"1fr 1fr\""] {
+        grid-template-columns: 1fr 1fr !important;
+        gap: 10px !important;
+    }
+}
+
+/* Datalist fix for mobile - increase touch target and visibility */
+@media (max-width: 768px) {
+
+    datalist,
+    #items-list {
+        font-size: 16px !important;
+    }
+
+    input[list="items-list"] {
+        font-size: 16px !important;
+        /* Prevents zoom on iOS */
+    }
+
+    /* Make datalist options more visible */
+    input[list="items-list"]::-webkit-calendar-picker-indicator {
+        display: block !important;
+        opacity: 1 !important;
+    }
+}
+
+/* Mobile Card View Toggle for Closing Inventory */
+/* Desktop: show table, hide cards */
+.closing-inventory-page .desktop-table-view {
+    display: block !important;
+}
+
+.closing-inventory-page .mobile-card-view {
+    display: none !important;
+}
+
+@media (max-width: 768px) {
+
+    /* Hide table on mobile, show cards */
+    .closing-inventory-page .desktop-table-view {
+        display: none !important;
+    }
+
+    .closing-inventory-page .mobile-card-view {
+        display: block !important;
+    }
+
+    /* Mobile card styles */
+    .closing-inventory-page .mobile-card-view>div {
+        background: #fff !important;
+        border: 1px solid #e5e7eb !important;
+        border-radius: 16px !important;
+        padding: 16px !important;
+        margin-bottom: 12px !important;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04) !important;
+    }
+
+    .closing-inventory-page .mobile-card-view>div:nth-child(even) {
+        background: #f9fafb !important;
+    }
+
+    /* Card inputs */
+    .closing-inventory-page .mobile-card-view input,
+    .closing-inventory-page .mobile-card-view select {
+        width: 100% !important;
+        padding: 12px !important;
+        border: 2px solid #e5e7eb !important;
+        border-radius: 10px !important;
+        font-size: 14px !important;
+        box-sizing: border-box !important;
+    }
+
+    .closing-inventory-page .mobile-card-view input:focus,
+    .closing-inventory-page .mobile-card-view select:focus {
+        border-color: #10b981 !important;
+        outline: none !important;
+    }
+
+    /* Labels in card */
+    .closing-inventory-page .mobile-card-view label {
+        display: block !important;
+        font-size: 12px !important;
+        font-weight: 600 !important;
+        color: #6b7280 !important;
+        margin-bottom: 4px !important;
+    }
+
+    /* Grand Total bar */
+    .closing-inventory-page>div>div[style*="linear-gradient(135deg, #10b981"] {
+        padding: 14px 16px !important;
+        border-radius: 12px !important;
+        flex-direction: column !important;
+        text-align: center !important;
+        gap: 8px !important;
+    }
+}
+
+@media (max-width: 480px) {
+
+    /* Smaller padding on mobile cards */
+    .closing-inventory-page .mobile-card-view>div {
+        padding: 12px !important;
+        margin-bottom: 10px !important;
+        border-radius: 12px !important;
+    }
+
+    .closing-inventory-page .mobile-card-view input,
+    .closing-inventory-page .mobile-card-view select {
+        padding: 10px !important;
+        font-size: 13px !important;
+    }
+}
+
+/* Generic inline style overrides */
+@media (max-width: 768px) {
+
+    /* Main container */
+    div[style*="maxWidth: 1100"],
+    div[style*="max-width: 1100"] {
+        padding: 12px !important;
+        max-width: 100% !important;
+    }
+
+    /* Header card */
+    div[style*="linear-gradient(135deg, #667eea"] {
+        padding: 16px !important;
+        border-radius: 14px !important;
+        margin-bottom: 16px !important;
+    }
+
+    div[style*="linear-gradient(135deg, #667eea"] h2 {
+        font-size: 18px !important;
+    }
+
+    div[style*="linear-gradient(135deg, #667eea"] p {
+        font-size: 12px !important;
+    }
+
+    /* Icon in header */
+    div[style*="width: 56"] {
+        width: 44px !important;
+        height: 44px !important;
+        font-size: 22px !important;
+        border-radius: 12px !important;
+    }
+
+    /* Form cards */
+    div[style*="background: \"#fff\""],
+    div[style*="background: '#fff'"],
+    div[style*="background: rgb(255, 255, 255)"] {
+        padding: 16px !important;
+        border-radius: 14px !important;
+        margin-bottom: 16px !important;
+    }
+
+    /* Form grid */
+    div[style*="gridTemplateColumns: \"repeat(auto-fit, minmax(200px"],
+    div[style*="grid-template-columns: repeat(auto-fit, minmax(200px"] {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 12px !important;
+    }
+
+    /* Form inputs and selects */
+    div[style*="maxWidth: 1100"] input,
+    div[style*="maxWidth: 1100"] select,
+    div[style*="max-width: 1100"] input,
+    div[style*="max-width: 1100"] select {
+        padding: 10px 12px !important;
+        font-size: 14px !important;
+        border-radius: 10px !important;
+    }
+
+    /* Table container */
+    div[style*="overflowX: \"auto\""],
+    div[style*="overflow-x: auto"] {
+        margin: 0 -16px !important;
+        padding: 0 16px !important;
+        border-radius: 12px !important;
+    }
+
+    /* Table cells */
+    div[style*="maxWidth: 1100"] table th,
+    div[style*="maxWidth: 1100"] table td,
+    div[style*="max-width: 1100"] table th,
+    div[style*="max-width: 1100"] table td {
+        padding: 8px 6px !important;
+        font-size: 12px !important;
+    }
+
+    /* Table inputs - make them smaller */
+    div[style*="maxWidth: 1100"] table input,
+    div[style*="max-width: 1100"] table input {
+        padding: 8px 10px !important;
+        font-size: 13px !important;
+        width: 100% !important;
+        min-width: 60px !important;
+    }
+
+    /* Table selects */
+    div[style*="maxWidth: 1100"] table select,
+    div[style*="max-width: 1100"] table select {
+        padding: 8px 6px !important;
+        font-size: 13px !important;
+        min-width: 70px !important;
+    }
+
+    /* Total cell */
+    div[style*="minWidth: 80"] {
+        min-width: 60px !important;
+        padding: 8px 10px !important;
+        font-size: 12px !important;
+    }
+
+    /* Delete button */
+    div[style*="maxWidth: 1100"] table button,
+    div[style*="max-width: 1100"] table button {
+        padding: 8px 10px !important;
+        font-size: 12px !important;
+    }
+
+    /* Action buttons row */
+    div[style*="display: \"flex\""][style*="gap: 12"] {
+        flex-direction: column !important;
+        gap: 8px !important;
+    }
+
+    div[style*="display: \"flex\""][style*="gap: 12"] button {
+        width: 100% !important;
+    }
+
+    /* Submit button */
+    button[style*="linear-gradient(135deg, #667eea"] {
+        padding: 14px 24px !important;
+        font-size: 15px !important;
+    }
+
+    /* Messages */
+    div[style*="borderRadius: 14"][style*="marginTop: 20"] {
+        padding: 14px !important;
+        font-size: 14px !important;
+    }
+}
+
+@media (max-width: 480px) {
+
+    /* Main container */
+    div[style*="maxWidth: 1100"],
+    div[style*="max-width: 1100"] {
+        padding: 8px !important;
+    }
+
+    /* Header */
+    div[style*="linear-gradient(135deg, #667eea"] {
+        padding: 12px !important;
+        border-radius: 12px !important;
+    }
+
+    div[style*="linear-gradient(135deg, #667eea"] h2 {
+        font-size: 16px !important;
+    }
+
+    div[style*="linear-gradient(135deg, #667eea"]>div {
+        flex-direction: column !important;
+        text-align: center !important;
+        gap: 10px !important;
+    }
+
+    /* Icon */
+    div[style*="width: 56"] {
+        width: 40px !important;
+        height: 40px !important;
+        font-size: 20px !important;
+    }
+
+    /* Form cards */
+    div[style*="padding: 28"] {
+        padding: 12px !important;
+    }
+
+    /* Table - make it card-based on very small screens */
+    div[style*="maxWidth: 1100"] table,
+    div[style*="max-width: 1100"] table {
+        font-size: 11px !important;
+    }
+
+    div[style*="maxWidth: 1100"] table th,
+    div[style*="maxWidth: 1100"] table td,
+    div[style*="max-width: 1100"] table th,
+    div[style*="max-width: 1100"] table td {
+        padding: 6px 4px !important;
+    }
+
+    div[style*="maxWidth: 1100"] table input,
+    div[style*="max-width: 1100"] table input {
+        padding: 6px 8px !important;
+        font-size: 12px !important;
+        min-width: 50px !important;
+    }
+
+    div[style*="maxWidth: 1100"] table select,
+    div[style*="max-width: 1100"] table select {
+        padding: 6px 4px !important;
+        font-size: 12px !important;
+        min-width: 55px !important;
+    }
+
+    /* Hide some table headers text on very small screens */
+    div[style*="maxWidth: 1100"] table th span[style*="fontWeight: 400"],
+    div[style*="max-width: 1100"] table th span[style*="fontWeight: 400"] {
+        display: none !important;
+    }
+
+    /* Manage Items button */
+    button[style*="⚙️"],
+    button:has(> *:contains("Manage")) {
+        padding: 6px 10px !important;
+        font-size: 12px !important;
+    }
+}
+
+/* ============================================
+   UPLOAD INVOICE & CLOSING INVENTORY MOBILE
+   ============================================ */
+
+@media (max-width: 768px) {
+
+    .upload-invoice-page,
+    .closing-inventory-page {
+        padding: 12px !important;
+        max-width: 100% !important;
+    }
+
+    .upload-invoice-page>div,
+    .closing-inventory-page>div {
+        padding: 16px !important;
+        border-radius: 14px !important;
+        margin-bottom: 16px !important;
+    }
+
+    .upload-invoice-page h2,
+    .closing-inventory-page h2 {
+        font-size: 18px !important;
+    }
+
+    .upload-invoice-page h3,
+    .closing-inventory-page h3 {
+        font-size: 16px !important;
+    }
+
+    /* Form grids */
+    .upload-invoice-page div[style*="gridTemplateColumns"],
+    .closing-inventory-page div[style*="gridTemplateColumns"],
+    .upload-invoice-page div[style*="grid-template-columns"],
+    .closing-inventory-page div[style*="grid-template-columns"],
+    .upload-invoice-page .form-grid,
+    .closing-inventory-page .form-grid {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 16px !important;
+        overflow: visible !important;
+    }
+
+    /* Form field containers with conditional inputs */
+    .closing-inventory-page .form-field-branch,
+    .closing-inventory-page .form-field-vendor {
+        display: block !important;
+        overflow: visible !important;
+    }
+
+    /* New branch/vendor input fields - must be visible */
+    .closing-inventory-page .new-branch-input,
+    .closing-inventory-page .new-vendor-input {
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        position: relative !important;
+        z-index: 10 !important;
+        margin-top: 10px !important;
+        width: 100% !important;
+        padding: 14px 16px !important;
+        font-size: 16px !important;
+        border: 2px solid #10b981 !important;
+        border-radius: 10px !important;
+        background: #fff !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Inputs and selects */
+    .upload-invoice-page input,
+    .upload-invoice-page select,
+    .closing-inventory-page input,
+    .closing-inventory-page select {
+        width: 100% !important;
+        padding: 10px 12px !important;
+        font-size: 16px !important;
+        /* Prevents iOS zoom */
+        box-sizing: border-box !important;
+    }
+
+    /* Conditional "Add New" inputs for branch/vendor */
+    .upload-invoice-page input[placeholder*="branch"],
+    .upload-invoice-page input[placeholder*="vendor"],
+    .upload-invoice-page input[placeholder*="Branch"],
+    .upload-invoice-page input[placeholder*="Vendor"],
+    .closing-inventory-page input[placeholder*="branch"],
+    .closing-inventory-page input[placeholder*="vendor"],
+    .closing-inventory-page input[placeholder*="Branch"],
+    .closing-inventory-page input[placeholder*="Vendor"] {
+        display: block !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        margin-top: 10px !important;
+        width: 100% !important;
+        padding: 12px 14px !important;
+        font-size: 16px !important;
+        border: 2px solid #667eea !important;
+        background: #fff !important;
+    }
+
+    /* Form field containers - ensure children are visible */
+    .upload-invoice-page>div>div>div,
+    .closing-inventory-page>div>div>div {
+        overflow: visible !important;
+    }
+
+    /* Upload area */
+    .upload-invoice-page div[style*="border: \"2px dashed\""],
+    .upload-invoice-page div[style*="border: '2px dashed'"],
+    div[style*="border: \"2px dashed\""],
+    div[style*="border: '2px dashed'"] {
+        padding: 20px !important;
+    }
+
+    /* Tables */
+    .upload-invoice-page table,
+    .closing-inventory-page table {
+        min-width: 500px !important;
+    }
+
+    .upload-invoice-page table th,
+    .upload-invoice-page table td,
+    .closing-inventory-page table th,
+    .closing-inventory-page table td {
+        padding: 10px 8px !important;
+        font-size: 12px !important;
+    }
+
+    .upload-invoice-page table input,
+    .closing-inventory-page table input {
+        padding: 8px !important;
+        font-size: 13px !important;
+    }
+
+    /* Icon in header */
+    .upload-invoice-page div[style*="width: 56"],
+    .closing-inventory-page div[style*="width: 56"] {
+        width: 44px !important;
+        height: 44px !important;
+        font-size: 24px !important;
+    }
+
+    /* Results grid */
+    div[style*="repeat(auto-fit, minmax(200px, 1fr))"] {
+        grid-template-columns: 1fr 1fr !important;
+        gap: 10px !important;
+    }
+
+    /* Stat cards */
+    div[style*="background: \"#f8fafc\""][style*="borderRadius: 12"],
+    div[style*="background: '#f8fafc'"][style*="borderRadius: 12"] {
+        padding: 12px !important;
+    }
+}
+
+@media (max-width: 480px) {
+
+    .upload-invoice-page,
+    .closing-inventory-page {
+        padding: 8px !important;
+    }
+
+    .upload-invoice-page>div,
+    .closing-inventory-page>div {
+        padding: 12px !important;
+        border-radius: 12px !important;
+    }
+
+    .upload-invoice-page h2,
+    .closing-inventory-page h2 {
+        font-size: 16px !important;
+    }
+
+    /* Header stack vertically */
+    .upload-invoice-page>div:first-child>div,
+    .closing-inventory-page>div:first-child>div {
+        flex-direction: column !important;
+        text-align: center !important;
+        gap: 10px !important;
+    }
+
+    .upload-invoice-page div[style*="width: 56"],
+    .closing-inventory-page div[style*="width: 56"] {
+        width: 40px !important;
+        height: 40px !important;
+        font-size: 20px !important;
+        margin: 0 auto !important;
+    }
+
+    div[style*="repeat(auto-fit, minmax(200px, 1fr))"] {
+        grid-template-columns: 1fr !important;
+    }
+
+    .upload-invoice-page table,
+    .closing-inventory-page table {
+        min-width: 400px !important;
+        font-size: 11px !important;
+    }
+
+    .upload-invoice-page table th,
+    .upload-invoice-page table td,
+    .closing-inventory-page table th,
+    .closing-inventory-page table td {
+        padding: 8px 6px !important;
+    }
+}
+
+/* ============================================
+   MODAL MOBILE STYLES (New Item, Manage Items)
+   ============================================ */
+
+@media (max-width: 768px) {
+
+    /* Modal backdrop */
+    div[style*="position: \"fixed\""][style*="inset: 0"] {
+        padding: 12px !important;
+        align-items: flex-end !important;
+    }
+
+    /* Modal content */
+    div[style*="maxWidth: 500"],
+    div[style*="max-width: 500"],
+    div[style*="maxWidth: 600"],
+    div[style*="max-width: 600"],
+    div[style*="maxWidth: 700"],
+    div[style*="max-width: 700"] {
+        max-width: 100% !important;
+        width: 100% !important;
+        max-height: 85vh !important;
+        border-radius: 16px 16px 0 0 !important;
+        margin: 0 !important;
+    }
+
+    /* Modal header */
+    div[style*="borderBottom: \"1px solid\""] h3 {
+        font-size: 16px !important;
+    }
+
+    /* Modal form fields */
+    div[style*="position: \"fixed\""] input,
+    div[style*="position: \"fixed\""] select {
+        padding: 10px 12px !important;
+        font-size: 14px !important;
+    }
+
+    /* Modal buttons */
+    div[style*="position: \"fixed\""] button {
+        padding: 10px 16px !important;
+        font-size: 14px !important;
+    }
+
+    /* Modal body scrollable area */
+    div[style*="maxHeight: \"60vh\""],
+    div[style*="max-height: 60vh"] {
+        max-height: 50vh !important;
+    }
+}
+
+/* ============================================
+   GENERAL RESPONSIVE TEXT SCALING
+   ============================================ */
+
+@media (max-width: 768px) {
+    h1 {
+        font-size: 1.5rem !important;
+    }
+
+    h2 {
+        font-size: 1.25rem !important;
+    }
+
+    h3 {
+        font-size: 1.1rem !important;
+    }
+
+    h4 {
+        font-size: 1rem !important;
+    }
+}
+
+@media (max-width: 480px) {
+    h1 {
+        font-size: 1.25rem !important;
+    }
+
+    h2 {
+        font-size: 1.1rem !important;
+    }
+
+    h3 {
+        font-size: 1rem !important;
+    }
+
+    h4 {
+        font-size: 0.9rem !important;
+    }
+}
+
+/* ============================================
+   SAFE AREA INSETS FOR NOTCHED DEVICES
+   ============================================ */
+
+@supports (padding: max(0px)) {
+    .main-nav {
+        padding-left: max(0.75rem, env(safe-area-inset-left));
+        padding-right: max(0.75rem, env(safe-area-inset-right));
+    }
+
+    .main-layout {
+        padding-left: max(0.5rem, env(safe-area-inset-left));
+        padding-right: max(0.5rem, env(safe-area-inset-right));
+    }
+
+    .modal-overlay {
+        padding-bottom: max(1rem, env(safe-area-inset-bottom));
     }
 }

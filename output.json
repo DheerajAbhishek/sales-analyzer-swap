@@ -1,0 +1,730 @@
+[
+    {
+        "Item Name": "Almonds",
+        "Price": 700.0
+    },
+    {
+        "Item Name": "Apple",
+        "Price": 250.0
+    },
+    {
+        "Item Name": "Babycorn",
+        "Price": 175.0
+    },
+    {
+        "Item Name": "Banana",
+        "Price": 75.0
+    },
+    {
+        "Item Name": "Bayleaf",
+        "Price": 220.0
+    },
+    {
+        "Item Name": "BBQ Sauce",
+        "Price": 190.0
+    },
+    {
+        "Item Name": "Beetroot",
+        "Price": 50.0
+    },
+    {
+        "Item Name": "Bell Peppers",
+        "Price": 210.0
+    },
+    {
+        "Item Name": "Broccoli",
+        "Price": 290.0
+    },
+    {
+        "Item Name": "Brown Bread",
+        "Price": 70.0
+    },
+    {
+        "Item Name": "Brown Rice",
+        "Price": 75.0
+    },
+    {
+        "Item Name": "Butter",
+        "Price": 496.0
+    },
+    {
+        "Item Name": "Cabbage",
+        "Price": 40.0
+    },
+    {
+        "Item Name": "Capsicum",
+        "Price": 90.0
+    },
+    {
+        "Item Name": "Carrot",
+        "Price": 60.0
+    },
+    {
+        "Item Name": "Cashew",
+        "Price": 650.0
+    },
+    {
+        "Item Name": "Cheese",
+        "Price": 530.0
+    },
+    {
+        "Item Name": "Chia seeds",
+        "Price": 420.0
+    },
+    {
+        "Item Name": "Chicken Breast",
+        "Price": 330.0
+    },
+    {
+        "Item Name": "Dry Red Chilli",
+        "Price": 290.0
+    },
+    {
+        "Item Name": "Chilli Powder",
+        "Price": 270.0
+    },
+    {
+        "Item Name": "Chipotle Mayonnaise",
+        "Price": 240.0
+    },
+    {
+        "Item Name": "Cinnamon",
+        "Price": 640.0
+    },
+    {
+        "Item Name": "Cloves",
+        "Price": 1025.0
+    },
+    {
+        "Item Name": "Coconut Powder",
+        "Price": 750.0
+    },
+    {
+        "Item Name": "Coriander",
+        "Price": 112.0
+    },
+    {
+        "Item Name": "Curd",
+        "Price": 55.0
+    },
+    {
+        "Item Name": "Curd Blue",
+        "Price": 70.0
+    },
+    {
+        "Item Name": "Dry Basil",
+        "Price": 395.0
+    },
+    {
+        "Item Name": "Dry Garlic",
+        "Price": 310.0
+    },
+    {
+        "Item Name": "Eggs",
+        "Price": 6.0
+    },
+    {
+        "Item Name": "Elaichi",
+        "Price": 2400.0
+    },
+    {
+        "Item Name": "French Beans",
+        "Price": 150.0
+    },
+    {
+        "Item Name": "Garam Masala",
+        "Price": 300.0
+    },
+    {
+        "Item Name": "Ginger Garlic Paste",
+        "Price": 180.0
+    },
+    {
+        "Item Name": "Green Peas",
+        "Price": 150.0
+    },
+    {
+        "Item Name": "Guava",
+        "Price": 100.0
+    },
+    {
+        "Item Name": "Honey",
+        "Price": 240.0
+    },
+    {
+        "Item Name": "Jaggery",
+        "Price": 80.0
+    },
+    {
+        "Item Name": "Jalapeno Mayo",
+        "Price": 200.0
+    },
+    {
+        "Item Name": "Jam",
+        "Price": 106.0
+    },
+    {
+        "Item Name": "Kismis",
+        "Price": 300.0
+    },
+    {
+        "Item Name": "Lettuce",
+        "Price": 200.0
+    },
+    {
+        "Item Name": "Maida Flour",
+        "Price": 60.0
+    },
+    {
+        "Item Name": "Milk",
+        "Price": 35.0
+    },
+    {
+        "Item Name": "Millets",
+        "Price": 130.0
+    },
+    {
+        "Item Name": "Mint Leaves",
+        "Price": 110.0
+    },
+    {
+        "Item Name": "Multigrain Wrap",
+        "Price": 120.0
+    },
+    {
+        "Item Name": "Multigrain Roti",
+        "Price": 50.0
+    },
+    {
+        "Item Name": "Mushrooms",
+        "Price": 45.0
+    },
+    {
+        "Item Name": "Oats",
+        "Price": 120.0
+    },
+    {
+        "Item Name": "Oil",
+        "Price": 140.0
+    },
+    {
+        "Item Name": "Onion",
+        "Price": 60.0
+    },
+    {
+        "Item Name": "Oregano",
+        "Price": 540.0
+    },
+    {
+        "Item Name": "Paneer",
+        "Price": 350.0
+    },
+    {
+        "Item Name": "Papaya",
+        "Price": 70.0
+    },
+    {
+        "Item Name": "Pasta",
+        "Price": 150.0
+    },
+    {
+        "Item Name": "Peanut Butter",
+        "Price": 255.0
+    },
+    {
+        "Item Name": "Pepper",
+        "Price": 800.0
+    },
+    {
+        "Item Name": "Pomegranate",
+        "Price": 220.0
+    },
+    {
+        "Item Name": "Potato",
+        "Price": 50.0
+    },
+    {
+        "Item Name": "Ragi Flour",
+        "Price": 90.0
+    },
+    {
+        "Item Name": "Rajma",
+        "Price": 190.0
+    },
+    {
+        "Item Name": "Salt",
+        "Price": 16.0
+    },
+    {
+        "Item Name": "Soya Chunks",
+        "Price": 176.0
+    },
+    {
+        "Item Name": "Spinach",
+        "Price": 90.0
+    },
+    {
+        "Item Name": "Strawberry Crush",
+        "Price": 140.0
+    },
+    {
+        "Item Name": "Sweet Corn",
+        "Price": 95.0
+    },
+    {
+        "Item Name": "Tandoori Powder",
+        "Price": 570.0
+    },
+    {
+        "Item Name": "Tomato",
+        "Price": 50.0
+    },
+    {
+        "Item Name": "Tomato Sauce",
+        "Price": 60.0
+    },
+    {
+        "Item Name": "Kiwi Crush",
+        "Price": 150.0
+    },
+    {
+        "Item Name": "Chocolate Syrup",
+        "Price": 280.0
+    },
+    {
+        "Item Name": "Dry Thyme",
+        "Price": 470.0
+    },
+    {
+        "Item Name": "Lemon Seasoning Powder",
+        "Price": 380.0
+    },
+    {
+        "Item Name": "Tomato Paste",
+        "Price": 170.0
+    },
+    {
+        "Item Name": "Corn Flour",
+        "Price": 70.0
+    },
+    {
+        "Item Name": "Water",
+        "Price": 40.0
+    },
+    {
+        "Item Name": "Mayonnaise",
+        "Price": 170.0
+    },
+    {
+        "Item Name": "Shrimp",
+        "Price": 350.0
+    },
+    {
+        "Item Name": "Peri Peri Marinade",
+        "Price": 490.0
+    },
+    {
+        "Item Name": "50ml White Boxes(T.L)",
+        "Price": 1.5
+    },
+    {
+        "Item Name": "250ml White Boxes(T.L)",
+        "Price": 4.0
+    },
+    {
+        "Item Name": "350ml Glass",
+        "Price": 3.5
+    },
+    {
+        "Item Name": "350ml Lid",
+        "Price": 1.5
+    },
+    {
+        "Item Name": "500ml Black Rectangle Boxes",
+        "Price": 6.5
+    },
+    {
+        "Item Name": "500ml Black Round Boxes",
+        "Price": 5.0
+    },
+    {
+        "Item Name": "650ml Black Rectangle Boxes",
+        "Price": 7.0
+    },
+    {
+        "Item Name": "Aluminium Foil",
+        "Price": 350.0
+    },
+    {
+        "Item Name": "Clean Wrap",
+        "Price": 450.0
+    },
+    {
+        "Item Name": "Kitchen Tissue Rolls",
+        "Price": 60.0
+    },
+    {
+        "Item Name": "Sporks",
+        "Price": 130.0
+    },
+    {
+        "Item Name": "Straws",
+        "Price": 70.0
+    },
+    {
+        "Item Name": "Tissues(9*9)",
+        "Price": 10.0
+    },
+    {
+        "Item Name": "Tape",
+        "Price": 25.0
+    },
+    {
+        "Item Name": "Disposable Gloves",
+        "Price": 60.0
+    },
+    {
+        "Item Name": "Garbage Bags",
+        "Price": 90.0
+    },
+    {
+        "Item Name": "Shower Caps",
+        "Price": 70.0
+    },
+    {
+        "Item Name": "Paper Pouches",
+        "Price": 2.8
+    },
+    {
+        "Item Name": "Olives",
+        "Price": 210.0
+    },
+    {
+        "Item Name": "Jalapeno Slices",
+        "Price": 120.0
+    },
+    {
+        "Item Name": "Boiled Sprouts",
+        "Price": 191.0
+    },
+    {
+        "Item Name": "Watermelon",
+        "Price": 50.0
+    },
+    {
+        "Item Name": "Brown Sugar",
+        "Price": 85.0
+    },
+    {
+        "Item Name": "Cucumber",
+        "Price": 50.0
+    },
+    {
+        "Item Name": "Mango",
+        "Price": 100.0
+    },
+    {
+        "Item Name": "Lemonade Syrup",
+        "Price": 75.0
+    },
+    {
+        "Item Name": "Pineapple",
+        "Price": 50.0
+    },
+    {
+        "Item Name": "Red Cabbage",
+        "Price": 350.0
+    },
+    {
+        "Item Name": "Cherry Tomato",
+        "Price": 250.0
+    },
+    {
+        "Item Name": "Cucumber",
+        "Price": 50.0
+    },
+    {
+        "Item Name": "Zuchinni",
+        "Price": 180.0
+    },
+    {
+        "Item Name": "Flax Seeds",
+        "Price": 250.0
+    },
+    {
+        "Item Name": "Roasted Peanuts",
+        "Price": 250.0
+    },
+    {
+        "Item Name": "Whey Protein",
+        "Price": 1150.0
+    },
+    {
+        "Item Name": "Sriracha",
+        "Price": 200.0
+    },
+    {
+        "Item Name": "Sweet Onion",
+        "Price": 170.0
+    },
+    {
+        "Item Name": "Honey Yoghourt",
+        "Price": 134.0
+    },
+    {
+        "Item Name": "Garlic Yoghourt",
+        "Price": 133.0
+    },
+    {
+        "Item Name": "Mint Yoghourt",
+        "Price": 200.0
+    },
+    {
+        "Item Name": "Garlic Mayo",
+        "Price": 170.0
+    },
+    {
+        "Item Name": "Panini",
+        "Price": 32.0
+    },
+    {
+        "Item Name": "Tofu Paneer",
+        "Price": 650.0
+    },
+    {
+        "Item Name": "Rajma Masala",
+        "Price": 800.0
+    },
+    {
+        "Item Name": "Tomato Onion Salad",
+        "Price": 4.0
+    },
+    {
+        "Item Name": "Rajma Masala",
+        "Price": 100.0
+    },
+    {
+        "Item Name": "Cilantro rice",
+        "Price": 19.0
+    },
+    {
+        "Item Name": "Corn Salad",
+        "Price": 5.0
+    },
+    {
+        "Item Name": "BBQ Chicken Breast",
+        "Price": 480.0
+    },
+    {
+        "Item Name": "Peri Peri Paneer",
+        "Price": 316.0
+    },
+    {
+        "Item Name": "Basmati Rice",
+        "Price": 110.0
+    },
+    {
+        "Item Name": "Boiled Basmati Rice",
+        "Price": 42.0
+    },
+    {
+        "Item Name": "Chia Pudding",
+        "Price": 139.0
+    },
+    {
+        "Item Name": "Stevia",
+        "Price": 1000.0
+    },
+    {
+        "Item Name": "Jaggery Syrup",
+        "Price": 75.0
+    },
+    {
+        "Item Name": "Spiced Greek Yoghurt",
+        "Price": 144.0
+    },
+    {
+        "Item Name": "Beetroot Filter",
+        "Price": 69.0
+    },
+    {
+        "Item Name": "Flavoured Yoghurt",
+        "Price": 161.0
+    },
+    {
+        "Item Name": "Tomato Gravy",
+        "Price": 97.0
+    },
+    {
+        "Item Name": "Coconut Gravy",
+        "Price": 98.0
+    },
+    {
+        "Item Name": "Ragi Malt",
+        "Price": 28.0
+    },
+    {
+        "Item Name": "Cooked Millets",
+        "Price": 79.0
+    },
+    {
+        "Item Name": "Grilled Chicken Breast",
+        "Price": 484.0
+    },
+    {
+        "Item Name": "Roasted Chicken Breast",
+        "Price": 494.0
+    },
+    {
+        "Item Name": "Hung Curd",
+        "Price": 122.0
+    },
+    {
+        "Item Name": "BBQ Chicken(R)",
+        "Price": 37.0
+    },
+    {
+        "Item Name": "BBQ Chicken(S)",
+        "Price": 32.0
+    },
+    {
+        "Item Name": "Sauteed Mushrooms",
+        "Price": 414.0
+    },
+    {
+        "Item Name": "Butter Garlic Rice",
+        "Price": 19.0
+    },
+    {
+        "Item Name": "Spinach Rice",
+        "Price": 4.0
+    },
+    {
+        "Item Name": "Tomato Bath Rice",
+        "Price": 5.0
+    },
+    {
+        "Item Name": "Beet Rice",
+        "Price": 4.0
+    },
+    {
+        "Item Name": "Steamed Veggies",
+        "Price": 85.0
+    },
+    {
+        "Item Name": "Corn & Peas",
+        "Price": 156.0
+    },
+    {
+        "Item Name": "Egg & Chicken",
+        "Price": 38.0
+    },
+    {
+        "Item Name": "Egg & Roasted Chicken",
+        "Price": 39.0
+    },
+    {
+        "Item Name": "Mixed Dry Fruits",
+        "Price": 385.0
+    },
+    {
+        "Item Name": "Grilled Babycorn & French beans",
+        "Price": 191.0
+    },
+    {
+        "Item Name": "BBQ Paneer(R)",
+        "Price": 28.0
+    },
+    {
+        "Item Name": "BBQ Paneer(S)",
+        "Price": 24.0
+    },
+    {
+        "Item Name": "Spinach Chicken(R)",
+        "Price": 35.0
+    },
+    {
+        "Item Name": "Spinach Chicken(S)",
+        "Price": 30.0
+    },
+    {
+        "Item Name": "Egg & BBQ Chicken",
+        "Price": 43.0
+    },
+    {
+        "Item Name": "Brown Garlic",
+        "Price": 308.0
+    },
+    {
+        "Item Name": "Blanched Spinach",
+        "Price": 407.0
+    },
+    {
+        "Item Name": "Steamed Broccoli",
+        "Price": 575.0
+    },
+    {
+        "Item Name": "Cream Sauce",
+        "Price": 106.0
+    },
+    {
+        "Item Name": "Boiled Rajma",
+        "Price": 75.0
+    },
+    {
+        "Item Name": "Boiled Rice",
+        "Price": 33.0
+    },
+    {
+        "Item Name": "BBQ Glaze",
+        "Price": 150.0
+    },
+    {
+        "Item Name": "Tom Base",
+        "Price": 41.0
+    },
+    {
+        "Item Name": "Lemon Sauce",
+        "Price": 34.0
+    },
+    {
+        "Item Name": "Spinach Puree",
+        "Price": 75.0
+    },
+    {
+        "Item Name": "Spinach Paneer(R)",
+        "Price": 25.0
+    },
+    {
+        "Item Name": "Spinach Paneer(S)",
+        "Price": 22.0
+    },
+    {
+        "Item Name": "Banana & Milk Mix",
+        "Price": 19.0
+    },
+    {
+        "Item Name": "Grilled Shrimp",
+        "Price": 1064.0
+    },
+    {
+        "Item Name": "Cilantro rice",
+        "Price": 19.0
+    },
+    {
+        "Item Name": "BBQ Chicken Breast",
+        "Price": 480.0
+    },
+    {
+        "Item Name": "Grilled Brocolli Salad",
+        "Price": 243.0
+    },
+    {
+        "Item Name": "whole Wheat wrap 10inch",
+        "Price": 180.0
+    },
+    {
+        "Item Name": "French Fries sfi",
+        "Price": 312.0
+    }
+]

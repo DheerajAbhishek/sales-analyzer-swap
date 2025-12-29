@@ -1,0 +1,531 @@
+import React, { useState, useEffect, useRef } from 'react';
+import axios from 'axios';
+import flatpickr from 'flatpickr';
+import 'flatpickr/dist/flatpickr.css';
+import { ristaService, reportService } from '../../services/api';
+import { RESTAURANT_ID_MAP } from '../../utils/constants';
+
+const API_BASE = import.meta.env.VITE_DASHBOARD_API || '';
+const USER_EMAIL = import.meta.env.VITE_DASHBOARD_USER || '';
+
+/**
+ * Daily Food Costing Component
+            // Unified backend endpoint: food-costing
+            console.log('Fetching unified food costing for', selectedBranchId, selectedDate)
+            const costing = await ristaService.fetchFoodCostingDaily(selectedBranchId, selectedDate)
+
+            const openingValue = costing?.opening?.totalAmount || 0
+            const closingValue = costing?.closing?.totalAmount || 0
+            const purchasesValue = costing?.purchases?.totalAmount || 0
+            const netSales = costing?.sales?.netSale || 0
+            const orders = costing?.sales?.noOfOrders || 0
+
+            setOpeningInventory({ value: openingValue, loading: false })
+            setClosingInventory({ value: closingValue, loading: false })
+            setPurchases({ value: purchasesValue, loading: false })
+            setSales({ value: netSales, orders, loading: false })
+            console.log('Food costing fetched:', costing)
+                ristaService.fetchInventoryData(selectedBranchId, selectedDate, selectedDate, ['audit']),
+
+                // 3. Selected day's purchase orders
+                ristaService.fetchInventoryData(selectedBranchId, selectedDate, selectedDate, ['po'])
+            ]);
+
+            // Process opening inventory (previous day's audit total amount)
+            if (previousDayInventory.status === 'fulfilled' && previousDayInventory.value?.data?.audit) {
+                const auditData = previousDayInventory.value.data.audit;
+                const openingValue = auditData?.consolidated?.totalAmount
+                    ?? previousDayInventory.value?.summary?.totalAuditAmount
+                    ?? 0;
+                setOpeningInventory({ value: openingValue, loading: false });
+                console.log(`Opening inventory (${previousDayStr} audit total):`, openingValue);
+            } else {
+                setOpeningInventory({ value: 0, loading: false });
+                console.warn(`No audit data found for previous day (${previousDayStr})`);
+            }
+
+            // Process closing inventory (selected day's audit total amount)
+            if (selectedDayInventory.status === 'fulfilled' && selectedDayInventory.value?.data?.audit) {
+                const auditData = selectedDayInventory.value.data.audit;
+                const closingValue = auditData?.consolidated?.totalAmount
+                    ?? selectedDayInventory.value?.summary?.totalAuditAmount
+                    ?? 0;
+                setClosingInventory({ value: closingValue, loading: false });
+                console.log(`Closing inventory (${selectedDate} audit total):`, closingValue);
+            } else {
+                setClosingInventory({ value: 0, loading: false });
+                console.warn(`No audit data found for ${selectedDate}`);
+            }
+
+            // Process purchases (selected day's POs)
+            if (purchasesData.status === 'fulfilled' && purchasesData.value?.summary) {
+                const poAmount = purchasesData.value.summary.totalPurchaseOrderAmount || 0;
+                setPurchases({ value: poAmount, loading: false });
+                console.log(`Purchases (${selectedDate} PO):`, poAmount);
+            } else {
+                setPurchases({ value: 0, loading: false });
+                console.warn(`No purchase order data found for ${selectedDate}`);
+            }
+
+            // Fetch sales per channel with appropriate endpoint and aggregate
+            const channels = ['swiggy', 'zomato', 'takeaway', 'corporate']
+            const salesPromises = channels.map((ch) => {
+                if (ch === 'takeaway' || ch === 'corporate') {
+                    // Use GET fetch-from-rista for takeaway/corporate
+                    return reportService.getOnDemandInsights(selectedBranchId, selectedDate, selectedDate, ch, 'total')
+                }
+                // Use POST mode rista-sales for swiggy/zomato via root API (CORS-safe)
+                return ristaService.fetchSalesData(selectedBranchId, selectedDate, selectedDate, ch)
+            })
+
+            const salesResults = await Promise.allSettled(salesPromises)
+
+            let totalNetSales = 0
+            let totalOrders = 0
+            for (const res of salesResults) {
+                const insights = res.status === 'fulfilled' ? (res.value?.body?.consolidatedInsights || {}) : {}
+                totalNetSales += insights.netSale || insights.grossSale || 0
+                totalOrders += insights.noOfOrders || 0
+            }
+
+            setSales({ value: totalNetSales, orders: totalOrders, loading: false })
+            console.log(`Sales (${selectedDate} aggregated across swiggy/zomato/takeaway/corporate):`, totalNetSales, 'Orders:', totalOrders)
+
+        } catch (error) {
+            console.error('Error fetching automatic data:', error);
+            showMessage('error', 'Failed to fetch some data. Check console for details.');
+
+            // Set failed states
+            setOpeningInventory({ value: 0, loading: false });
+            setClosingInventory({ value: 0, loading: false });
+            setPurchases({ value: 0, loading: false });
+            setSales({ value: 0, orders: 0, loading: false });
+        } finally {
+            setLoading(false);
+        }
+    };
+    
+    const autoCalculate = () => {
+        // Check if all data is available
+        if (!openingInventory?.value || !closingInventory?.value || !purchases?.value || !sales?.value) {
+            console.log('Not all data available for calculation');
+            return;
+        }
+        
+        const opening = parseFloat(openingInventory.value);
+        const closing = parseFloat(closingInventory.value);
+        const purchaseAmount = parseFloat(purchases.value);
+        const netSales = parseFloat(sales.value);
+        
+        // Calculate COGS: Opening + Purchases - Closing
+        const dailyCogs = opening + purchaseAmount - closing;
+        
+        // Calculate Food Cost %: (COGS / Net Sales) × 100
+        const foodCostPercentage = netSales > 0 ? (dailyCogs / netSales) * 100 : 0;
+        
+        const calculationResults = {
+            success: true,
+            calculations: {
+                openingInventory: opening,
+                closingInventory: closing,
+                purchases: purchaseAmount,
+                dailyCogs: dailyCogs,
+                netSales: netSales,
+                foodCostPercentage: foodCostPercentage
+            },
+            salesDetails: {
+                ordersCount: sales.orders || 0,
+                grossSale: netSales,
+                gst: 0,
+                netSale: netSales
+            },
+            status: {
+                withinTarget: foodCostPercentage <= 25,
+                message: foodCostPercentage <= 25 ? 'Within Target ✓' : 'Above Target ⚠'
+            },
+            metadata: {
+                branch: selectedBranch,
+                date: selectedDate
+            }
+        };
+        
+        setResults(calculationResults);
+        console.log('Auto-calculation completed:', calculationResults);
+    };
+
+    const showMessage = (type, text) => {
+        setMessage({ type, text });
+        setTimeout(() => setMessage({ type: '', text: '' }), 5000);
+    };
+
+    const formatCurrency = (value) => {
+        if (value === null || value === undefined) return '₹0.00';
+        return `₹${parseFloat(value).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    };
+
+    const getStatusColor = (percentage) => {
+        return percentage <= 25 ? '#10b981' : '#ef4444';
+    };
+
+    const getStatusBgColor = (percentage) => {
+        return percentage <= 25 ? '#d1fae5' : '#fee2e2';
+    };
+
+    return (
+        <div style={{ minHeight: '100vh', background: '#f8fafc', padding: '20px' }}>
+            <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+                {/* Header */}
+                <div style={{
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    padding: '24px',
+                    borderRadius: '12px',
+                    marginBottom: '24px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '16px',
+                    boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
+                }}>
+                    <div style={{
+                        background: 'rgba(255,255,255,0.2)',
+                        width: '56px',
+                        height: '56px',
+                        borderRadius: '12px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        backdropFilter: 'blur(10px)',
+                        border: '1px solid rgba(255,255,255,0.3)'
+                    }}>
+                        <div style={{
+                            color: '#fff',
+                            fontSize: '24px',
+                            fontWeight: '700'
+                        }}>
+                            %
+                        </div>
+                    </div>
+                    <div>
+                        <h1 style={{ margin: 0, fontSize: '26px', color: '#fff', fontWeight: '700' }}>
+                            Daily Food Costing
+                        </h1>
+                        <p style={{ margin: '4px 0 0 0', color: 'rgba(255,255,255,0.9)', fontSize: '14px' }}>
+                            Track daily COGS and food cost percentage (Target: 25%)
+                        </p>
+                    </div>
+                </div>
+
+                {/* Message Banner */}
+                {message.text && (
+                    <div style={{
+                        padding: '12px 16px',
+                        borderRadius: '8px',
+                        marginBottom: '20px',
+                        background: message.type === 'success' ? '#d1fae5' : '#fee2e2',
+                        color: message.type === 'success' ? '#065f46' : '#991b1b',
+                        border: `1px solid ${message.type === 'success' ? '#10b981' : '#ef4444'}`
+                    }}>
+                        {message.text}
+                    </div>
+                )}
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                    {/* Left Column - Selection Controls */}
+                    <div style={{ background: '#fff', padding: '24px', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                        <h2 style={{ marginTop: 0, fontSize: '18px', color: '#1e293b', fontWeight: '600' }}>
+                            Select Date & Branch
+                        </h2>
+
+                        {/* Branch Selection */}
+                        <div style={{ marginBottom: '20px' }}>
+                            <label style={{ display: 'block', marginBottom: '8px', color: '#475569', fontSize: '14px', fontWeight: '500' }}>
+                                Branch *
+                            </label>
+                            <select
+                                value={selectedBranch}
+                                onChange={(e) => {
+                                    const branchName = e.target.value;
+                                    const branch = branches.find(b => b.name === branchName);
+                                    setSelectedBranch(branchName);
+                                    setSelectedBranchId(branch?.code || '');
+                                    setResults(null);
+                                    setSelectedBranchKey(branch?.key || '');
+                                    setClosingInventory(''); // Reset closing inventory
+                                }}
+                                style={{
+                                    width: '100%',
+                                    padding: '10px 12px',
+                                    border: '1px solid #e2e8f0',
+                                    borderRadius: '8px',
+                                    fontSize: '14px',
+                                    color: '#1e293b'
+                                }}
+                            >
+                                <option value="">Select Branch</option>
+                                {branches.map((branch) => (
+                                    <option key={branch.code} value={branch.name}>
+                                        {branch.name} ({branch.code})
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        {/* Date Selection */}
+                        <div style={{ marginBottom: '20px' }}>
+                            <label style={{ display: 'block', marginBottom: '8px', color: '#475569', fontSize: '14px', fontWeight: '500' }}>
+                                Date *
+                            </label>
+                            <input
+                                type="text"
+                                id="dailyFoodCostingDatePicker"
+                                value={selectedDate}
+                                readOnly
+                                placeholder="Select date"
+                                style={{
+                                    width: '100%',
+                                    padding: '10px 12px',
+                                    border: '1px solid #e2e8f0',
+                                    borderRadius: '8px',
+                                    fontSize: '14px',
+                                    color: '#1e293b',
+                                    cursor: 'pointer'
+                                }}
+                            />
+                        </div>
+
+                        {/* Auto-Fetched Data Display */}
+                        <div style={{
+                            background: '#f8fafc',
+                            padding: '16px',
+                            borderRadius: '8px',
+                            marginBottom: '20px',
+                            border: '1px solid #e2e8f0'
+                        }}>
+                            <h3 style={{ marginTop: 0, marginBottom: '12px', fontSize: '14px', color: '#64748b', fontWeight: '600' }}>
+                                Auto-Fetched Data
+                            </h3>
+
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                <span style={{ color: '#64748b', fontSize: '13px' }}>Opening Inventory:</span>
+                                <span style={{ color: '#1e293b', fontSize: '13px', fontWeight: '600' }}>
+                                    {openingInventory?.loading ? 'Loading...' : formatCurrency(openingInventory?.value)}
+                                </span>
+                            </div>
+
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                <span style={{ color: '#64748b', fontSize: '13px' }}>Purchases (Today):</span>
+                                <span style={{ color: '#1e293b', fontSize: '13px', fontWeight: '600' }}>
+                                    {purchases?.loading ? 'Loading...' : formatCurrency(purchases?.value)}
+                                </span>
+                            </div>
+                            
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                <span style={{ color: '#64748b', fontSize: '13px' }}>Closing Inventory:</span>
+                                <span style={{ color: '#1e293b', fontSize: '13px', fontWeight: '600' }}>
+                                    {closingInventory?.loading ? 'Loading...' : formatCurrency(closingInventory?.value)}
+                                </span>
+                            </div>
+
+                            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <span style={{ color: '#64748b', fontSize: '13px' }}>Sales (Today):</span>
+                                <span style={{ color: '#1e293b', fontSize: '13px', fontWeight: '600' }}>
+                                    {sales?.loading ? 'Loading...' : `${formatCurrency(sales?.value)} (${sales?.orders || 0} orders)`}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Right Column - Results */}
+                    <div style={{ background: '#fff', padding: '24px', borderRadius: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+                        <h2 style={{ marginTop: 0, fontSize: '18px', color: '#1e293b', fontWeight: '600', marginBottom: '20px' }}>
+                            Calculation Results
+                        </h2>
+
+                        {!results ? (
+                            <div style={{
+                                textAlign: 'center',
+                                padding: '60px 20px',
+                                color: '#94a3b8'
+                            }}>
+                                <div style={{ fontSize: '48px', marginBottom: '12px' }}>📈</div>
+                                <p style={{ margin: 0, fontSize: '15px' }}>
+                                    Select a branch and date to auto-fetch and calculate results
+                                </p>
+                            </div>
+                        ) : (
+                            <>
+                                {/* COGS Calculation Breakdown */}
+                                <div style={{
+                                    background: '#f8fafc',
+                                    padding: '16px',
+                                    borderRadius: '8px',
+                                    marginBottom: '20px',
+                                    border: '1px solid #e2e8f0'
+                                }}>
+                                    <h3 style={{ marginTop: 0, marginBottom: '12px', fontSize: '14px', color: '#64748b', fontWeight: '600' }}>
+                                        COGS Calculation
+                                    </h3>
+
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                        <span style={{ color: '#64748b', fontSize: '13px' }}>Opening Inventory</span>
+                                        <span style={{ color: '#1e293b', fontSize: '13px', fontWeight: '600' }}>
+                                            {formatCurrency(results.calculations.openingInventory)}
+                                        </span>
+                                    </div>
+
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                        <span style={{ color: '#10b981', fontSize: '13px' }}>+ Purchases</span>
+                                        <span style={{ color: '#10b981', fontSize: '13px', fontWeight: '600' }}>
+                                            {formatCurrency(results.calculations.purchases)}
+                                        </span>
+                                    </div>
+
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+                                        <span style={{ color: '#ef4444', fontSize: '13px' }}>- Closing Inventory</span>
+                                        <span style={{ color: '#ef4444', fontSize: '13px', fontWeight: '600' }}>
+                                            {formatCurrency(results.calculations.closingInventory)}
+                                        </span>
+                                    </div>
+
+                                    <div style={{
+                                        borderTop: '2px solid #e2e8f0',
+                                        paddingTop: '12px',
+                                        display: 'flex',
+                                        justifyContent: 'space-between'
+                                    }}>
+                                        <span style={{ color: '#1e293b', fontSize: '14px', fontWeight: '700' }}>Daily COGS</span>
+                                        <span style={{ color: '#1e293b', fontSize: '14px', fontWeight: '700' }}>
+                                            {formatCurrency(results.calculations.dailyCogs)}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {/* Sales Info */}
+                                <div style={{
+                                    background: '#f8fafc',
+                                    padding: '16px',
+                                    borderRadius: '8px',
+                                    marginBottom: '20px',
+                                    border: '1px solid #e2e8f0'
+                                }}>
+                                    <h3 style={{ marginTop: 0, marginBottom: '12px', fontSize: '14px', color: '#64748b', fontWeight: '600' }}>
+                                        Sales Summary
+                                    </h3>
+
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                        <span style={{ color: '#64748b', fontSize: '13px' }}>Total Orders</span>
+                                        <span style={{ color: '#1e293b', fontSize: '13px', fontWeight: '600' }}>
+                                            {results.salesDetails.ordersCount}
+                                        </span>
+                                    </div>
+
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                        <span style={{ color: '#64748b', fontSize: '13px' }}>Gross Sale</span>
+                                        <span style={{ color: '#1e293b', fontSize: '13px', fontWeight: '600' }}>
+                                            {formatCurrency(results.salesDetails.grossSale)}
+                                        </span>
+                                    </div>
+
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+                                        <span style={{ color: '#64748b', fontSize: '13px' }}>GST</span>
+                                        <span style={{ color: '#1e293b', fontSize: '13px', fontWeight: '600' }}>
+                                            {formatCurrency(results.salesDetails.gst)}
+                                        </span>
+                                    </div>
+
+                                    <div style={{
+                                        borderTop: '2px solid #e2e8f0',
+                                        paddingTop: '12px',
+                                        display: 'flex',
+                                        justifyContent: 'space-between'
+                                    }}>
+                                        <span style={{ color: '#1e293b', fontSize: '14px', fontWeight: '700' }}>Net Sales</span>
+                                        <span style={{ color: '#1e293b', fontSize: '14px', fontWeight: '700' }}>
+                                            {formatCurrency(results.calculations.netSales)}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {/* Food Cost Percentage - Large Display */}
+                                <div style={{
+                                    background: getStatusBgColor(results.calculations.foodCostPercentage),
+                                    padding: '24px',
+                                    borderRadius: '12px',
+                                    textAlign: 'center',
+                                    border: `2px solid ${getStatusColor(results.calculations.foodCostPercentage)}`
+                                }}>
+                                    <div style={{ color: '#64748b', fontSize: '13px', fontWeight: '600', marginBottom: '8px' }}>
+                                        FOOD COST PERCENTAGE
+                                    </div>
+                                    <div style={{
+                                        fontSize: '48px',
+                                        fontWeight: '700',
+                                        color: getStatusColor(results.calculations.foodCostPercentage),
+                                        marginBottom: '8px'
+                                    }}>
+                                        {results.calculations.foodCostPercentage.toFixed(2)}%
+                                    </div>
+                                    <div style={{
+                                        fontSize: '14px',
+                                        fontWeight: '600',
+                                        color: getStatusColor(results.calculations.foodCostPercentage)
+                                    }}>
+                                        {results.status.message}
+                                    </div>
+                                    <div style={{
+                                        fontSize: '12px',
+                                        color: '#64748b',
+                                        marginTop: '8px'
+                                    }}>
+                                        Target: 25% or below
+                                    </div>
+                                </div>
+
+                                {/* Formula Reference */}
+                                <div style={{
+                                    marginTop: '20px',
+                                    padding: '12px',
+                                    background: '#f8fafc',
+                                    borderRadius: '6px',
+                                    fontSize: '11px',
+                                    color: '#64748b',
+                                    textAlign: 'center'
+                                }}>
+                                    Formula: (Daily COGS ÷ Net Sales) × 100
+                                </div>
+                            </>
+                        )}
+                    </div>
+                </div>
+
+                {/* Info Cards */}
+                <div style={{ marginTop: '20px', display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }}>
+                    <div style={{
+                        background: '#fff',
+                        padding: '16px',
+                        borderRadius: '8px',
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                        borderLeft: '4px solid #3b82f6'
+                    }}>
+                        <div style={{ fontSize: '13px', color: '#64748b', marginBottom: '4px' }}>💡 Auto-Fetch</div>
+                        <div style={{ fontSize: '13px', color: '#1e293b' }}>
+                            All data is automatically fetched from RISTA APIs and calculated
+                        </div>
+                    </div>
+
+                    <div style={{
+                        background: '#fff',
+                        padding: '16px',
+                        borderRadius: '8px',
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                        borderLeft: '4px solid #10b981'
+                    }}>
+                        <div style={{ fontSize: '13px', color: '#64748b', marginBottom: '4px' }}>✅ Channels Included</div>
+                        <div style={{ fontSize: '13px', color: '#1e293b' }}>
+                            Swiggy, Zomato, Takeaway, Corporate Orders
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}

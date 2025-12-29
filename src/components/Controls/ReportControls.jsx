@@ -159,10 +159,20 @@ const ReportControls = ({ onGetReport, loading }) => {
     }
 
     const handleChannelChange = (channel, checked) => {
+        console.log('Channel change:', channel, 'checked:', checked)
+        console.log('Current selected channels:', selectedChannels)
         if (checked) {
-            setSelectedChannels(prev => [...prev, channel])
+            setSelectedChannels(prev => {
+                const updated = [...prev, channel]
+                console.log('Adding channel, new state:', updated)
+                return updated
+            })
         } else {
-            setSelectedChannels(prev => prev.filter(ch => ch !== channel))
+            setSelectedChannels(prev => {
+                const updated = prev.filter(ch => ch !== channel)
+                console.log('Removing channel, new state:', updated)
+                return updated
+            })
         }
     }
 

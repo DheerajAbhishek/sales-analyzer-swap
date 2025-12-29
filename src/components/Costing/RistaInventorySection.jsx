@@ -14,7 +14,7 @@ const RistaInventorySection = () => {
     const [endDate, setEndDate] = useState('')
     const datePickerRef = useRef(null)
 
-    // Initialize flatpickr date range picker
+    // Initialize flatpickr date range picker 
     useEffect(() => {
         const dateInput = document.getElementById('ristaInventoryDateRange')
         if (dateInput && !datePickerRef.current) {

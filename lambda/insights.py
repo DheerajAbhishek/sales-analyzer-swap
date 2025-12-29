@@ -110,13 +110,44 @@ def lambda_handler(event, context):
 
         df, file_format = None, "unknown"
 
-        # Try Zomato (Order Level, skip first 6 rows)
+        # Try Zomato (Order Level, skip first 6 rows as per documentation)
+        logger.info(f"🔍 Attempting to read Zomato format with skiprows=6")
         try:
-            temp_df = read_file(tmp_path, file_ext, skiprows=6, sheet_name="Order Level")
-            if detect_format(temp_df.columns) == "zomato":
-                df, file_format = temp_df, "zomato"
-        except Exception:
-            pass
+            if file_ext == ".xlsx":
+                # Skip 6 rows to get to header row
+                temp_df = pd.read_excel(tmp_path, engine="openpyxl", sheet_name="Order Level", skiprows=6)
+                logger.info(f"✅ Successfully read Excel, shape: {temp_df.shape}")
+                logger.info(f"📋 ALL columns ({len(temp_df.columns)}): {list(temp_df.columns)}")
+                
+                # Check what's actually in the Order status column
+                for idx, col in enumerate(temp_df.columns):
+                    if "Order status" in str(col):
+                        logger.info(f"🎯 Order status column found at index {idx}: '{col}'")
+                        logger.info(f"📊 First 10 values: {temp_df[col].head(10).tolist()}")
+                        logger.info(f"🔢 Unique values: {temp_df[col].unique()[:20].tolist()}")
+                        logger.info(f"📈 Value counts: {temp_df[col].value_counts().to_dict()}")
+                        
+                        # Also check the columns around it
+                        if idx > 0:
+                            prev_col = temp_df.columns[idx - 1]
+                            logger.info(f"⬅️ Previous column [{idx-1}] '{prev_col}': {temp_df[prev_col].head(5).tolist()}")
+                        if idx < len(temp_df.columns) - 1:
+                            next_col = temp_df.columns[idx + 1]
+                            logger.info(f"➡️ Next column [{idx+1}] '{next_col}': {temp_df[next_col].head(5).tolist()}")
+                        break
+                
+                if detect_format(temp_df.columns) == "zomato":
+                    df, file_format = temp_df, "zomato"
+                    logger.info(f"✅ Detected as Zomato format")
+                else:
+                    logger.info(f"❌ Format detection failed for Zomato")
+            else:
+                logger.info(f"Not an xlsx file, skipping Excel read")
+                temp_df = read_file(tmp_path, file_ext, skiprows=6, sheet_name="Order Level")
+                if detect_format(temp_df.columns) == "zomato":
+                    df, file_format = temp_df, "zomato"
+        except Exception as e:
+            logger.error(f"❌ Zomato detection failed with error: {e}", exc_info=True)
 
         # Try Swiggy (Order Level, skip first 2 rows)
         if df is None:
@@ -217,27 +248,56 @@ def lambda_handler(event, context):
                 "res_id": r"Res\. ID",
                 "order_id": r"Order ID",
                 "order_date": r"Order Date",
+                "order_status": r"Order status.*Delivered.*Cancelled.*Rejected",
                 "subtotal": r"Subtotal.*\(items total\)",
                 "packaging_charge": r"Packaging charge",
                 "payout": r"Order level Payout.*",
                 "discount_promo": r"Restaurant discount.*Promo.*",
                 "discount_other": r"Restaurant discount.*BOGO.*others",
                 "gst_on_order": r"Total GST collected from customers",
-                "service_and_payment_fee": r"Service fee & payment mechanism fee",
-                "tax_on_service": r"Taxes on service.*",
-                "tds_amount": r"TDS 194O amount.*",
+                "service_and_payment_fee": r"Service fee.*payment mechanism fee",
+                "tax_on_service_detailed": r"Taxes on service.*payment mechanism fee",
+                "tds_amount": r"TDS 194O amount",
+                "base_service_fee": r"(?:Base\s+)?[Ss]ervice\s+fee(?!\s*%|(?:\s+(?:and|&)\s+payment))\s*\n",
+                "payment_mechanism_fee": r"Payment mechanism fee",
+                "long_distance_fee": r"Long distance enablement fee",
+                "service_fee_discount": r"Discount on service fee due to 30% capping",
+                "other_deductions": r"Other order-level deductions.*",
+                "delivery_charge_discount": r"Delivery charge discount.*Relisting discount",
+                "delivery_charge": r"Delivery charge for restaurants on self logistics",
+                "brand_pack_fee": r"Brand pack subscription fee",
+                "net_additions": r"Net Additions",
             }
         elif file_format == "swiggy":
             patterns = {
                 "order_id": r"Order\s*(ID|No\.?|Number)",
                 "order_date": r"Order Date",
+                "order_status": r"Order Status",
                 "item_total": r"Item Total",
                 "packaging_charges": r"Packaging Charges",
+                "discount_promo": r"Restaurant Discounts.*Promo.*Freebies.*Flat Off",
+                "discount_swiggy_one": r"Swiggy One[\s\n]*Exclusive Offer Discount",
                 "gst_collected": r"GST Collected",
                 "discount_share": r"Restaurant Discount Share",
+                "commission": r"^Commission$",
+                "long_distance_charges": r"Long Distance Charges",
+                "discount_on_long_distance": r"Discount on Long Distance Fee",
+                "pocket_hero_fees": r"Pocket Hero Fees",
+                "swiggy_one_fees": r"Swiggy One Fees",
+                "payment_collection_charges": r"Payment Collection Charges",
+                "restaurant_cancellation_charges": r"Restaurant Cancellation Charges",
+                "delivery_fee_sponsored": r"Delivery Fee sponsored by Restaurant",
+                "bolt_fees": r"Bolt Fees",
+                "call_center_charges": r"Call Center Charges",
+                "gst_on_service_fee": r"GST on Service Fee",
                 "total_swiggy_fees": r"Total Swiggy Fees",
+                "customer_cancellations": r"Customer Cancellations",
+                "customer_complaints": r"Customer Complaints",
+                "complaint_cancellation_charges": r"Complaint.*Cancellation Charges",
+                "gst_deduction": r"GST Deduction",
                 "tcs": r"^TCS$",
                 "tds": r"^TDS$",
+                "total_taxes": r"Total Taxes",
                 "payout": r"Net Payout for Order.*after taxes.*",
             }
         elif file_format == "takeaway":
@@ -307,7 +367,7 @@ def lambda_handler(event, context):
 
         # Numeric conversion (skip non-numeric/string columns)
         for key, col_name in found_cols.items():
-            if key not in ["order_date", "res_id", "branch_name", "order_source", "order_id"] and col_name:
+            if key not in ["order_date", "res_id", "branch_name", "order_source", "order_id", "order_status"] and col_name:
                 df.loc[:, col_name] = pd.to_numeric(df[col_name], errors="coerce").fillna(0)
 
         # ---------------- Aggregation Totals ----------------
@@ -404,36 +464,156 @@ def lambda_handler(event, context):
             # Collect new orders for discount breakdown (will calculate after loop)
             all_new_orders.append(day_df)
 
-            # Calculate new values
+            # Calculate new valuesService fees %
             gross_sale = gst = discounts = packings = comm_taxes = payout = net_sale = nbv = 0.0
             
             # Calculate discount breakdown for THIS specific date's new orders only
             date_discount_breakdown = {}
             
             if file_format == "zomato":
-                gross_sale = day_df[found_cols["subtotal"]].sum() + day_df[found_cols["packaging_charge"]].sum()
-                gst = day_df[found_cols["gst_on_order"]].sum()
-                discounts = abs(
-                    day_df[found_cols["discount_promo"]].sum() + day_df[found_cols["discount_other"]].sum()
-                )
-                packings = day_df[found_cols["packaging_charge"]].sum()
-                comm_taxes = (
-                    day_df[found_cols["service_and_payment_fee"]].sum()
-                    + day_df[found_cols["tax_on_service"]].sum()
-                    + day_df[found_cols["tds_amount"]].sum()
-                )
-                payout = day_df[found_cols["payout"]].sum()
-                net_sale = payout - daily_ad_cost  # per-day net for z/s
+                # --- FILTER BY ORDER STATUS ---
+                status_col = found_cols.get("order_status")
+                delivered_df = day_df.copy()
+                cancelled_rejected_df = pd.DataFrame()
+                cancelled_count = rejected_count = 0
+                cancelled_payout = rejected_payout = 0.0
                 
-                # --- Per-day Discount Breakdown for Zomato (from NEW orders only) ---
-                if file_ext != ".csv" and len(day_df) > 0:
+                logger.info(f"Zomato status_col found: {status_col}")
+                if status_col:
+                    # Log raw values before any processing
+                    logger.info(f"Status column dtype: {day_df[status_col].dtype}")
+                    logger.info(f"First 5 raw status values: {day_df[status_col].head().tolist()}")
+                    logger.info(f"Unique raw status values: {day_df[status_col].unique()[:10]}")
+                
+                if status_col:
+                    # Normalize status column
+                    day_df["_status_norm"] = day_df[status_col].astype(str).str.strip().str.lower()
+                    logger.info(f"Normalized status values: {day_df['_status_norm'].unique()[:10]}")
+                    
+                    delivered_df = day_df[day_df["_status_norm"] == "delivered"].copy()
+                    logger.info(f"Delivered orders: {len(delivered_df)}, Total orders: {len(day_df)}")
+                    logger.info(f"Delivered orders: {len(delivered_df)}, Total orders: {len(day_df)}")
+                    cancelled_df = day_df[day_df["_status_norm"] == "cancelled"].copy()
+                    rejected_df = day_df[day_df["_status_norm"] == "rejected"].copy()
+                    
+                    cancelled_count = len(cancelled_df)
+                    rejected_count = len(rejected_df)
+                    payout_col = found_cols.get("payout")
+                    if payout_col:
+                        cancelled_payout = cancelled_df[payout_col].sum()
+                        rejected_payout = rejected_df[payout_col].sum()
+                
+                # Use delivered orders for main calculations
+                calc_df = delivered_df
+                
+                # --- EXISTING METRICS ---
+                # Gross Sale = Subtotal + Packaging from DELIVERED orders only (no GST)
+                gross_sale = calc_df[found_cols["subtotal"]].sum() + calc_df[found_cols["packaging_charge"]].sum()
+                
+                # Gross Sale + GST = Subtotal + Packaging + GST from DELIVERED orders only
+                gst_delivered_orders = calc_df[found_cols["gst_on_order"]].sum()
+                gross_sale_with_gst = calc_df[found_cols["subtotal"]].sum() + calc_df[found_cols["packaging_charge"]].sum() + gst_delivered_orders
+                
+                # GST from delivered orders for calculations
+                gst = gst_delivered_orders
+                
+                discounts = abs(
+                    calc_df[found_cols["discount_promo"]].sum() + calc_df[found_cols["discount_other"]].sum()
+                )
+                packings = calc_df[found_cols["packaging_charge"]].sum()
+                comm_taxes = (
+                    (calc_df[found_cols["service_and_payment_fee"]].sum() if found_cols.get("service_and_payment_fee") else 0)
+                    + (calc_df[found_cols["tax_on_service_detailed"]].sum() if found_cols.get("tax_on_service_detailed") else 0)
+                    + (calc_df[found_cols["tds_amount"]].sum() if found_cols.get("tds_amount") else 0)
+                )
+                payout = calc_df[found_cols["payout"]].sum()
+                net_sale = payout - daily_ad_cost  # per-day net for z/s
+                # NBV (Net Billable Value) for Zomato: Gross Sale (delivered) - Discounts (delivered)
+                nbv = gross_sale - discounts
+                
+                # --- NEW METRICS ---
+                # Net Order = Subtotal + Packaging + Delivery Charge + Brand Pack Fee - Discounts - Delivery Charge Discount + GST
+                delivery_charge_discount = abs(calc_df[found_cols["delivery_charge_discount"]].sum()) if found_cols.get("delivery_charge_discount") else 0
+                delivery_charge = calc_df[found_cols["delivery_charge"]].sum() if found_cols.get("delivery_charge") else 0
+                brand_pack_fee = calc_df[found_cols["brand_pack_fee"]].sum() if found_cols.get("brand_pack_fee") else 0
+                other_net_order = delivery_charge + brand_pack_fee
+                
+                net_order = (
+                    calc_df[found_cols["subtotal"]].sum()
+                    + calc_df[found_cols["packaging_charge"]].sum()
+                    + other_net_order
+                    - abs(calc_df[found_cols["discount_promo"]].sum() + calc_df[found_cols["discount_other"]].sum())
+                    - delivery_charge_discount
+                    + calc_df[found_cols["gst_on_order"]].sum()
+                )
+                
+                # Net Order Breakdown
+                net_order_breakdown = {
+                    "subtotal": round(float(calc_df[found_cols["subtotal"]].sum()), 2),
+                    "packaging": round(float(calc_df[found_cols["packaging_charge"]].sum()), 2),
+                    "discountsPromo": round(float(abs(calc_df[found_cols["discount_promo"]].sum())), 2),
+                    "discountsBogo": round(float(abs(calc_df[found_cols["discount_other"]].sum())), 2),
+                    "deliveryChargeDiscount": round(float(delivery_charge_discount), 2),
+                    "gst": round(float(calc_df[found_cols["gst_on_order"]].sum()), 2),
+                    "other": round(float(other_net_order), 2),
+                    "total": round(float(net_order), 2)
+                }
+                
+                # Deductions = Commission + Taxes + Other
+                # Commission = Base service fee + Payment mechanism fee + Long distance fee - Service fee discount
+                base_fee = calc_df[found_cols["base_service_fee"]].sum() if found_cols.get("base_service_fee") else 0
+                payment_fee = calc_df[found_cols["payment_mechanism_fee"]].sum() if found_cols.get("payment_mechanism_fee") else 0
+                long_dist_fee = calc_df[found_cols["long_distance_fee"]].sum() if found_cols.get("long_distance_fee") else 0
+                service_discount = abs(calc_df[found_cols["service_fee_discount"]].sum()) if found_cols.get("service_fee_discount") else 0
+                commission = base_fee + payment_fee + long_dist_fee - service_discount
+                
+                # Taxes = Tax on service + TDS + GST
+                tax_on_service = calc_df[found_cols["tax_on_service_detailed"]].sum() if found_cols.get("tax_on_service_detailed") else 0
+                tds = calc_df[found_cols["tds_amount"]].sum() if found_cols.get("tds_amount") else 0
+                gst_for_deductions = calc_df[found_cols["gst_on_order"]].sum()  # Recalculate to ensure consistency
+                taxes = tax_on_service + tds + gst_for_deductions
+                
+                # Other Deductions
+                other_ded = calc_df[found_cols["other_deductions"]].sum() if found_cols.get("other_deductions") else 0
+                
+                total_deductions = commission + taxes + other_ded
+                
+                # Deductions Breakdown
+                deductions_breakdown = {
+                    "commission": {
+                        "baseServiceFee": round(float(base_fee), 2),
+                        "paymentMechanismFee": round(float(payment_fee), 2),
+                        "longDistanceFee": round(float(long_dist_fee), 2),
+                        "serviceFeeDiscount": round(float(service_discount), 2),
+                        "total": round(float(commission), 2)
+                    },
+                    "taxes": {
+                        "taxOnService": round(float(tax_on_service), 2),
+                        "tds": round(float(tds), 2),
+                        "gst": round(float(gst_for_deductions), 2),  # Recalculated value
+                        "total": round(float(taxes), 2)
+                    },
+                    "otherDeductions": round(float(other_ded), 2),
+                    "other": 0.0,  # Placeholder for any future deduction columns
+                    "totalDeductions": round(float(total_deductions), 2)
+                }
+                
+                # Net Additions
+                net_additions_val = calc_df[found_cols["net_additions"]].sum() if found_cols.get("net_additions") else 0
+                
+                # Net Pay = Net Order - Deductions + Net Additions - Ads + Cancelled Payout + Rejected Payout
+                # (Add if positive, subtract if negative)
+                net_pay = net_order - total_deductions + net_additions_val - daily_ad_cost + cancelled_payout + rejected_payout
+                
+                # --- Per-day Discount Breakdown for Zomato (from DELIVERED orders only) ---
+                if file_ext != ".csv" and len(delivered_df) > 0:
                     try:
                         promo_col = found_cols.get("discount_promo")
                         other_discount_col = found_cols.get("discount_other")
-                        offer_col = next((c for c in day_df.columns if "discount construct" in c.lower()), None)
+                        offer_col = next((c for c in delivered_df.columns if "discount construct" in c.lower()), None)
                         
                         if offer_col and promo_col and other_discount_col:
-                            disc_df = day_df.copy()
+                            disc_df = delivered_df.copy()
                             disc_df[offer_col] = disc_df[offer_col].fillna("Undefined").astype(str).str.strip()
                             
                             # Other Discounts
@@ -484,20 +664,169 @@ def lambda_handler(event, context):
                         logger.warning(f"Could not calculate Zomato discount breakdown for {report_date}: {e}")
 
             elif file_format == "swiggy":
-                gross_sale = day_df[found_cols["item_total"]].sum() + day_df[found_cols["packaging_charges"]].sum()
-                gst = day_df[found_cols["gst_collected"]].sum()
-                discounts = abs(day_df[found_cols["discount_share"]].sum())
-                packings = day_df[found_cols["packaging_charges"]].sum()
+                # Filter by non-zero item total (UNIVERSAL FILTER for Swiggy)
+                item_total_col = found_cols.get("item_total")
+                
+                # Get orders with non-zero item total (valid orders) - this is the ONLY filter for Swiggy
+                valid_df = day_df[day_df[item_total_col] > 0].copy()
+                cancelled_df = day_df[day_df[item_total_col] == 0].copy()
+                rejected_df = pd.DataFrame()  # No separate rejected for Swiggy
+                
+                delivered_orders_count = len(valid_df)
+                cancelled_orders_count = len(cancelled_df)
+                rejected_orders_count = 0
+                
+                logger.info(f"📊 Swiggy Orders - Valid (Item Total > 0): {delivered_orders_count}, Cancelled/Invalid (Item Total = 0): {cancelled_orders_count}")
+                
+                # Use valid_df for ALL calculations (Item Total > 0 filter applied universally)
+                delivered_df = valid_df
+                calc_df = valid_df  # Use filtered data for all calculations
+                
+                # --- GROSS SALE CALCULATIONS ---
+                # Gross Sale (only orders with Item Total > 0 - no GST)
+                delivered_subtotal = calc_df[found_cols["item_total"]].sum()
+                delivered_packaging = calc_df[found_cols["packaging_charges"]].sum()
+                gross_sale = delivered_subtotal + delivered_packaging
+                
+                # Gross Sale + GST (only orders with Item Total > 0)
+                delivered_gst = calc_df[found_cols["gst_collected"]].sum()
+                gross_sale_with_gst = delivered_subtotal + delivered_packaging + delivered_gst
+                
+                # Gross Sale After GST (for percentage calculations)
+                gross_sale_after_gst = gross_sale
+                
+                # Legacy fields
+                gst = delivered_gst
+                # For legacy discounts field, use the sum of both discount columns
+                discounts_promo = 0
+                if found_cols.get("discount_promo"):
+                    discounts_promo = abs(calc_df[found_cols["discount_promo"]].sum())
+                
+                discounts_bogo = 0
+                if found_cols.get("discount_swiggy_one"):
+                    discounts_bogo = abs(calc_df[found_cols["discount_swiggy_one"]].sum())
+                
+                discounts = discounts_promo + discounts_bogo
+                packings = delivered_packaging
+                
+                # --- NET ORDER CALCULATION ---
+                subtotal = calc_df[found_cols["item_total"]].sum()
+                packaging = calc_df[found_cols["packaging_charges"]].sum()
+                gst_on_order = calc_df[found_cols["gst_collected"]].sum()
+                
+                # Total discounts = Column 11 + Column 12
+                total_discounts = discounts_promo + discounts_bogo
+                
+                net_order = subtotal + packaging - total_discounts + gst_on_order
+                
+                net_order_breakdown = {
+                    "subtotal": round(subtotal, 2),
+                    "packaging": round(packaging, 2),
+                    "discountsPromo": round(discounts_promo, 2),  # Column 11: Restaurant Discounts
+                    "discountsBogo": round(discounts_bogo, 2),  # Column 12: Swiggy One Exclusive Offer
+                    "gst": round(gst_on_order, 2),
+                    "total": round(net_order, 2)
+                }
+                
+                # --- DEDUCTIONS BREAKDOWN ---
+                # B. Total Swiggy Fees (Commission) - Use calc_df (filtered by Item Total > 0)
+                # Calculate all component values from calc_df (Item Total > 0 only)
+                commission_base = calc_df[found_cols["commission"]].sum() if found_cols.get("commission") else 0
+                payment_collection = calc_df[found_cols["payment_collection_charges"]].sum() if found_cols.get("payment_collection_charges") else 0
+                long_distance = calc_df[found_cols["long_distance_charges"]].sum() if found_cols.get("long_distance_charges") else 0
+                discount_long_distance = calc_df[found_cols["discount_on_long_distance"]].sum() if found_cols.get("discount_on_long_distance") else 0
+                pocket_hero = calc_df[found_cols["pocket_hero_fees"]].sum() if found_cols.get("pocket_hero_fees") else 0
+                swiggy_one = calc_df[found_cols["swiggy_one_fees"]].sum() if found_cols.get("swiggy_one_fees") else 0
+                restaurant_cancellation = calc_df[found_cols["restaurant_cancellation_charges"]].sum() if found_cols.get("restaurant_cancellation_charges") else 0
+                call_center = calc_df[found_cols["call_center_charges"]].sum() if found_cols.get("call_center_charges") else 0
+                delivery_sponsored = calc_df[found_cols["delivery_fee_sponsored"]].sum() if found_cols.get("delivery_fee_sponsored") else 0
+                bolt_fees = calc_df[found_cols["bolt_fees"]].sum() if found_cols.get("bolt_fees") else 0
+                
+                # Always include core fields, add others only if non-zero
+                commission_components = {
+                    "baseServiceFee": round(commission_base, 2),  # Column 19: Commission
+                    "paymentMechanismFee": round(payment_collection, 2),  # Column 24: Payment Collection Charges
+                    "longDistanceFee": round(long_distance, 2),  # Column 20: Long Distance Charges
+                    "serviceFeeDiscount": round(discount_long_distance, 2),  # Column 21: Discount on Long Distance Fee
+                }
+                
+                # Add other Total Swiggy Fees components (only if non-zero)
+                # Note: Restaurant cancellation is excluded as it's shown separately in Complaint & Cancellation
+                if pocket_hero != 0:
+                    commission_components["pocketHeroFees"] = round(pocket_hero, 2)
+                if swiggy_one != 0:
+                    commission_components["swiggyOneFees"] = round(swiggy_one, 2)
+                if call_center != 0:
+                    commission_components["callCenterCharges"] = round(call_center, 2)
+                if delivery_sponsored != 0:
+                    commission_components["deliveryFeeSponsored"] = round(delivery_sponsored, 2)
+                if bolt_fees != 0:
+                    commission_components["boltFees"] = round(bolt_fees, 2)
+                
+                # Calculate commission total (excluding restaurant cancellation and GST on Service Fee)
+                commission_total = (commission_base + payment_collection + long_distance - discount_long_distance + 
+                                  pocket_hero + swiggy_one + call_center + delivery_sponsored + bolt_fees)
+                commission_components["total"] = round(commission_total, 2)
+                
+                # Continue with tax components - use calc_df (already filtered by Item Total > 0)
+                gst_service_fee = calc_df[found_cols["gst_on_service_fee"]].sum() if found_cols.get("gst_on_service_fee") else 0
+                gst_deduction = calc_df[found_cols["gst_deduction"]].sum() if found_cols.get("gst_deduction") else 0
+                tds_val = calc_df[found_cols["tds"]].sum() if found_cols.get("tds") else 0
+                tcs_val = calc_df[found_cols["tcs"]].sum() if found_cols.get("tcs") else 0
+                
+                taxes_components = {
+                    "taxOnService": round(gst_service_fee, 2),  # Column 29: GST on Service Fee @18%
+                    "tds": round(tds_val, 2),  # Column 36: TDS
+                    "gst": round(gst_deduction, 2),  # Column 34: GST Deduction
+                }
+                
+                # Add TCS only if non-zero (not always shown in frontend)
+                if tcs_val != 0:
+                    taxes_components["tcs"] = round(tcs_val, 2)
+                
+                # Calculate taxes total by adding all tax components
+                # Column 37 (Total Taxes) doesn't include GST on Service Fee, so we add it
+                taxes_total = gst_service_fee + gst_deduction + tds_val + tcs_val
+                taxes_components["total"] = round(taxes_total, 2)
+                
+                # C. Complaint & Cancellation Charges - Use calc_df (filtered data)
+                complaint_cancellation = calc_df[found_cols["complaint_cancellation_charges"]].sum() if found_cols.get("complaint_cancellation_charges") else 0
+                other_deductions = round(complaint_cancellation, 2)
+                
+                total_deductions = commission_total + taxes_total + complaint_cancellation
+                
+                deductions_breakdown = {
+                    "commission": commission_components,
+                    "taxes": taxes_components,
+                    "otherDeductions": other_deductions,
+                    "other": 0.0,  # Placeholder for any future deduction columns
+                    "totalDeductions": round(total_deductions, 2)
+                }
+                
+                # --- NET ADDITIONS (if any - similar to Zomato) ---
+                net_additions_val = 0  # Swiggy doesn't have net additions typically
+                
+                # --- CANCELLED/REJECTED PAYOUT ---
+                cancelled_payout = cancelled_df[found_cols["payout"]].sum() if len(cancelled_df) > 0 else 0
+                rejected_payout = rejected_df[found_cols["payout"]].sum() if len(rejected_df) > 0 else 0
+                
+                # --- NET PAY CALCULATION ---
+                net_pay = net_order - total_deductions + net_additions_val - daily_ad_cost + cancelled_payout + rejected_payout
+                
+                # Legacy calculations (use calc_df for consistency)
                 comm_taxes = (
-                    day_df[found_cols["total_swiggy_fees"]].sum()
-                    + day_df[found_cols["tcs"]].sum()
-                    + day_df[found_cols["tds"]].sum()
+                    calc_df[found_cols["total_swiggy_fees"]].sum()
+                    + calc_df[found_cols["tcs"]].sum()
+                    + calc_df[found_cols["tds"]].sum()
                 )
-                payout = day_df[found_cols["payout"]].sum()
+                payout = calc_df[found_cols["payout"]].sum()
                 net_sale = payout - daily_ad_cost  # per-day net for z/s
                 
+                # NBV for Swiggy: Gross Sale - Total Discounts (Column 11 + Column 12)
+                nbv = gross_sale - total_discounts
+                
                 # --- Discount Breakdown for Swiggy (from ENTIRE FILE, not per-day) ---
-                if file_ext != ".csv" and len(day_df) > 0:
+                if file_ext != ".csv" and len(calc_df) > 0:
                     try:
                         disc_summary_df = pd.read_excel(
                             tmp_path, engine="openpyxl", sheet_name="Discount Summary", skiprows=1
@@ -563,8 +892,9 @@ def lambda_handler(event, context):
                 net_sale = day_df[net_col].sum() if net_col else 0.0
                 nbv = gst - discounts  # as requested
 
-            # update totals
-            total_orders += len(day_df)
+            # update totals (use delivered_df for Zomato and Swiggy, day_df for others)
+            orders_count = len(delivered_df) if file_format in ["zomato", "swiggy"] else len(day_df)
+            total_orders += orders_count
             total_gross_sale += gross_sale
             total_gst += gst
             total_discounts += discounts
@@ -575,7 +905,7 @@ def lambda_handler(event, context):
             total_nbv += nbv
             total_net_sale += net_sale
 
-            # Get the new order IDs from this batch
+            # Get the new order IDs from this batch (use all orders including cancelled/rejected for ID tracking)
             new_order_ids = day_df["_order_id_str"].tolist()
             updated_order_ids = list(set(list(processed_order_ids) + new_order_ids))
             
@@ -599,6 +929,133 @@ def lambda_handler(event, context):
                 "processedFileHashes": list(set(processed_hashes + [file_hash])),
                 "processedOrderIds": updated_order_ids,
             }
+            
+            # Add Zomato-specific metrics
+            if file_format == "zomato":
+                # Accumulate netOrderBreakdown values across days
+                existing_net_order_breakdown = existing_insight.get("netOrderBreakdown", {})
+                accumulated_net_order_breakdown = {
+                    "subtotal": round(float(existing_net_order_breakdown.get("subtotal", 0)) + net_order_breakdown["subtotal"], 2),
+                    "packaging": round(float(existing_net_order_breakdown.get("packaging", 0)) + net_order_breakdown["packaging"], 2),
+                    "discountsPromo": round(float(existing_net_order_breakdown.get("discountsPromo", 0)) + net_order_breakdown["discountsPromo"], 2),
+                    "discountsBogo": round(float(existing_net_order_breakdown.get("discountsBogo", 0)) + net_order_breakdown["discountsBogo"], 2),
+                    "gst": round(float(existing_net_order_breakdown.get("gst", 0)) + net_order_breakdown["gst"], 2),
+                    "total": round(float(existing_net_order_breakdown.get("total", 0)) + net_order_breakdown["total"], 2)
+                }
+                
+                # Accumulate deductionsBreakdown values across days
+                existing_deductions = existing_insight.get("deductionsBreakdown", {})
+                existing_commission = existing_deductions.get("commission", {})
+                existing_taxes = existing_deductions.get("taxes", {})
+                
+                accumulated_commission = {
+                    "baseServiceFee": round(float(existing_commission.get("baseServiceFee", 0)) + deductions_breakdown["commission"]["baseServiceFee"], 2),
+                    "paymentMechanismFee": round(float(existing_commission.get("paymentMechanismFee", 0)) + deductions_breakdown["commission"]["paymentMechanismFee"], 2),
+                    "longDistanceFee": round(float(existing_commission.get("longDistanceFee", 0)) + deductions_breakdown["commission"]["longDistanceFee"], 2),
+                    "serviceFeeDiscount": round(float(existing_commission.get("serviceFeeDiscount", 0)) + deductions_breakdown["commission"]["serviceFeeDiscount"], 2),
+                    "total": round(float(existing_commission.get("total", 0)) + deductions_breakdown["commission"]["total"], 2)
+                }
+                
+                accumulated_taxes = {
+                    "taxOnService": round(float(existing_taxes.get("taxOnService", 0)) + deductions_breakdown["taxes"]["taxOnService"], 2),
+                    "tds": round(float(existing_taxes.get("tds", 0)) + deductions_breakdown["taxes"]["tds"], 2),
+                    "gst": round(float(existing_taxes.get("gst", 0)) + deductions_breakdown["taxes"]["gst"], 2),
+                    "total": round(float(existing_taxes.get("total", 0)) + deductions_breakdown["taxes"]["total"], 2)
+                }
+                
+                accumulated_deductions_breakdown = {
+                    "commission": accumulated_commission,
+                    "taxes": accumulated_taxes,
+                    "otherDeductions": round(float(existing_deductions.get("otherDeductions", 0)) + deductions_breakdown["otherDeductions"], 2),
+                    "other": round(float(existing_deductions.get("other", 0)) + deductions_breakdown["other"], 2),
+                    "totalDeductions": round(float(existing_deductions.get("totalDeductions", 0)) + deductions_breakdown["totalDeductions"], 2)
+                }
+                
+                final_insight.update({
+                    "grossSaleWithGST": round(existing_insight.get("grossSaleWithGST", 0) + float(gross_sale_with_gst), 2),
+                    "grossSaleAfterGST": round(existing_insight.get("grossSaleAfterGST", 0) + float(gross_sale), 2),
+                    "netOrder": round(existing_insight.get("netOrder", 0) + float(net_order), 2),
+                    "totalDeductions": round(existing_insight.get("totalDeductions", 0) + float(total_deductions), 2),
+                    "netAdditions": round(existing_insight.get("netAdditions", 0) + float(net_additions_val), 2),
+                    "netPay": round(existing_insight.get("netPay", 0) + float(net_pay), 2),
+                    "deliveredOrdersCount": existing_insight.get("deliveredOrdersCount", 0) + len(delivered_df),
+                    "cancelledOrdersCount": existing_insight.get("cancelledOrdersCount", 0) + cancelled_count,
+                    "rejectedOrdersCount": existing_insight.get("rejectedOrdersCount", 0) + rejected_count,
+                    "cancelledPayout": round(existing_insight.get("cancelledPayout", 0) + float(cancelled_payout), 2),
+                    "rejectedPayout": round(existing_insight.get("rejectedPayout", 0) + float(rejected_payout), 2),
+                    "netOrderBreakdown": accumulated_net_order_breakdown,
+                    "deductionsBreakdown": accumulated_deductions_breakdown
+                })
+            
+            # Add Swiggy-specific metrics (same structure as Zomato)
+            elif file_format == "swiggy":
+                # Accumulate netOrderBreakdown values across days
+                existing_net_order_breakdown = existing_insight.get("netOrderBreakdown", {})
+                accumulated_net_order_breakdown = {
+                    "subtotal": round(float(existing_net_order_breakdown.get("subtotal", 0)) + net_order_breakdown["subtotal"], 2),
+                    "packaging": round(float(existing_net_order_breakdown.get("packaging", 0)) + net_order_breakdown["packaging"], 2),
+                    "discountsPromo": round(float(existing_net_order_breakdown.get("discountsPromo", 0)) + net_order_breakdown["discountsPromo"], 2),
+                    "discountsBogo": round(float(existing_net_order_breakdown.get("discountsBogo", 0)) + net_order_breakdown["discountsBogo"], 2),
+                    "gst": round(float(existing_net_order_breakdown.get("gst", 0)) + net_order_breakdown["gst"], 2),
+                    "total": round(float(existing_net_order_breakdown.get("total", 0)) + net_order_breakdown["total"], 2)
+                }
+                
+                # Accumulate deductionsBreakdown values across days
+                existing_deductions = existing_insight.get("deductionsBreakdown", {})
+                existing_commission = existing_deductions.get("commission", {})
+                existing_taxes = existing_deductions.get("taxes", {})
+                
+                accumulated_commission = {
+                    "baseServiceFee": round(float(existing_commission.get("baseServiceFee", 0)) + deductions_breakdown["commission"]["baseServiceFee"], 2),
+                    "paymentMechanismFee": round(float(existing_commission.get("paymentMechanismFee", 0)) + deductions_breakdown["commission"]["paymentMechanismFee"], 2),
+                    "longDistanceFee": round(float(existing_commission.get("longDistanceFee", 0)) + deductions_breakdown["commission"]["longDistanceFee"], 2),
+                    "serviceFeeDiscount": round(float(existing_commission.get("serviceFeeDiscount", 0)) + deductions_breakdown["commission"]["serviceFeeDiscount"], 2),
+                }
+                
+                # Add optional fields if present
+                for optional_field in ["pocketHeroFees", "swiggyOneFees", "callCenterCharges", "deliveryFeeSponsored", "boltFees"]:
+                    if optional_field in deductions_breakdown["commission"]:
+                        accumulated_commission[optional_field] = round(
+                            float(existing_commission.get(optional_field, 0)) + deductions_breakdown["commission"][optional_field], 2
+                        )
+                
+                accumulated_commission["total"] = round(float(existing_commission.get("total", 0)) + deductions_breakdown["commission"]["total"], 2)
+                
+                accumulated_taxes = {
+                    "taxOnService": round(float(existing_taxes.get("taxOnService", 0)) + deductions_breakdown["taxes"]["taxOnService"], 2),
+                    "tds": round(float(existing_taxes.get("tds", 0)) + deductions_breakdown["taxes"]["tds"], 2),
+                    "gst": round(float(existing_taxes.get("gst", 0)) + deductions_breakdown["taxes"]["gst"], 2),
+                }
+                
+                # Add TCS if present
+                if "tcs" in deductions_breakdown["taxes"]:
+                    accumulated_taxes["tcs"] = round(float(existing_taxes.get("tcs", 0)) + deductions_breakdown["taxes"]["tcs"], 2)
+                
+                accumulated_taxes["total"] = round(float(existing_taxes.get("total", 0)) + deductions_breakdown["taxes"]["total"], 2)
+                
+                accumulated_deductions_breakdown = {
+                    "commission": accumulated_commission,
+                    "taxes": accumulated_taxes,
+                    "otherDeductions": round(float(existing_deductions.get("otherDeductions", 0)) + deductions_breakdown["otherDeductions"], 2),
+                    "other": round(float(existing_deductions.get("other", 0)) + deductions_breakdown.get("other", 0), 2),
+                    "totalDeductions": round(float(existing_deductions.get("totalDeductions", 0)) + deductions_breakdown["totalDeductions"], 2)
+                }
+                
+                final_insight.update({
+                    "grossSaleWithGST": round(existing_insight.get("grossSaleWithGST", 0) + float(gross_sale_with_gst), 2),
+                    "grossSaleAfterGST": round(existing_insight.get("grossSaleAfterGST", 0) + float(gross_sale), 2),
+                    "netOrder": round(existing_insight.get("netOrder", 0) + float(net_order), 2),
+                    "totalDeductions": round(existing_insight.get("totalDeductions", 0) + float(total_deductions), 2),
+                    "netAdditions": round(existing_insight.get("netAdditions", 0) + float(net_additions_val), 2),
+                    "netPay": round(existing_insight.get("netPay", 0) + float(net_pay), 2),
+                    "deliveredOrdersCount": existing_insight.get("deliveredOrdersCount", 0) + delivered_orders_count,
+                    "cancelledOrdersCount": existing_insight.get("cancelledOrdersCount", 0) + cancelled_orders_count,
+                    "rejectedOrdersCount": existing_insight.get("rejectedOrdersCount", 0) + rejected_orders_count,
+                    "cancelledPayout": round(existing_insight.get("cancelledPayout", 0) + float(cancelled_payout), 2),
+                    "rejectedPayout": round(existing_insight.get("rejectedPayout", 0) + float(rejected_payout), 2),
+                    "netOrderBreakdown": accumulated_net_order_breakdown,
+                    "deductionsBreakdown": accumulated_deductions_breakdown
+                })
 
             if date_discount_breakdown:
                 final_insight["discountBreakdown"] = date_discount_breakdown

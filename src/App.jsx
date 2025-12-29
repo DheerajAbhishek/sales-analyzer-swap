@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react'
 import { Routes, Route } from 'react-router-dom'
+import { useQueryClient } from '@tanstack/react-query'
 import ControlsPanel from './components/Controls/ControlsPanel.jsx'
 import Dashboard from './components/Dashboard/Dashboard.jsx'
 import Nav from './components/Nav/Nav.jsx'
-import { CostingDashboard, ManualEntry, UploadInvoice } from './pages/costing'
+import { CostingDashboard, ManualEntry, UploadInvoice, ClosingInventory, DailyFoodCosting } from './pages/costing'
 import { RESTAURANT_ID_MAP } from './utils/constants'
 import { reportService } from './services/api'
 import { autoLoadService } from './services/autoLoadService'
@@ -11,6 +12,8 @@ import { autoLoadService } from './services/autoLoadService'
 
 // Sales Analyzer Module Component
 function SalesAnalyzer() {
+    const queryClient = useQueryClient()
+
     const [dashboardData, setDashboardData] = useState(() => {
         // Try to load persisted data on initialization
         const savedData = localStorage.getItem('salesDashboardData')
@@ -115,23 +118,44 @@ function SalesAnalyzer() {
                 throw new Error('No valid Restaurant/Channel combination found.')
             }
 
-            // Fetch data for all restaurant/channel combinations with error handling
+            // Fetch data for all restaurant/channel combinations with React Query caching
             const fetchPromises = restaurantDetails.map(async (detail) => {
                 try {
                     let result;
-                    if (detail.platform === 'takeaway' || detail.platform === 'corporate') {
-                        // Call the new on-demand function for Takeaway and Corporate, passing the channel
-                        result = await reportService.getOnDemandInsights(detail.id, startDate, endDate, detail.platform);
+                    const cacheKey = detail.platform === 'takeaway' || detail.platform === 'corporate'
+                        ? ['onDemandInsights', detail.id, startDate, endDate, detail.platform, groupBy]
+                        : ['consolidatedInsights', detail.id, startDate, endDate, groupBy]
+
+                    // Check if data is already cached
+                    const cachedData = queryClient.getQueryData(cacheKey)
+                    const isCached = !!cachedData
+
+                    // Use React Query's fetchQuery for caching
+                    result = await queryClient.fetchQuery({
+                        queryKey: cacheKey,
+                        queryFn: async () => {
+                            if (detail.platform === 'takeaway' || detail.platform === 'corporate') {
+                                return await reportService.getOnDemandInsights(detail.id, startDate, endDate, detail.platform, groupBy);
+                            } else {
+                                // Don't pass groupBy to API when it's 'total' - let backend return consolidatedInsights
+                                const apiGroupBy = groupBy === 'total' ? null : groupBy;
+                                return await reportService.getConsolidatedInsights(detail.id, startDate, endDate, apiGroupBy);
+                            }
+                        },
+                        staleTime: 10 * 60 * 1000, // 10 minutes,
+                    })
+
+                    if (isCached) {
+                        console.log(`[CACHE HIT] ${detail.name} (${detail.platform})`)
                     } else {
-                        // Use the existing S3-based function for Zomato, Swiggy, etc.
-                        const apiGroupBy = groupBy === 'total' ? 'day' : groupBy; // Only needed for S3-based calls
-                        result = await reportService.getConsolidatedInsights(detail.id, startDate, endDate, apiGroupBy);
+                        console.log(`[FETCHED] ${detail.name} (${detail.platform})`)
                     }
 
                     return {
                         success: true,
                         data: result,
-                        detail: detail
+                        detail: detail,
+                        fromCache: isCached
                     }
                 } catch (error) {
                     // Return failed request info instead of throwing
@@ -152,6 +176,11 @@ function SalesAnalyzer() {
             if (successfulResults.length === 0) {
                 throw new Error('No data available for any selected channels')
             }
+
+            // Log cache summary
+            const cachedCount = successfulResults.filter(r => r.fromCache).length
+            const fetchedCount = successfulResults.length - cachedCount
+            console.log(`[CACHE SUMMARY] ${cachedCount} from cache, ${fetchedCount} freshly fetched`)
 
             // Parse successful results
             const parsedResults = successfulResults.map(result => {
@@ -288,11 +317,13 @@ function App() {
             <Routes>
                 {/* Sales Analyzer Routes */}
                 <Route path="/" element={<SalesAnalyzer />} />
-                
+
                 {/* Costing Module Routes */}
                 <Route path="/costing" element={<CostingDashboard />} />
                 <Route path="/costing/upload" element={<UploadInvoice />} />
                 <Route path="/costing/manual-entry" element={<ManualEntry />} />
+                <Route path="/costing/closing-inventory" element={<ClosingInventory />} />
+                <Route path="/costing/daily-food-costing" element={<DailyFoodCosting />} />
             </Routes>
         </div>
     )

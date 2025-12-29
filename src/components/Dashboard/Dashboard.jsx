@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import SummaryCards from './SummaryCards.jsx'
 import ChartsGrid from '../Charts/ChartsGrid.jsx'
+import GraphSelector from '../Charts/GraphSelector.jsx'
 import ExpensesSection from '../PnL/ExpensesSection.jsx'
 import MissingDatesIndicator from './MissingDatesIndicator.jsx'
 import { isFullMonthSelection } from '../../utils/helpers'
@@ -12,6 +13,7 @@ const Dashboard = ({ data }) => {
     const [processedData, setProcessedData] = useState(null)
     const [monthlyData, setMonthlyData] = useState(null)
     const [showPnL, setShowPnL] = useState(false)
+    const [selectedGraphs, setSelectedGraphs] = useState(['grossSale']) // Default: only show Gross Sale
 
     useEffect(() => {
         if (groupBy === 'total') {
@@ -47,23 +49,33 @@ const Dashboard = ({ data }) => {
         let discountBreakdownData = {} // Changed to object to store by channel
 
         const keysToSum = [
-            "noOfOrders", "grossSale", "gstOnOrder", "discounts", "packings",
-            "ads", "commissionAndTaxes", "payout", "netSale", "nbv"
+            "noOfOrders", "grossSale", "grossSaleWithGST", "grossSaleAfterGST", "gstOnOrder", "discounts", "packings",
+            "ads", "commissionAndTaxes", "payout", "netSale", "nbv",
+            "netOrder", "totalDeductions", "netPay",
+            "deliveredOrdersCount", "cancelledOrdersCount", "rejectedOrdersCount",
+            "cancelledPayout", "rejectedPayout"
         ]
 
         results.forEach((data, index) => {
             const insights = data.body?.consolidatedInsights || data.consolidatedInsights || {}
             if (Object.keys(insights).length === 0) return
 
+            // Add breakdown data from body level
+            if (data.body?.netOrderBreakdown) {
+                insights.netOrderBreakdown = data.body.netOrderBreakdown
+            }
+            if (data.body?.deductionsBreakdown) {
+                insights.deductionsBreakdown = data.body.deductionsBreakdown
+            }
+
             const detail = details[index]
 
-            // Calculate percentages for individual restaurant using gross sale after GST
+            // Calculate percentages for individual restaurant using gross sale (after GST)
             const restaurantMetrics = { ...insights }
-            const grossSaleAfterGST = restaurantMetrics.grossSale - (restaurantMetrics.gstOnOrder || 0)
-            restaurantMetrics.grossSaleAfterGST = grossSaleAfterGST
+            // Use the correct fields from API - no calculation needed
             restaurantMetrics.commissionPercent = restaurantMetrics.nbv > 0 ? (restaurantMetrics.commissionAndTaxes / restaurantMetrics.nbv * 100) : 0
-            restaurantMetrics.discountPercent = grossSaleAfterGST > 0 ? (restaurantMetrics.discounts / grossSaleAfterGST * 100) : 0
-            restaurantMetrics.adsPercent = grossSaleAfterGST > 0 ? (restaurantMetrics.ads / grossSaleAfterGST * 100) : 0
+            restaurantMetrics.discountPercent = restaurantMetrics.grossSaleAfterGST > 0 ? (restaurantMetrics.discounts / restaurantMetrics.grossSaleAfterGST * 100) : 0
+            restaurantMetrics.adsPercent = restaurantMetrics.grossSaleAfterGST > 0 ? (restaurantMetrics.ads / restaurantMetrics.grossSaleAfterGST * 100) : 0
 
             individualRestaurantData.push({
                 name: `${detail.name} (${detail.platform})`,
@@ -85,7 +97,7 @@ const Dashboard = ({ data }) => {
             } else if (detail.platform === 'subs' || detail.platform === 'subscription') {
                 // For subs, create a simple breakdown with just totals (no categories)
                 const channelKey = `${detail.platform}_${detail.name}`
-                const grossSaleAfterGST = restaurantMetrics.grossSale - (restaurantMetrics.gstOnOrder || 0)
+                const grossSaleAfterGST = restaurantMetrics.grossSaleAfterGST
                 discountBreakdownData[channelKey] = {
                     TOTAL: {
                         orders: restaurantMetrics.noOfOrders || 0,
@@ -100,16 +112,70 @@ const Dashboard = ({ data }) => {
             if (!combinedData) {
                 combinedData = {}
                 keysToSum.forEach(k => combinedData[k] = 0)
+                // Initialize breakdown objects
+                combinedData.netOrderBreakdown = {
+                    subtotal: 0,
+                    packaging: 0,
+                    discountsPromo: 0,
+                    discountsBogo: 0,
+                    gst: 0,
+                    total: 0
+                }
+                combinedData.deductionsBreakdown = {
+                    commission: {
+                        baseServiceFee: 0,
+                        paymentMechanismFee: 0,
+                        longDistanceFee: 0,
+                        serviceFeeDiscount: 0,
+                        total: 0
+                    },
+                    taxes: {
+                        taxOnService: 0,
+                        tds: 0,
+                        gst: 0,
+                        total: 0
+                    },
+                    otherDeductions: 0,
+                    totalDeductions: 0
+                }
             }
             keysToSum.forEach(key => {
                 combinedData[key] += (insights[key] || 0)
             })
+
+            console.log('🔍 Insights for summing:', {
+                netOrder: insights.netOrder,
+                totalDeductions: insights.totalDeductions,
+                netPay: insights.netPay,
+                netOrderBreakdown: insights.netOrderBreakdown,
+                deductionsBreakdown: insights.deductionsBreakdown
+            })
+
+            // Merge breakdown data
+            if (insights.netOrderBreakdown) {
+                Object.keys(insights.netOrderBreakdown).forEach(k => {
+                    combinedData.netOrderBreakdown[k] += (insights.netOrderBreakdown[k] || 0)
+                })
+            }
+            if (insights.deductionsBreakdown) {
+                if (insights.deductionsBreakdown.commission) {
+                    Object.keys(insights.deductionsBreakdown.commission).forEach(k => {
+                        combinedData.deductionsBreakdown.commission[k] += (insights.deductionsBreakdown.commission[k] || 0)
+                    })
+                }
+                if (insights.deductionsBreakdown.taxes) {
+                    Object.keys(insights.deductionsBreakdown.taxes).forEach(k => {
+                        combinedData.deductionsBreakdown.taxes[k] += (insights.deductionsBreakdown.taxes[k] || 0)
+                    })
+                }
+                combinedData.deductionsBreakdown.otherDeductions += (insights.deductionsBreakdown.otherDeductions || 0)
+                combinedData.deductionsBreakdown.totalDeductions += (insights.deductionsBreakdown.totalDeductions || 0)
+            }
         })
 
         if (!combinedData) return null
 
-        // Calculate percentages and derived values
-        combinedData.grossSaleAfterGST = combinedData.grossSale - (combinedData.gstOnOrder || 0)
+        // Calculate percentages - use correct fields from API
         combinedData.commissionPercent = combinedData.nbv > 0 ? (combinedData.commissionAndTaxes / combinedData.nbv * 100) : 0
         combinedData.discountPercent = combinedData.grossSaleAfterGST > 0 ? (combinedData.discounts / combinedData.grossSaleAfterGST * 100) : 0
         combinedData.adsPercent = combinedData.grossSaleAfterGST > 0 ? (combinedData.ads / combinedData.grossSaleAfterGST * 100) : 0
@@ -125,8 +191,11 @@ const Dashboard = ({ data }) => {
     const processMonthlyData = (results, details) => {
         const monthlyData = {}
         const keysToSum = [
-            "noOfOrders", "grossSale", "gstOnOrder", "discounts", "packings",
-            "ads", "commissionAndTaxes", "payout", "netSale", "nbv"
+            "noOfOrders", "grossSale", "grossSaleWithGST", "grossSaleAfterGST", "gstOnOrder", "discounts", "packings",
+            "ads", "commissionAndTaxes", "payout", "netSale", "nbv",
+            "netOrder", "totalDeductions", "netPay", "netAdditions",
+            "deliveredOrdersCount", "cancelledOrdersCount", "rejectedOrdersCount",
+            "cancelledPayout", "rejectedPayout"
         ]
 
         console.log('Processing monthly data from results:', results)
@@ -147,45 +216,120 @@ const Dashboard = ({ data }) => {
                     if (!monthlyData[monthKey]) {
                         monthlyData[monthKey] = {}
                         keysToSum.forEach(key => monthlyData[monthKey][key] = 0)
+                        // Initialize breakdown objects
+                        monthlyData[monthKey].netOrderBreakdown = {
+                            subtotal: 0, packaging: 0, discountsPromo: 0,
+                            discountsBogo: 0, gst: 0, total: 0
+                        }
+                        monthlyData[monthKey].deductionsBreakdown = {
+                            commission: {
+                                baseServiceFee: 0, paymentMechanismFee: 0,
+                                longDistanceFee: 0, serviceFeeDiscount: 0, total: 0
+                            },
+                            taxes: { taxOnService: 0, tds: 0, gst: 0, total: 0 },
+                            otherDeductions: 0, totalDeductions: 0
+                        }
                     }
 
                     // Sum data from all platforms for this period
-                    const platforms = ['zomato', 'swiggy', 'takeaway', 'subs']
-                    platforms.forEach(platform => {
+                    // Dynamically get all platform keys from periodData (excluding 'period')
+                    const platformKeys = Object.keys(periodData).filter(key => key !== 'period')
+                    platformKeys.forEach(platform => {
                         const platformData = periodData[platform] || {}
                         keysToSum.forEach(key => {
                             if (platformData[key] && typeof platformData[key] === 'number') {
                                 monthlyData[monthKey][key] += platformData[key]
                             }
                         })
+
+                        // Aggregate breakdowns
+                        if (platformData.netOrderBreakdown) {
+                            Object.keys(platformData.netOrderBreakdown).forEach(k => {
+                                monthlyData[monthKey].netOrderBreakdown[k] += (platformData.netOrderBreakdown[k] || 0)
+                            })
+                        }
+                        if (platformData.deductionsBreakdown) {
+                            const srcDed = platformData.deductionsBreakdown
+                            const destDed = monthlyData[monthKey].deductionsBreakdown
+
+                            if (srcDed.commission) {
+                                Object.keys(srcDed.commission).forEach(k => {
+                                    destDed.commission[k] += (srcDed.commission[k] || 0)
+                                })
+                            }
+                            if (srcDed.taxes) {
+                                Object.keys(srcDed.taxes).forEach(k => {
+                                    destDed.taxes[k] += (srcDed.taxes[k] || 0)
+                                })
+                            }
+                            destDed.otherDeductions += (srcDed.otherDeductions || 0)
+                            destDed.totalDeductions += (srcDed.totalDeductions || 0)
+                        }
                     })
                 })
             } else {
                 // For weekly/monthly view, process from consolidated insights
                 const insights = data.body?.consolidatedInsights || data.consolidatedInsights || {}
+                // Add breakdown data from body level
+                if (data.body?.netOrderBreakdown) {
+                    insights.netOrderBreakdown = data.body.netOrderBreakdown
+                }
+                if (data.body?.deductionsBreakdown) {
+                    insights.deductionsBreakdown = data.body.deductionsBreakdown
+                }
                 if (Object.keys(insights).length > 0) {
                     const yearMonth = selections.startDate.substring(0, 7)  // Use the selected month
                     if (!monthlyData[yearMonth]) {
                         monthlyData[yearMonth] = {}
                         keysToSum.forEach(key => monthlyData[yearMonth][key] = 0)
+                        // Initialize breakdown objects
+                        monthlyData[yearMonth].netOrderBreakdown = {
+                            subtotal: 0, packaging: 0, discountsPromo: 0,
+                            discountsBogo: 0, gst: 0, total: 0
+                        }
+                        monthlyData[yearMonth].deductionsBreakdown = {
+                            commission: {
+                                baseServiceFee: 0, paymentMechanismFee: 0,
+                                longDistanceFee: 0, serviceFeeDiscount: 0, total: 0
+                            },
+                            taxes: { taxOnService: 0, tds: 0, gst: 0, total: 0 },
+                            otherDeductions: 0, totalDeductions: 0
+                        }
                     }
                     keysToSum.forEach(key => {
                         if (insights[key] && typeof insights[key] === 'number') {
                             monthlyData[yearMonth][key] += insights[key]
                         }
                     })
+
+                    // Aggregate breakdowns
+                    if (insights.netOrderBreakdown) {
+                        Object.keys(insights.netOrderBreakdown).forEach(k => {
+                            monthlyData[yearMonth].netOrderBreakdown[k] += (insights.netOrderBreakdown[k] || 0)
+                        })
+                    }
+                    if (insights.deductionsBreakdown) {
+                        const srcDed = insights.deductionsBreakdown
+                        const destDed = monthlyData[yearMonth].deductionsBreakdown
+
+                        if (srcDed.commission) {
+                            Object.keys(srcDed.commission).forEach(k => {
+                                destDed.commission[k] += (srcDed.commission[k] || 0)
+                            })
+                        }
+                        if (srcDed.taxes) {
+                            Object.keys(srcDed.taxes).forEach(k => {
+                                destDed.taxes[k] += (srcDed.taxes[k] || 0)
+                            })
+                        }
+                        destDed.otherDeductions += (srcDed.otherDeductions || 0)
+                        destDed.totalDeductions += (srcDed.totalDeductions || 0)
+                    }
                 }
             }
         })
 
-        // Calculate derived metrics for each month
-        Object.keys(monthlyData).forEach(month => {
-            const data = monthlyData[month]
-            data.grossSaleAfterGST = data.grossSale - (data.gstOnOrder || 0)
-            data.commissionPercent = data.nbv > 0 ? (data.commissionAndTaxes / data.nbv * 100) : 0
-            data.discountPercent = data.grossSaleAfterGST > 0 ? (data.discounts / data.grossSaleAfterGST * 100) : 0
-            data.adsPercent = data.grossSaleAfterGST > 0 ? (data.ads / data.grossSaleAfterGST * 100) : 0
-        })
+        // No calculation needed - data comes directly from backend with correct fields
 
         // Return monthly data regardless of the number of months
         return monthlyData
@@ -193,9 +337,13 @@ const Dashboard = ({ data }) => {
 
     const processTimeSeries = (results, details) => {
         const timeSeries = {}
+        console.log('[PROCESS_TS] Results count:', results.length)
+        console.log('[PROCESS_TS] Result 0:', results[0])
+
         results.forEach((data, index) => {
-            const platform = details[index].platform
             const timeData = data.body?.timeSeriesData || data.timeSeriesData || []
+            console.log(`[PROCESS_TS] Result ${index}:`, timeData)
+
             timeData.forEach(periodData => {
                 let period = periodData.period
                 if (groupBy === 'month') {
@@ -204,24 +352,75 @@ const Dashboard = ({ data }) => {
 
                 if (!timeSeries[period]) timeSeries[period] = {}
 
-                const platformData = periodData[platform] || {}
-                if (!timeSeries[period][platform]) {
-                    timeSeries[period][platform] = platformData
-                } else {
-                    for (const key in platformData) {
-                        if (typeof platformData[key] === 'number') {
-                            timeSeries[period][platform][key] += platformData[key]
+                // Handle new consolidated API structure where platforms are already in periodData
+                // Dynamically get all platform keys from periodData (excluding 'period')
+                const platformKeys = Object.keys(periodData).filter(key => key !== 'period')
+                platformKeys.forEach(platform => {
+                    const platformData = periodData[platform] || {}
+                    if (Object.keys(platformData).length === 0) return
+
+                    console.log(`[PROCESS_TS] Period ${period}, Platform ${platform}:`, platformData)
+
+                    if (!timeSeries[period][platform]) {
+                        timeSeries[period][platform] = JSON.parse(JSON.stringify(platformData)) // Deep clone
+                    } else {
+                        for (const key in platformData) {
+                            if (typeof platformData[key] === 'number') {
+                                timeSeries[period][platform][key] += platformData[key]
+                            } else if (key === 'netOrderBreakdown' && platformData[key]) {
+                                // Aggregate netOrderBreakdown
+                                if (!timeSeries[period][platform].netOrderBreakdown) {
+                                    timeSeries[period][platform].netOrderBreakdown = {
+                                        subtotal: 0, packaging: 0, discountsPromo: 0,
+                                        discountsBogo: 0, gst: 0, total: 0
+                                    }
+                                }
+                                Object.keys(platformData.netOrderBreakdown).forEach(k => {
+                                    timeSeries[period][platform].netOrderBreakdown[k] += (platformData.netOrderBreakdown[k] || 0)
+                                })
+                            } else if (key === 'deductionsBreakdown' && platformData[key]) {
+                                // Aggregate deductionsBreakdown
+                                if (!timeSeries[period][platform].deductionsBreakdown) {
+                                    timeSeries[period][platform].deductionsBreakdown = {
+                                        commission: {
+                                            baseServiceFee: 0, paymentMechanismFee: 0,
+                                            longDistanceFee: 0, serviceFeeDiscount: 0, total: 0
+                                        },
+                                        taxes: { taxOnService: 0, tds: 0, gst: 0, total: 0 },
+                                        otherDeductions: 0, totalDeductions: 0
+                                    }
+                                }
+                                const srcDed = platformData.deductionsBreakdown
+                                const destDed = timeSeries[period][platform].deductionsBreakdown
+
+                                if (srcDed.commission) {
+                                    Object.keys(srcDed.commission).forEach(k => {
+                                        destDed.commission[k] += (srcDed.commission[k] || 0)
+                                    })
+                                }
+                                if (srcDed.taxes) {
+                                    Object.keys(srcDed.taxes).forEach(k => {
+                                        destDed.taxes[k] += (srcDed.taxes[k] || 0)
+                                    })
+                                }
+                                destDed.otherDeductions += (srcDed.otherDeductions || 0)
+                                destDed.totalDeductions += (srcDed.totalDeductions || 0)
+                            }
                         }
                     }
-                }
+                })
             })
         })
 
+        console.log('[PROCESS_TS] Final timeSeries:', timeSeries)
         return {
             type: 'timeSeries',
             timeSeriesData: timeSeries
         }
     }
+
+    console.log('🔍 RENDER CHECK - processedData:', processedData)
+    console.log('🔍 RENDER CHECK - groupBy:', groupBy)
 
     if (!processedData) {
         return (
@@ -237,9 +436,24 @@ const Dashboard = ({ data }) => {
     const calculateSummaryFromTimeSeries = (timeSeriesData) => {
         const summary = {
             combinedData: {
-                noOfOrders: 0, grossSale: 0, gstOnOrder: 0, discounts: 0,
-                packings: 0, ads: 0, commissionAndTaxes: 0, payout: 0,
-                netSale: 0, nbv: 0
+                noOfOrders: 0, grossSale: 0, grossSaleWithGST: 0, grossSaleAfterGST: 0,
+                gstOnOrder: 0, discounts: 0, packings: 0, ads: 0,
+                commissionAndTaxes: 0, payout: 0, netSale: 0, nbv: 0,
+                netOrder: 0, totalDeductions: 0, netPay: 0, netAdditions: 0,
+                deliveredOrdersCount: 0, cancelledOrdersCount: 0, rejectedOrdersCount: 0,
+                cancelledPayout: 0, rejectedPayout: 0,
+                netOrderBreakdown: {
+                    subtotal: 0, packaging: 0, discountsPromo: 0,
+                    discountsBogo: 0, gst: 0, total: 0
+                },
+                deductionsBreakdown: {
+                    commission: {
+                        baseServiceFee: 0, paymentMechanismFee: 0,
+                        longDistanceFee: 0, serviceFeeDiscount: 0, total: 0
+                    },
+                    taxes: { taxOnService: 0, tds: 0, gst: 0, total: 0 },
+                    otherDeductions: 0, totalDeductions: 0
+                }
             },
             individualData: []
         }
@@ -257,6 +471,32 @@ const Dashboard = ({ data }) => {
                     }
                 })
 
+                // Aggregate netOrderBreakdown
+                if (metrics.netOrderBreakdown) {
+                    Object.keys(metrics.netOrderBreakdown).forEach(k => {
+                        summary.combinedData.netOrderBreakdown[k] += (metrics.netOrderBreakdown[k] || 0)
+                    })
+                }
+
+                // Aggregate deductionsBreakdown
+                if (metrics.deductionsBreakdown) {
+                    const srcDed = metrics.deductionsBreakdown
+                    const destDed = summary.combinedData.deductionsBreakdown
+
+                    if (srcDed.commission) {
+                        Object.keys(srcDed.commission).forEach(k => {
+                            destDed.commission[k] += (srcDed.commission[k] || 0)
+                        })
+                    }
+                    if (srcDed.taxes) {
+                        Object.keys(srcDed.taxes).forEach(k => {
+                            destDed.taxes[k] += (srcDed.taxes[k] || 0)
+                        })
+                    }
+                    destDed.otherDeductions += (srcDed.otherDeductions || 0)
+                    destDed.totalDeductions += (srcDed.totalDeductions || 0)
+                }
+
                 // Accumulate restaurant-wise data
                 if (!restaurantData[platform]) {
                     restaurantData[platform] = { ...summary.combinedData }
@@ -268,6 +508,8 @@ const Dashboard = ({ data }) => {
                 })
             })
         })
+
+        console.log('[SUMMARY] Calculated from timeSeries:', summary.combinedData)
 
         // Calculate percentages for combined data
         const grossSaleAfterGST = summary.combinedData.grossSale - (summary.combinedData.gstOnOrder || 0)
@@ -360,7 +602,11 @@ const Dashboard = ({ data }) => {
                         timeSeriesData={processedData.timeSeriesData}
                         selections={selections}
                         dataType={processedData.type}
-                        allRestaurantDetails={details} // Pass all restaurant details instead of just first one
+                        allRestaurantDetails={details}
+                        dashboardData={{
+                            results: results,
+                            details: details
+                        }}
                     />
                 </>
             )}            {totalSummary.combinedData && (
@@ -374,12 +620,19 @@ const Dashboard = ({ data }) => {
                         groupBy={groupBy}
                     />
 
+                    {/* Graph Selector */}
+                    <GraphSelector
+                        selectedGraphs={selectedGraphs}
+                        onGraphsChange={setSelectedGraphs}
+                    />
+
                     {/* Only show comparison charts for total view */}
-                    {groupBy === 'total' && (
+                    {groupBy === 'total' && selectedGraphs.length > 0 && (
                         <>
                             <ChartsGrid
                                 type="comparison"
                                 data={totalSummary.individualData}
+                                selectedGraphs={selectedGraphs}
                             />
                             {showPnL && (
                                 <ExpensesSection
@@ -393,11 +646,12 @@ const Dashboard = ({ data }) => {
                     )}
 
                     {/* Show time series charts for monthly or weekly grouping */}
-                    {processedData.type === 'timeSeries' && (
+                    {processedData.type === 'timeSeries' && selectedGraphs.length > 0 && (
                         <ChartsGrid
                             type="timeSeries"
                             data={processedData.timeSeriesData}
                             groupBy={groupBy}
+                            selectedGraphs={selectedGraphs}
                         />
                     )}
 

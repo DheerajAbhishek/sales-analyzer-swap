@@ -9,6 +9,7 @@ export const formatValue = (value, type) => {
         case 'currency':
             return formatter.format(value || 0);
         case 'percent':
+        case 'percentage':
             return `${(value || 0).toFixed(2)}%`;
         case 'number':
         default:
@@ -17,7 +18,7 @@ export const formatValue = (value, type) => {
 };
 
 export const formatChartValue = (value, type) => {
-    if (type === 'percent') return `${value}%`;
+    if (type === 'percent' || type === 'percentage') return `${value.toFixed(1)}%`;
     if (type === 'currency') {
         if (Math.abs(value) >= 100000) return '₹' + (value / 100000).toFixed(2) + 'L';
         if (Math.abs(value) >= 1000) return '₹' + (value / 1000).toFixed(1) + 'k';

@@ -32,12 +32,30 @@ const MetricChart = ({ metric, type, data, periods = [], groupBy }) => {
     const getChartData = () => {
         if (type === 'comparison') {
             const labels = data.map(item => item.name)
-            const values = data.map(item => item.metrics[metric.key] || 0)
+            const values = data.map(item => {
+                // For percentage metrics, calculate if not already present
+                if (metric.key === 'discountPercent' || metric.key === 'adsPercent') {
+                    // Check if already calculated
+                    if (item.metrics[metric.key] !== undefined) {
+                        return item.metrics[metric.key]
+                    }
+                    // Calculate percentage
+                    const grossSaleAfterGST = item.metrics.grossSaleAfterGST || item.metrics.grossSale || 0
+                    if (metric.key === 'discountPercent') {
+                        return grossSaleAfterGST > 0 ? (item.metrics.discounts / grossSaleAfterGST * 100) : 0
+                    }
+                    if (metric.key === 'adsPercent') {
+                        return grossSaleAfterGST > 0 ? ((item.metrics.ads || 0) / grossSaleAfterGST * 100) : 0
+                    }
+                }
+                return item.metrics[metric.key] || 0
+            })
             const colors = data.map(item => {
                 // Map platform to colors
                 if (item.platform === 'zomato') return CHART_COLORS.zomato
                 if (item.platform === 'swiggy') return CHART_COLORS.swiggy
                 if (item.platform === 'takeaway') return CHART_COLORS.takeaway
+                if (item.platform === 'corporate') return CHART_COLORS.corporate
                 if (item.platform === 'subscription' || item.platform === 'subs') return CHART_COLORS.subscription
                 // Fallback to palette colors
                 return CHART_COLORS.palette[labels.indexOf(item.name) % CHART_COLORS.palette.length]
@@ -60,11 +78,18 @@ const MetricChart = ({ metric, type, data, periods = [], groupBy }) => {
         if (type === 'timeSeries') {
             const datasets = []
 
-            // Check what platforms exist in the data
-            const samplePeriod = Object.keys(data)[0]
-            if (samplePeriod && data[samplePeriod]) {
-                const availablePlatforms = Object.keys(data[samplePeriod])
+            // Collect all unique platforms across all periods (not just the first one)
+            const allPlatformsSet = new Set()
+            Object.keys(data).forEach(period => {
+                if (data[period]) {
+                    Object.keys(data[period]).forEach(platform => {
+                        allPlatformsSet.add(platform)
+                    })
+                }
+            })
+            const availablePlatforms = Array.from(allPlatformsSet)
 
+            if (availablePlatforms.length > 0) {
                 availablePlatforms.forEach(platform => {
                     let color = CHART_COLORS.platform[platform] || CHART_COLORS.primary
                     let label = platform.charAt(0).toUpperCase() + platform.slice(1)
@@ -72,10 +97,35 @@ const MetricChart = ({ metric, type, data, periods = [], groupBy }) => {
                     // Custom labels for better readability
                     if (platform === 'subs') label = 'Subscription'
                     if (platform === 'takeaway') label = 'Takeaway'
+                    if (platform === 'corporate') label = 'Corporate Orders'
 
                     datasets.push({
                         label: label,
-                        data: periods.map(p => data[p]?.[platform]?.[metric.key] || 0),
+                        // Robust fallback: if a metric like grossSaleWithGST is missing,
+                        // derive it from grossSale + gstOnOrder
+                        data: periods.map(p => {
+                            const periodData = data[p]?.[platform] || {}
+                            const direct = periodData?.[metric.key]
+                            if (typeof direct === 'number') return direct
+                            
+                            // Calculate percentage metrics if not present
+                            if (metric.key === 'discountPercent' || metric.key === 'adsPercent') {
+                                const grossSaleAfterGST = periodData?.grossSaleAfterGST || periodData?.grossSale || 0
+                                if (metric.key === 'discountPercent') {
+                                    return grossSaleAfterGST > 0 ? (periodData?.discounts || 0) / grossSaleAfterGST * 100 : 0
+                                }
+                                if (metric.key === 'adsPercent') {
+                                    return grossSaleAfterGST > 0 ? (periodData?.ads || 0) / grossSaleAfterGST * 100 : 0
+                                }
+                            }
+                            
+                            if (metric.key === 'grossSaleWithGST') {
+                                const gross = typeof periodData?.grossSale === 'number' ? periodData.grossSale : 0
+                                const gst = typeof periodData?.gstOnOrder === 'number' ? periodData.gstOnOrder : 0
+                                return gross + gst
+                            }
+                            return 0
+                        }),
                         backgroundColor: color + '40', // Add transparency
                         borderColor: color,
                         borderWidth: 3,

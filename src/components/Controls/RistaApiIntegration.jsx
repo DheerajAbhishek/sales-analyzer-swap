@@ -1,14 +1,44 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import Select from 'react-select'
 import flatpickr from 'flatpickr'
 import { ristaService } from '../../services/api'
+import { useRistaBranches } from '../../hooks/useQueries'
 
-const RistaApiIntegration = ({ onFetchComplete, loading: parentLoading }) => {
-    // Branches state
+const RistaApiIntegration = ({ onFetchComplete, loading: parentLoading, groupBy = 'total' }) => {
+    // Use React Query for branches (cached for 1 hour)
+    const {
+        data: branchesData,
+        isLoading: fetchingBranches,
+        error: branchesError
+    } = useRistaBranches()
+
+    // Process branches from React Query
     const [branches, setBranches] = useState([])
-    const [branchesLoaded, setBranchesLoaded] = useState(false)
-    const [selectedBranches, setSelectedBranches] = useState([])
     const [branchChannels, setBranchChannels] = useState({})
+    const branchesLoaded = !!branchesData && branches.length > 0
+
+    // Process branch data when it loads
+    useEffect(() => {
+        if (branchesData && Array.isArray(branchesData) && branchesData.length > 0) {
+            const processedBranches = branchesData.map(branch => ({
+                branchName: branch.branchName,
+                branchCode: branch.branchCode,
+                channels: branch.channels || [],
+                businessName: branch.businessName,
+                status: branch.status
+            }))
+
+            setBranches(processedBranches)
+
+            const channelMap = {}
+            processedBranches.forEach(branch => {
+                channelMap[branch.branchCode] = branch.channels.map(ch => ch.name)
+            })
+            setBranchChannels(channelMap)
+        }
+    }, [branchesData])
+
+    const [selectedBranches, setSelectedBranches] = useState([])
 
     // Selected channels per branch
     const [selectedChannels, setSelectedChannels] = useState({})
@@ -18,9 +48,15 @@ const RistaApiIntegration = ({ onFetchComplete, loading: parentLoading }) => {
     const [endDate, setEndDate] = useState('')
 
     // Loading/Error state
-    const [fetchingBranches, setFetchingBranches] = useState(false)
     const [fetchingSales, setFetchingSales] = useState(false)
-    const [error, setError] = useState(null)
+    const [error, setError] = useState(branchesError?.message || null)
+
+    // Update error when branches error changes
+    useEffect(() => {
+        if (branchesError) {
+            setError(branchesError.message || 'Failed to fetch branches')
+        }
+    }, [branchesError])
 
     // Initialize date picker
     React.useEffect(() => {
@@ -40,51 +76,6 @@ const RistaApiIntegration = ({ onFetchComplete, loading: parentLoading }) => {
             })
         }
     }, [branchesLoaded])
-
-    // Auto-fetch branches on mount
-    React.useEffect(() => {
-        handleFetchBranches()
-    }, [])
-
-    // Fetch branches using credentials from .env
-    const handleFetchBranches = async () => {
-        setFetchingBranches(true)
-        setError(null)
-
-        try {
-            const result = await ristaService.fetchBranches()
-
-            if (result && Array.isArray(result) && result.length > 0) {
-                const processedBranches = result.map(branch => ({
-                    branchName: branch.branchName,
-                    branchCode: branch.branchCode,
-                    channels: branch.channels || [],
-                    businessName: branch.businessName,
-                    status: branch.status
-                }))
-
-                setBranches(processedBranches)
-
-                const channelMap = {}
-                processedBranches.forEach(branch => {
-                    channelMap[branch.branchCode] = branch.channels.map(ch => ch.name)
-                })
-                setBranchChannels(channelMap)
-
-                setBranchesLoaded(true)
-                setError(null)
-            } else {
-                setError('No branches found')
-                setBranches([])
-            }
-        } catch (err) {
-            setError(err.message || 'Failed to fetch branches')
-            setBranches([])
-            setBranchesLoaded(false)
-        } finally {
-            setFetchingBranches(false)
-        }
-    }
 
     const handleBranchChange = (selectedOption) => {
         if (selectedOption && !selectedBranches.find(b => b.branchCode === selectedOption.value)) {
@@ -219,7 +210,7 @@ const RistaApiIntegration = ({ onFetchComplete, loading: parentLoading }) => {
         try {
             // Split date range into weekly chunks
             const weeklyChunks = getWeeklyChunks(startDate, endDate)
-            console.log(`🔄 Splitting ${startDate} to ${endDate} into ${weeklyChunks.length} weekly chunks:`, weeklyChunks)
+            console.log(`[SPLIT] ${startDate} to ${endDate} into ${weeklyChunks.length} weekly chunks:`, weeklyChunks)
 
             // Build all fetch requests (branch × channel × week)
             const fetchRequests = []
@@ -237,9 +228,7 @@ const RistaApiIntegration = ({ onFetchComplete, loading: parentLoading }) => {
                 }
             }
 
-            console.log(`📊 Total fetch requests to make: ${fetchRequests.length}`)
-
-            // Execute requests with staggered timing to avoid rate limiting
+            console.log(`[REQUESTS] Total fetch requests to make: ${fetchRequests.length}`)            // Execute requests with staggered timing to avoid rate limiting
             const STAGGER_DELAY = 300 // 300ms between batch starts
             const BATCH_SIZE = 5 // Process 5 requests at a time
 
@@ -317,7 +306,7 @@ const RistaApiIntegration = ({ onFetchComplete, loading: parentLoading }) => {
                         startDate,
                         endDate
                     },
-                    groupBy: 'total',
+                    groupBy: groupBy,
                     thresholds: { discount: 10, ads: 5 }
                 })
             }

@@ -1,6 +1,8 @@
 | Metric | Formula |
 |--------|---------|
-| **Gross Sale** | `Gross Amount` + `Other Charge Amount` |
+| **Gross Sale** | `Gross Amount` + `Other Charge Amount` - `GST` |
+| **Gross Sale + GST** | `Gross Sale` + `GST` |
+| **GST on Order** | `GST` (Taxes) |
 | **GST on Order** | `Taxes` (or `GST`) |
 | **Discounts** | \|`Discounts`\| |
 | **Packings** | `Other Charge Amount` |

@@ -3,6 +3,7 @@ import { Chart, ArcElement, Tooltip, Legend } from "chart.js";
 import { Pie } from "react-chartjs-2";
 import RistaInventorySection from "../../components/Costing/RistaInventorySection";
 import flatpickr from 'flatpickr';
+import priceListData from '../../../output.json';
 Chart.register(ArcElement, Tooltip, Legend);
 
 /**
@@ -26,6 +27,51 @@ function money(v) {
 
 function safeId(name = "") {
   return name.replace(/\s+/g, "_").replace(/[^\w-]/g, "");
+}
+
+// Extract base item name for price matching
+function extractBaseItemName(fullName) {
+  if (!fullName) return "";
+
+  // Remove everything after comma (quantity info like ", 1 Kg", ", 500 gm")
+  let itemName = fullName.split(',')[0].trim();
+
+  // Remove parenthetical descriptions like (Bulk), (Mix Size), etc.
+  itemName = itemName.replace(/\([^)]*\)/g, '').trim();
+
+  // Remove extra whitespace
+  itemName = itemName.replace(/\s+/g, ' ').trim();
+
+  // Map common variations to standard names
+  const nameMapping = {
+    'Lettuce Iceberg': 'Lettuce',
+    'Red Capsicum': 'Capsicum',
+    'Green Capsicum': 'Capsicum',
+    'Yellow Capsicum': 'Capsicum',
+    'Red Cabbage': 'Red Cabbage',
+    'Green Cabbage': 'Cabbage',
+    'Cherry Tomato': 'Cherry Tomato',
+    'Tomato Cherry': 'Cherry Tomato',
+    'French Beans': 'French Beans',
+    'Baby Corn': 'Babycorn',
+    'Sweet Corn': 'Sweet Corn',
+    'Bell Pepper': 'Bell Peppers',
+    'Bell Peppers': 'Bell Peppers'
+  };
+
+  // Check if we have a direct mapping
+  if (nameMapping[itemName]) {
+    return nameMapping[itemName];
+  }
+
+  // Try to find partial matches (e.g., "Chicken Breast Boneless" → "Chicken Breast")
+  for (const [key, value] of Object.entries(nameMapping)) {
+    if (itemName.includes(key)) {
+      return value;
+    }
+  }
+
+  return itemName;
 }
 
 // Flatten and aggregate subcategory items to a simple table-friendly structure
@@ -56,6 +102,18 @@ export default function CostingDashboard({ apiBase = DEFAULT_API_BASE, userEmail
   const API_BASE = apiBase || DEFAULT_API_BASE;
   const USER_EMAIL = userEmail || DEFAULT_USER;
 
+  // Create a lookup map for fixed prices
+  const priceListMap = useMemo(() => {
+    const map = {};
+    priceListData.forEach(item => {
+      const itemName = (item["Item Name"] || "").trim();
+      if (itemName) {
+        map[itemName] = item.Price;
+      }
+    });
+    return map;
+  }, []);
+
   // Add spinner keyframes style
   const spinnerStyle = `
     @keyframes spin {
@@ -67,7 +125,9 @@ export default function CostingDashboard({ apiBase = DEFAULT_API_BASE, userEmail
   const [branches, setBranches] = useState([]);
   const [branch, setBranch] = useState("All");
   const [vendors, setVendors] = useState([]);
-  const [selectedVendor, setSelectedVendor] = useState("All");
+  const [selectedVendors, setSelectedVendors] = useState([]);
+  const [vendorDropdownOpen, setVendorDropdownOpen] = useState(false);
+  const vendorDropdownRef = useRef(null);
 
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -119,17 +179,64 @@ export default function CostingDashboard({ apiBase = DEFAULT_API_BASE, userEmail
     loadBranches();
   }, [API_BASE, USER_EMAIL]);
 
-  async function loadVendors() {
-    try {
-      const res = await fetch(
-        `${API_BASE}?mode=vendors&user_email=${encodeURIComponent(USER_EMAIL)}`
-      );
-      const data = await res.json();
-      setVendors(["All", ...(data.vendors || [])]);
-    } catch (err) {
-      console.error("Failed to load vendors", err);
+  // Load vendors when branch is selected
+  useEffect(() => {
+    async function loadVendorsForBranch() {
+      if (!API_BASE || !USER_EMAIL) return;
+      if (branch && branch !== "All") {
+        try {
+          const res = await fetch(
+            `${API_BASE}?mode=vendors&user_email=${encodeURIComponent(USER_EMAIL)}&branch=${encodeURIComponent(branch)}`
+          );
+          const data = await res.json();
+          setVendors(data.vendors || []);
+          setSelectedVendors([]);
+        } catch (err) {
+          console.error("Failed to load vendors", err);
+          setVendors([]);
+        }
+      } else {
+        setVendors([]);
+        setSelectedVendors([]);
+      }
     }
-  }
+    loadVendorsForBranch();
+  }, [branch, API_BASE, USER_EMAIL]);
+
+  // Close vendor dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (vendorDropdownRef.current && !vendorDropdownRef.current.contains(event.target)) {
+        setVendorDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Vendor selection handlers
+  const handleVendorToggle = (vendor) => {
+    setSelectedVendors(prev =>
+      prev.includes(vendor)
+        ? prev.filter(v => v !== vendor)
+        : [...prev, vendor]
+    );
+  };
+
+  const handleSelectAllVendors = () => {
+    if (selectedVendors.length === vendors.length) {
+      setSelectedVendors([]);
+    } else {
+      setSelectedVendors([...vendors]);
+    }
+  };
+
+  const getVendorDisplayText = () => {
+    if (selectedVendors.length === 0) return "All Vendors";
+    if (selectedVendors.length === vendors.length) return "All Vendors";
+    if (selectedVendors.length === 1) return selectedVendors[0];
+    return `${selectedVendors.length} vendors selected`;
+  };
 
   async function fetchData() {
     setError(null);
@@ -144,9 +251,10 @@ export default function CostingDashboard({ apiBase = DEFAULT_API_BASE, userEmail
 
     setLoading(true);
     try {
-      await loadVendors();
-
-      const url = `${API_BASE}?user_email=${encodeURIComponent(USER_EMAIL)}&start=${startDate}&end=${endDate}&branch=${encodeURIComponent(branch)}&vendor=${encodeURIComponent(selectedVendor)}`;
+      const vendorParam = selectedVendors.length === 0 || selectedVendors.length === vendors.length
+        ? "All"
+        : selectedVendors.join(",");
+      const url = `${API_BASE}?user_email=${encodeURIComponent(USER_EMAIL)}&start=${startDate}&end=${endDate}&branch=${encodeURIComponent(branch)}&vendor=${encodeURIComponent(vendorParam)}`;
 
       const res = await fetch(url);
       const data = await res.json();
@@ -237,12 +345,24 @@ export default function CostingDashboard({ apiBase = DEFAULT_API_BASE, userEmail
                   <th style={{ padding: 8 }}>Avg Price/Unit</th>
                   <th style={{ padding: 8 }}>Avg GST %</th>
                   <th style={{ padding: 8 }}>Total Price (₹)</th>
+                  <th style={{ padding: 8 }}>Fixed Price & Diff</th>
                 </tr>
               </thead>
               <tbody>
                 {Object.entries(aggregated).map(([desc, vals]) => {
                   const avgPrice = vals.price_sum / vals.count || 0;
                   const avgGst = vals.gst_sum / vals.count || 0;
+
+                  // Extract base item name for matching with price list
+                  const baseItemName = extractBaseItemName(desc);
+                  const fixedPrice = priceListMap[baseItemName];
+
+                  let fixedPriceDisplay = "Not Found";
+                  if (fixedPrice !== undefined) {
+                    const diff = fixedPrice - avgPrice;
+                    const sign = diff > 0 ? "+" : "";
+                    fixedPriceDisplay = `₹${fixedPrice.toFixed(2)} (${sign}${diff.toFixed(2)})`;
+                  }
                   return (
                     <tr key={desc}>
                       <td style={{ padding: 8 }}>{desc}</td>
@@ -250,6 +370,7 @@ export default function CostingDashboard({ apiBase = DEFAULT_API_BASE, userEmail
                       <td style={{ padding: 8 }}>{avgPrice.toFixed(2)}</td>
                       <td style={{ padding: 8 }}>{avgGst.toFixed(2)}%</td>
                       <td style={{ padding: 8 }}>{money(vals.total_value)}</td>
+                      <td style={{ padding: 8, color: fixedPrice !== undefined ? (fixedPrice - avgPrice > 0 ? "#16a34a" : "#dc2626") : "#64748b" }}>{fixedPriceDisplay}</td>
                     </tr>
                   );
                 })}
@@ -294,17 +415,100 @@ export default function CostingDashboard({ apiBase = DEFAULT_API_BASE, userEmail
               </select>
             </div>
 
-            <div style={{ display: "flex", flexDirection: "column" }}>
+            <div style={{ display: "flex", flexDirection: "column", position: "relative" }} ref={vendorDropdownRef}>
               <label style={{ fontSize: 12, color: "#64748b", fontWeight: 600, marginBottom: 4 }}>Vendor</label>
-              <select
-                value={selectedVendor}
-                onChange={(e) => setSelectedVendor(e.target.value)}
-                style={{ padding: "8px 12px", minWidth: 180, border: "1px solid #d1d5db", borderRadius: 6, fontSize: 14 }}
+              <div
+                onClick={() => setVendorDropdownOpen(!vendorDropdownOpen)}
+                style={{
+                  padding: "8px 12px",
+                  minWidth: 180,
+                  border: "1px solid #d1d5db",
+                  borderRadius: 6,
+                  fontSize: 14,
+                  background: "#fff",
+                  cursor: "pointer",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center"
+                }}
               >
-                {vendors.map(v => (
-                  <option key={v} value={v}>{v}</option>
-                ))}
-              </select>
+                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {getVendorDisplayText()}
+                </span>
+                <span style={{ marginLeft: 8, fontSize: 10 }}>{vendorDropdownOpen ? "▲" : "▼"}</span>
+              </div>
+              {vendorDropdownOpen && (
+                <div style={{
+                  position: "absolute",
+                  top: "100%",
+                  left: 0,
+                  right: 0,
+                  background: "#fff",
+                  border: "1px solid #d1d5db",
+                  borderRadius: 6,
+                  boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                  zIndex: 1000,
+                  maxHeight: 250,
+                  overflowY: "auto",
+                  marginTop: 4
+                }}>
+                  {vendors.length > 0 && (
+                    <>
+                      <div
+                        onClick={handleSelectAllVendors}
+                        style={{
+                          padding: "8px 12px",
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                          borderBottom: "1px solid #e5e7eb",
+                          background: "#f8fafc",
+                          fontWeight: 600,
+                          color: "#3b82f6"
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedVendors.length === vendors.length && vendors.length > 0}
+                          onChange={() => { }}
+                          style={{ cursor: "pointer" }}
+                        />
+                        Select All
+                      </div>
+                      {vendors.map(v => (
+                        <div
+                          key={v}
+                          onClick={() => handleVendorToggle(v)}
+                          style={{
+                            padding: "8px 12px",
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 8,
+                            background: selectedVendors.includes(v) ? "#eff6ff" : "#fff"
+                          }}
+                          onMouseEnter={(e) => e.target.style.background = selectedVendors.includes(v) ? "#dbeafe" : "#f1f5f9"}
+                          onMouseLeave={(e) => e.target.style.background = selectedVendors.includes(v) ? "#eff6ff" : "#fff"}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedVendors.includes(v)}
+                            onChange={() => { }}
+                            style={{ cursor: "pointer" }}
+                          />
+                          {v}
+                        </div>
+                      ))}
+                    </>
+                  )}
+                  {vendors.length === 0 && (
+                    <div style={{ padding: "12px", color: "#64748b", textAlign: "center", fontSize: 13 }}>
+                      {branch === "All" ? "Select a branch first" : "No vendors found"}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             <div style={{ display: "flex", gap: 8 }}>

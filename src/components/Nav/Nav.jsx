@@ -1,10 +1,18 @@
 import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import './Nav.css';
 
 export default function Nav() {
     const location = useLocation();
+    const queryClient = useQueryClient();
     const isCostingModule = location.pathname.startsWith('/costing');
+
+    const handleClearCache = () => {
+        queryClient.clear();
+        console.log('[CACHE] All cached data cleared');
+        alert('Cache cleared successfully!');
+    };
 
     return (
         <nav className="main-nav">
@@ -27,6 +35,14 @@ export default function Nav() {
                 >
                     <span>Costing Module</span>
                 </NavLink>
+
+                <button
+                    onClick={handleClearCache}
+                    className="nav-button clear-cache-btn"
+                    title="Clear all cached data"
+                >
+                    Clear Cache
+                </button>
             </div>
 
             {/* Sub-navigation for Costing Module */}
@@ -50,6 +66,18 @@ export default function Nav() {
                         className={({ isActive }) => `subnav-link ${isActive ? 'active' : ''}`}
                     >
                         Manual Entry
+                    </NavLink>
+                    <NavLink
+                        to="/costing/closing-inventory"
+                        className={({ isActive }) => `subnav-link ${isActive ? 'active' : ''}`}
+                    >
+                        Closing Inventory
+                    </NavLink>
+                    <NavLink
+                        to="/costing/daily-food-costing"
+                        className={({ isActive }) => `subnav-link ${isActive ? 'active' : ''}`}
+                    >
+                        Daily Food Costing
                     </NavLink>
                 </div>
             )}

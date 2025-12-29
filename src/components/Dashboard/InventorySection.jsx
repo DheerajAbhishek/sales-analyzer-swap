@@ -1,12 +1,9 @@
-import React, { useState, useEffect } from 'react'
-import { ristaService } from '../../services/api'
+import React, { useState } from 'react'
+import { useInventoryData } from '../../hooks/useQueries'
 import { formatValue } from '../../utils/helpers'
 import { RESTAURANT_ID_MAP } from '../../utils/constants'
 
 const InventorySection = ({ selections }) => {
-    const [inventoryData, setInventoryData] = useState(null)
-    const [loading, setLoading] = useState(false)
-    const [error, setError] = useState(null)
     const [expanded, setExpanded] = useState(false)
 
     // Get the restaurant key and find the Rista branch code
@@ -15,30 +12,22 @@ const InventorySection = ({ selections }) => {
     const ristaBranchCode = restaurantConfig?.ristaBranchCode || restaurantConfig?.takeaway || null
     const restaurantName = restaurantConfig?.name || restaurantKey
 
-    const fetchInventory = async () => {
-        if (!ristaBranchCode || !selections?.startDate || !selections?.endDate) {
-            setError('No Rista branch code configured for this restaurant')
-            return
-        }
+    // Use React Query for cached data fetching
+    const {
+        data: inventoryData,
+        isLoading: loading,
+        error: queryError,
+        refetch: fetchInventory,
+        isFetching
+    } = useInventoryData(
+        ristaBranchCode,
+        selections?.startDate,
+        selections?.endDate,
+        ['po', 'shrinkage', 'adjustment', 'audit'],
+        { enabled: false } // Don't auto-fetch, wait for button click
+    )
 
-        setLoading(true)
-        setError(null)
-
-        try {
-            const data = await ristaService.fetchInventoryData(
-                ristaBranchCode,
-                selections.startDate,
-                selections.endDate,
-                ['po', 'shrinkage', 'adjustment', 'audit']
-            )
-            setInventoryData(data)
-        } catch (err) {
-            console.error('Error fetching inventory:', err)
-            setError(err.message || 'Failed to fetch inventory data')
-        } finally {
-            setLoading(false)
-        }
-    }
+    const error = queryError?.message || (!ristaBranchCode ? 'No Rista branch code configured for this restaurant' : null)
 
     const summaryCards = inventoryData?.summary ? [
         {
@@ -154,17 +143,29 @@ const InventorySection = ({ selections }) => {
                     }}>
                         from Rista
                     </span>
+                    {inventoryData && !isFetching && (
+                        <span style={{
+                            fontSize: '0.7rem',
+                            background: '#dcfce7',
+                            color: '#166534',
+                            padding: '2px 6px',
+                            borderRadius: '8px',
+                            marginLeft: '8px'
+                        }}>
+                            ✓ Cached
+                        </span>
+                    )}
                 </h2>
                 <button
-                    onClick={fetchInventory}
-                    disabled={loading || !ristaBranchCode}
+                    onClick={() => fetchInventory()}
+                    disabled={loading || isFetching || !ristaBranchCode}
                     style={{
                         padding: '8px 16px',
-                        backgroundColor: loading ? '#94a3b8' : '#3b82f6',
+                        backgroundColor: (loading || isFetching) ? '#94a3b8' : '#3b82f6',
                         color: 'white',
                         border: 'none',
                         borderRadius: '8px',
-                        cursor: loading || !ristaBranchCode ? 'not-allowed' : 'pointer',
+                        cursor: (loading || isFetching) || !ristaBranchCode ? 'not-allowed' : 'pointer',
                         fontSize: '0.875rem',
                         fontWeight: '500',
                         display: 'flex',
@@ -172,7 +173,7 @@ const InventorySection = ({ selections }) => {
                         gap: '6px'
                     }}
                 >
-                    {loading ? (
+                    {(loading || isFetching) ? (
                         <>
                             <span className="spinner" style={{
                                 width: '14px',

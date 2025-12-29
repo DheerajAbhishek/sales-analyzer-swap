@@ -2,15 +2,15 @@ import React, { useState, useEffect } from 'react'
 import { expenseService } from '../../services/api'
 import { formatValue } from '../../utils/helpers'
 
-cons                    <h3 style={{
-                        textAlign: 'center',
-                        marginBottom: '1rem',
-                        color: '#1a1a1a',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.5px'
-                    }}>
+cons < h3 style = {{
+    textAlign: 'center',
+        marginBottom: '1rem',
+            color: '#1a1a1a',
+                textTransform: 'uppercase',
+                    letterSpacing: '0.5px'
+}}>
                         💰 Expenses Analysis
-                    </h3>sSection = ({ selections, grossSale, netSale }) => {
+                    </h3 > sSection = ({ selections, grossSale, netSale }) => {
     const [expenses, setExpenses] = useState({
         openingInventory: '',
         closingInventory: '',
@@ -196,8 +196,8 @@ cons                    <h3 style={{
                                     </tr>
                                 )
                             })}
-                            <tr style={{ 
-                                borderTop: '2px solid #6366f1', 
+                            <tr style={{
+                                borderTop: '2px solid #6366f1',
                                 backgroundColor: '#f1f5f9',
                                 fontWeight: 'bold'
                             }}>
@@ -205,8 +205,8 @@ cons                    <h3 style={{
                                 <td style={{ fontWeight: 'bold' }}>{formatValue(calculateTotalExpenses(), 'currency')}</td>
                                 <td style={{ fontWeight: 'bold' }}>{calculatePercentage(calculateTotalExpenses())}</td>
                             </tr>
-                            <tr style={{ 
-                                borderTop: '1px solid #cbd5e1', 
+                            <tr style={{
+                                borderTop: '1px solid #cbd5e1',
                                 backgroundColor: calculateProfitLoss() >= 0 ? '#f0fdf4' : '#fef2f2',
                                 fontWeight: 'bold',
                                 color: calculateProfitLoss() >= 0 ? '#166534' : '#991b1b'
@@ -227,7 +227,7 @@ cons                    <h3 style={{
                     }}>
                         <div style={{ marginBottom: '0.5rem' }}>
                             <strong style={{ color: '#1a1a1a' }}>
-                                Gross Sale: {formatValue(grossSale, 'currency')}
+                                Gross Sale + GST: {formatValue(grossSale, 'currency')}
                             </strong>
                         </div>
                         <div style={{ marginBottom: '0.5rem' }}>
@@ -240,14 +240,14 @@ cons                    <h3 style={{
                                 Total Expenses: {formatValue(calculateTotalExpenses(), 'currency')}
                             </strong>
                         </div>
-                        <div style={{ 
+                        <div style={{
                             marginTop: '1rem',
                             padding: '0.75rem',
                             borderRadius: '6px',
                             background: calculateProfitLoss() >= 0 ? '#f0fdf4' : '#fef2f2',
                             border: `2px solid ${calculateProfitLoss() >= 0 ? '#22c55e' : '#ef4444'}`
                         }}>
-                            <strong style={{ 
+                            <strong style={{
                                 color: calculateProfitLoss() >= 0 ? '#166534' : '#991b1b',
                                 fontSize: '1.1rem'
                             }}>

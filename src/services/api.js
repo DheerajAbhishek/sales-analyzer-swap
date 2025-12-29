@@ -129,50 +129,191 @@ export const reportService = {
             restaurantId: branchId,
             startDate: originalStartDate,
             endDate: originalEndDate,
+            datesWithData: [],
+            missingDates: [],
+            dataCoverage: '',
             body: {
                 consolidatedInsights: {
                     noOfOrders: 0,
                     grossSale: 0,
+                    grossSaleWithGST: 0,
+                    grossSaleAfterGST: 0,
                     gstOnOrder: 0,
                     discounts: 0,
                     packings: 0,
                     ads: 0,
                     commissionAndTaxes: 0,
                     netSale: 0,
-                    nbv: 0
+                    nbv: 0,
+                    payout: 0,
+                    netOrder: 0,
+                    totalDeductions: 0,
+                    netAdditions: 0,
+                    netPay: 0,
+                    netOrderBreakdown: {
+                        subtotal: 0,
+                        packaging: 0,
+                        discountsPromo: 0,
+                        discountsBogo: 0,
+                        gst: 0,
+                        total: 0
+                    },
+                    deductionsBreakdown: {
+                        commission: {
+                            baseServiceFee: 0,
+                            paymentMechanismFee: 0,
+                            longDistanceFee: 0,
+                            serviceFeeDiscount: 0,
+                            total: 0
+                        },
+                        taxes: {
+                            taxOnService: 0,
+                            tds: 0,
+                            gst: 0,
+                            total: 0
+                        },
+                        otherDeductions: 0,
+                        totalDeductions: 0
+                    }
                 },
+                timeSeriesData: [],
                 discountBreakdown: {}
             }
         }
 
+        // Check if we have timeSeriesData (for groupBy week/month)
+        const hasTimeSeriesData = results.some(r => r?.body?.timeSeriesData && Array.isArray(r.body.timeSeriesData))
+
+        // Merge missing dates arrays from all chunks
+        const allDatesWithData = new Set()
+        const allMissingDates = new Set()
+
         for (const result of results) {
-            const insights = result?.body?.consolidatedInsights || {}
-            merged.body.consolidatedInsights.noOfOrders += insights.noOfOrders || 0
-            merged.body.consolidatedInsights.grossSale += insights.grossSale || 0
-            merged.body.consolidatedInsights.gstOnOrder += insights.gstOnOrder || 0
-            merged.body.consolidatedInsights.discounts += insights.discounts || 0
-            merged.body.consolidatedInsights.packings += insights.packings || 0
-            merged.body.consolidatedInsights.ads += insights.ads || 0
-            merged.body.consolidatedInsights.commissionAndTaxes += insights.commissionAndTaxes || 0
-            merged.body.consolidatedInsights.netSale += insights.netSale || 0
+            // Handle datesWithData if present
+            if (result?.datesWithData && Array.isArray(result.datesWithData)) {
+                result.datesWithData.forEach(date => allDatesWithData.add(date))
+            }
+
+            // Extract dates with data from dailyInsights (for Rista API responses)
+            if (result?.body?.dailyInsights && typeof result.body.dailyInsights === 'object') {
+                Object.keys(result.body.dailyInsights).forEach(date => allDatesWithData.add(date))
+            }
+
+            // Collect missing dates from response
+            if (result?.missingDates && Array.isArray(result.missingDates)) {
+                result.missingDates.forEach(date => allMissingDates.add(date))
+            }
+
+            // If we have timeSeriesData, merge those instead of consolidatedInsights
+            if (hasTimeSeriesData && result?.body?.timeSeriesData) {
+                merged.body.timeSeriesData.push(...result.body.timeSeriesData)
+            } else {
+                // Otherwise merge consolidatedInsights
+                const insights = result?.body?.consolidatedInsights || {}
+                const c = merged.body.consolidatedInsights
+
+                // Basic metrics
+                c.noOfOrders += insights.noOfOrders || 0
+                c.grossSale += insights.grossSale || 0
+                c.grossSaleWithGST += insights.grossSaleWithGST || 0
+                c.grossSaleAfterGST += insights.grossSaleAfterGST || 0
+                c.gstOnOrder += insights.gstOnOrder || 0
+                c.discounts += insights.discounts || 0
+                c.packings += insights.packings || 0
+                c.ads += insights.ads || 0
+                c.commissionAndTaxes += insights.commissionAndTaxes || 0
+                c.netSale += insights.netSale || 0
+                c.payout += insights.payout || 0
+
+                // Zomato/Swiggy-compatible metrics
+                c.netOrder += insights.netOrder || 0
+                c.totalDeductions += insights.totalDeductions || 0
+                c.netAdditions += insights.netAdditions || 0
+                c.netPay += insights.netPay || 0
+
+                // Merge netOrderBreakdown
+                if (insights.netOrderBreakdown) {
+                    c.netOrderBreakdown.subtotal += insights.netOrderBreakdown.subtotal || 0
+                    c.netOrderBreakdown.packaging += insights.netOrderBreakdown.packaging || 0
+                    c.netOrderBreakdown.discountsPromo += insights.netOrderBreakdown.discountsPromo || 0
+                    c.netOrderBreakdown.discountsBogo += insights.netOrderBreakdown.discountsBogo || 0
+                    c.netOrderBreakdown.gst += insights.netOrderBreakdown.gst || 0
+                    c.netOrderBreakdown.total += insights.netOrderBreakdown.total || 0
+                }
+
+                // Merge deductionsBreakdown
+                if (insights.deductionsBreakdown) {
+                    const db = insights.deductionsBreakdown
+                    if (db.commission) {
+                        c.deductionsBreakdown.commission.baseServiceFee += db.commission.baseServiceFee || 0
+                        c.deductionsBreakdown.commission.paymentMechanismFee += db.commission.paymentMechanismFee || 0
+                        c.deductionsBreakdown.commission.longDistanceFee += db.commission.longDistanceFee || 0
+                        c.deductionsBreakdown.commission.serviceFeeDiscount += db.commission.serviceFeeDiscount || 0
+                        c.deductionsBreakdown.commission.total += db.commission.total || 0
+                    }
+                    if (db.taxes) {
+                        c.deductionsBreakdown.taxes.taxOnService += db.taxes.taxOnService || 0
+                        c.deductionsBreakdown.taxes.tds += db.taxes.tds || 0
+                        c.deductionsBreakdown.taxes.gst += db.taxes.gst || 0
+                        c.deductionsBreakdown.taxes.total += db.taxes.total || 0
+                    }
+                    c.deductionsBreakdown.otherDeductions += db.otherDeductions || 0
+                    c.deductionsBreakdown.totalDeductions += db.totalDeductions || 0
+                }
+            }
         }
 
-        // Recalculate derived values
-        const c = merged.body.consolidatedInsights
-        c.nbv = c.grossSale - c.discounts
-        c.discountPercent = c.grossSale > 0 ? (c.discounts / c.grossSale * 100) : 0
-        c.commissionPercent = c.grossSale > 0 ? (c.commissionAndTaxes / c.grossSale * 100) : 0
-        c.adsPercent = c.grossSale > 0 ? (c.ads / c.grossSale * 100) : 0
+        // Convert set to sorted array
+        merged.datesWithData = Array.from(allDatesWithData).sort()
+
+        // Use collected missing dates, or calculate from date range
+        if (allMissingDates.size > 0) {
+            merged.missingDates = Array.from(allMissingDates).sort()
+        } else {
+            // Calculate missing dates for the entire date range
+            const dateRange = this.getDateRange(originalStartDate, originalEndDate)
+            merged.missingDates = dateRange.filter(date => !allDatesWithData.has(date)).sort()
+        }
+
+        // Calculate coverage
+        const totalDays = this.getDateRange(originalStartDate, originalEndDate).length
+        merged.dataCoverage = `${merged.datesWithData.length}/${totalDays}`
+
+        // Recalculate derived values (only if not using timeSeriesData)
+        if (!hasTimeSeriesData) {
+            const c = merged.body.consolidatedInsights
+            c.nbv = c.grossSale - c.discounts
+            c.discountPercent = c.grossSale > 0 ? (c.discounts / c.grossSale * 100) : 0
+            c.commissionPercent = c.grossSale > 0 ? (c.commissionAndTaxes / c.grossSale * 100) : 0
+            c.adsPercent = c.grossSale > 0 ? (c.ads / c.grossSale * 100) : 0
+        }
 
         return merged
     },
 
-    async getOnDemandInsights(branchId, startDate, endDate, channel) {
+    // Helper to get all dates in a range
+    getDateRange(startDate, endDate) {
+        const dates = []
+        const current = new Date(startDate)
+        const end = new Date(endDate)
+
+        while (current <= end) {
+            const year = current.getFullYear()
+            const month = String(current.getMonth() + 1).padStart(2, '0')
+            const day = String(current.getDate()).padStart(2, '0')
+            dates.push(`${year}-${month}-${day}`)
+            current.setDate(current.getDate() + 1)
+        }
+
+        return dates
+    },
+
+    async getOnDemandInsights(branchId, startDate, endDate, channel, groupBy = 'total') {
         const ON_DEMAND_API_URL = 'https://xiphvj43ij.execute-api.ap-south-1.amazonaws.com/Prod/fetch-from-rista';
 
         // Split into weekly chunks for faster fetching
         const weeklyChunks = this.getWeeklyChunks(startDate, endDate)
-        console.log(`🔄 Splitting ${startDate} to ${endDate} into ${weeklyChunks.length} weekly chunks for ${branchId}/${channel}`)
+        console.log(`[SPLIT] ${startDate} to ${endDate} into ${weeklyChunks.length} weekly chunks for ${branchId}/${channel}`)
 
         // Fetch each chunk with staggered timing
         const STAGGER_DELAY = 300 // 300ms between requests
@@ -186,20 +327,20 @@ export const reportService = {
                 await new Promise(resolve => setTimeout(resolve, STAGGER_DELAY))
             }
 
-            const apiUrl = `${ON_DEMAND_API_URL}?branchId=${branchId}&startDate=${chunk.startDate}&endDate=${chunk.endDate}&channel=${channel}`
-            console.log(`📡 Fetching chunk ${i + 1}/${weeklyChunks.length}: ${chunk.startDate} to ${chunk.endDate}`)
+            const apiUrl = `${ON_DEMAND_API_URL}?branchId=${branchId}&startDate=${chunk.startDate}&endDate=${chunk.endDate}&channel=${channel}&groupBy=${groupBy}`
+            console.log(`[FETCH] Chunk ${i + 1}/${weeklyChunks.length}: ${chunk.startDate} to ${chunk.endDate}`)
 
             try {
                 const response = await fetch(apiUrl)
                 if (!response.ok) {
                     const error = await response.json().catch(() => ({}))
-                    console.error(`❌ Chunk ${i + 1} failed:`, error)
+                    console.error(`[ERROR] Chunk ${i + 1} failed:`, error)
                     continue // Skip failed chunks instead of failing entirely
                 }
                 const data = await response.json()
                 results.push(data)
             } catch (err) {
-                console.error(`❌ Chunk ${i + 1} error:`, err)
+                console.error(`[ERROR] Chunk ${i + 1} error:`, err)
             }
         }
 
@@ -208,7 +349,7 @@ export const reportService = {
         }
 
         // Merge all chunk results
-        console.log(`✅ Successfully fetched ${results.length}/${weeklyChunks.length} chunks, merging...`)
+        console.log(`[SUCCESS] Fetched ${results.length}/${weeklyChunks.length} chunks, merging...`)
         return this.mergeInsightResults(results, branchId, startDate, endDate)
     }
 };
@@ -280,9 +421,11 @@ export const ristaService = {
     },
 
     // Fetch sales data for a specific branch and channel via Lambda
+    // Route through the root mode endpoint to leverage configured CORS
     async fetchSalesData(branchId, startDate, endDate, channelName) {
         const { apiKey, secretKey } = this.getCredentials()
-        const response = await fetch(`${this.RISTA_LAMBDA_URL}/rista-sales`, {
+        const url = `${API_BASE_URL}?mode=rista-sales`
+        const response = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -300,6 +443,22 @@ export const ristaService = {
             throw new Error(errorData.error || `Failed to fetch sales data: ${response.status}`)
         }
 
+        const data = await response.json()
+        // Handle Lambda response format (body might be stringified)
+        if (typeof data.body === 'string') {
+            return JSON.parse(data.body)
+        }
+        return data.body || data
+    },
+
+    // Fetch daily food costing (opening, purchases, closing, sales, results) via unified Lambda endpoint
+    async fetchFoodCostingDaily(branchId, day) {
+        const url = `${API_BASE_URL}/food-costing?branchId=${encodeURIComponent(branchId)}&day=${encodeURIComponent(day)}`
+        const response = await fetch(url, { method: 'GET' })
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}))
+            throw new Error(errorData.error || `Failed to fetch food costing: ${response.status}`)
+        }
         const data = await response.json()
         // Handle Lambda response format (body might be stringified)
         if (typeof data.body === 'string') {

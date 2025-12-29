@@ -5,47 +5,71 @@ const MissingDatesIndicator = ({
     timeSeriesData,
     selections,
     dataType,
-    allRestaurantDetails
+    allRestaurantDetails,
+    dashboardData
 }) => {
     const [missingDatesInfo, setMissingDatesInfo] = useState(null);
     const [loading, setLoading] = useState(false);
     const [expanded, setExpanded] = useState(false);
 
-    // Disable this check for on-demand channels
     const { channels } = selections;
     const onDemandChannels = ['takeaway', 'corporate'];
-    const allChannelsAreOnDemand = channels && channels.length > 0 && channels.every(ch => onDemandChannels.includes(ch));
-
-    if (allChannelsAreOnDemand) {
-        return null; // Do not render for on-demand channels
-    }
+    const hasOnDemandChannels = channels && channels.length > 0 && channels.some(ch => onDemandChannels.includes(ch));
 
     useEffect(() => {
         const checkMissingDates = async () => {
-            // Handle both possible date field names (dateFrom/dateTo or startDate/endDate)
             const dateFrom = selections?.dateFrom || selections?.startDate;
             const dateTo = selections?.dateTo || selections?.endDate;
 
             if (!dateFrom || !dateTo || !allRestaurantDetails?.length) {
-                console.log('❌ Missing required data for missing dates check:', {
-                    dateFrom,
-                    dateTo,
-                    startDate: selections?.startDate,
-                    endDate: selections?.endDate,
-                    restaurantDetails: allRestaurantDetails,
-                    selectionsKeys: Object.keys(selections || {})
-                });
+                console.log('[MISSING_DATES] Missing required data');
                 return;
             }
 
             setLoading(true);
 
             try {
-                // Check missing dates for all selected restaurants/channels
                 const allMissingDatesResults = [];
 
+                // For on-demand channels, get missing dates from Lambda response
+                if (hasOnDemandChannels && dashboardData?.results) {
+                    console.log('[MISSING_DATES] Checking on-demand channels, results:', dashboardData.results);
+
+                    for (let i = 0; i < dashboardData.results.length; i++) {
+                        const result = dashboardData.results[i];
+                        const detail = dashboardData.details[i];
+
+                        console.log(`[MISSING_DATES] Result ${i}:`, {
+                            platform: detail.platform,
+                            missingDates: result?.missingDates,
+                            dataCoverage: result?.dataCoverage
+                        });
+
+                        // Only process if this is an on-demand channel
+                        if (!onDemandChannels.includes(detail.platform)) {
+                            continue;
+                        }
+
+                        if (result?.missingDates && Array.isArray(result.missingDates) && result.missingDates.length > 0) {
+                            console.log(`[MISSING_DATES] ${detail.name} (${detail.platform}):`, result.missingDates);
+                            allMissingDatesResults.push({
+                                restaurantId: detail.id,
+                                restaurantName: detail.name,
+                                platform: detail.platform,
+                                missingDates: result.missingDates,
+                                dataCoverage: result.dataCoverage,
+                                totalMissing: result.missingDates.length
+                            });
+                        }
+                    }
+                }
+
+                // For traditional channels, use dateService
                 for (const detail of allRestaurantDetails) {
-                    console.log(`🔍 Checking missing dates for restaurant: ${detail.name} (${detail.id})`);
+                    // Skip if this is an on-demand channel and we already processed it above
+                    if (onDemandChannels.includes(detail.platform)) {
+                        continue;
+                    }
 
                     const result = await dateService.checkMissingDates(
                         detail.id,
@@ -53,34 +77,75 @@ const MissingDatesIndicator = ({
                         dateTo
                     );
 
-                    // Handle the API response structure correctly
                     const missingDates = result?.data?.missingDates || result?.missingDates || [];
-                    console.log(`📊 Missing dates for ${detail.name}:`, missingDates);
+                    console.log(`[MISSING_DATES] ${detail.name}:`, missingDates);
 
                     if (missingDates && missingDates.length > 0) {
                         allMissingDatesResults.push({
                             restaurantId: detail.id,
                             restaurantName: detail.name,
-                            platform: detail.platform, // Add platform information
+                            platform: detail.platform,
                             missingDates: missingDates,
                             totalMissing: missingDates.length
                         });
                     }
                 }
 
-                console.log('� All missing dates results:', allMissingDatesResults);
-
                 if (allMissingDatesResults.length > 0) {
-                    // Calculate total missing dates across all restaurants
-                    const totalMissingCount = allMissingDatesResults.reduce(
+                    // Merge missing dates for same restaurant if both takeaway and corporate exist
+                    const mergedResults = {};
+
+                    for (const result of allMissingDatesResults) {
+                        const key = result.restaurantId;
+
+                        if (!mergedResults[key]) {
+                            mergedResults[key] = {
+                                restaurantId: result.restaurantId,
+                                restaurantName: result.restaurantName,
+                                platform: result.platform,
+                                missingDates: [...result.missingDates],
+                                dataCoverage: result.dataCoverage,
+                                totalMissing: result.totalMissing,
+                                channels: [result.platform]
+                            };
+                        } else {
+                            // When merging multiple channels for same restaurant,
+                            // a date is only "missing" if it's missing from ALL channels
+                            // So we need the INTERSECTION of missing dates
+                            const currentMissing = new Set(mergedResults[key].missingDates);
+                            const newMissing = new Set(result.missingDates);
+                            const intersection = Array.from(currentMissing).filter(date => newMissing.has(date));
+                            
+                            mergedResults[key].missingDates = intersection;
+                            mergedResults[key].totalMissing = intersection.length;
+                            mergedResults[key].channels.push(result.platform);
+                            
+                            // Recalculate coverage after merging
+                            const dateFrom = selections?.dateFrom || selections?.startDate;
+                            const dateTo = selections?.dateTo || selections?.endDate;
+                            if (dateFrom && dateTo) {
+                                const totalDays = Math.ceil((new Date(dateTo) - new Date(dateFrom)) / (1000 * 60 * 60 * 24)) + 1;
+                                const daysWithData = totalDays - mergedResults[key].totalMissing;
+                                mergedResults[key].dataCoverage = `${daysWithData}/${totalDays}`;
+                            }
+                            
+                            // Update platform display for merged entries
+                            if (mergedResults[key].channels.length === 2) {
+                                mergedResults[key].platform = `${mergedResults[key].channels.join(' & ')}`;
+                            }
+                        }
+                    }
+
+                    const finalResults = Object.values(mergedResults);
+                    const totalMissingCount = finalResults.reduce(
                         (sum, result) => sum + result.totalMissing,
                         0
                     );
 
                     setMissingDatesInfo({
-                        results: allMissingDatesResults,
+                        results: finalResults,
                         totalMissingCount,
-                        hasMultipleRestaurants: allMissingDatesResults.length > 1
+                        hasMultipleRestaurants: finalResults.length > 1
                     });
                 } else {
                     setMissingDatesInfo({
@@ -91,7 +156,7 @@ const MissingDatesIndicator = ({
                 }
 
             } catch (error) {
-                console.error('❌ Error checking missing dates:', error);
+                console.error('[MISSING_DATES] Error checking:', error);
                 setMissingDatesInfo(null);
             } finally {
                 setLoading(false);
@@ -99,7 +164,7 @@ const MissingDatesIndicator = ({
         };
 
         checkMissingDates();
-    }, [selections?.dateFrom, selections?.dateTo, selections?.startDate, selections?.endDate, allRestaurantDetails]);
+    }, [selections?.dateFrom, selections?.dateTo, selections?.startDate, selections?.endDate, allRestaurantDetails, dashboardData]);
 
     // Show loading state
     if (loading) {
@@ -112,9 +177,9 @@ const MissingDatesIndicator = ({
                 marginBottom: '16px'
             }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ fontSize: '1.2em' }}>🔍</span>
+                    <span style={{ fontSize: '1.2em' }}>→</span>
                     <p style={{ margin: 0, fontWeight: '600', color: '#374151', fontSize: '0.9rem' }}>
-                        Checking for missing data periods across all channels...
+                        Checking for missing data periods...
                     </p>
                 </div>
             </div>
@@ -141,13 +206,13 @@ const MissingDatesIndicator = ({
                 marginBottom: '16px'
             }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ fontSize: '1.2em' }}>📊</span>
+                    <span style={{ fontSize: '1.2em' }}>OK</span>
                     <div>
                         <p style={{ margin: 0, fontWeight: '600', color: '#01579b', fontSize: '0.9rem' }}>
-                            Complete Data Coverage - All Channels
+                            Complete Data Coverage
                         </p>
                         <p style={{ margin: 0, fontSize: '0.8rem', color: '#0277bd' }}>
-                            All {daysDiff + 1} day{daysDiff !== 0 ? 's' : ''} have data available across all selected channels
+                            All {daysDiff + 1} day(s) have data available
                         </p>
                     </div>
                 </div>
@@ -210,13 +275,13 @@ const MissingDatesIndicator = ({
             marginBottom: '16px'
         }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                <span style={{ fontSize: '1.2em' }}>⚠️</span>
+                <span style={{ fontSize: '1.2em' }}>!</span>
                 <div>
                     <p style={{ margin: 0, fontWeight: '600', color: '#92400e', fontSize: '0.9rem' }}>
                         Missing Data Periods
                     </p>
                     <p style={{ margin: 0, fontSize: '0.8rem', color: '#a16207' }}>
-                        {missingDatesInfo.totalMissingCount} total missing dates across {missingDatesInfo.results.length} channel{missingDatesInfo.results.length !== 1 ? 's' : ''}
+                        {missingDatesInfo.totalMissingCount} total missing dates across {missingDatesInfo.results.length} channel(s)
                     </p>
                 </div>
                 <button
@@ -245,13 +310,17 @@ const MissingDatesIndicator = ({
                     color: '#78350f'
                 }}>
                     {missingDatesInfo.results.map((result, index) => {
+                        console.log('[MISSING_DATES] Rendering result:', result);
                         const dateGroups = groupConsecutiveDates(result.missingDates);
                         const formattedGroups = formatDateGroups(dateGroups);
+                        console.log('[MISSING_DATES] Date groups:', dateGroups);
+                        console.log('[MISSING_DATES] Formatted groups:', formattedGroups);
 
                         return (
                             <div key={result.restaurantId} style={{ marginBottom: index < missingDatesInfo.results.length - 1 ? '12px' : '0' }}>
                                 <p style={{ margin: '0 0 4px 0', fontWeight: '600' }}>
-                                    {result.restaurantName.replace(' (Auto-loaded)', '')} - {result.platform.charAt(0).toUpperCase() + result.platform.slice(1)} - {result.totalMissing} missing dates:
+                                    {result.restaurantName} ({result.platform})
+                                    {result.dataCoverage && ` - ${result.dataCoverage} dates`}
                                 </p>
                                 <p style={{ margin: 0, lineHeight: '1.4', paddingLeft: '12px' }}>
                                     {formattedGroups.join(', ')}

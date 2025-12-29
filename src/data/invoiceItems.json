@@ -1,0 +1,409 @@
+{
+    "items": [
+        {
+            "name": "Paneer",
+            "category": "Dairy",
+            "defaultUom": "kg"
+        },
+        {
+            "name": "Milk",
+            "category": "Dairy",
+            "defaultUom": "liter"
+        },
+        {
+            "name": "Curd",
+            "category": "Dairy",
+            "defaultUom": "kg"
+        },
+        {
+            "name": "Butter",
+            "category": "Dairy",
+            "defaultUom": "kg"
+        },
+        {
+            "name": "Cheese",
+            "category": "Dairy",
+            "defaultUom": "kg"
+        },
+        {
+            "name": "Ghee",
+            "category": "Dairy",
+            "defaultUom": "liter"
+        },
+        {
+            "name": "Tofu",
+            "category": "Dairy",
+            "defaultUom": "kg"
+        },
+        {
+            "name": "Eggs",
+            "category": "Poultry",
+            "defaultUom": "pcs"
+        },
+        {
+            "name": "Chicken",
+            "category": "Poultry",
+            "defaultUom": "kg"
+        },
+        {
+            "name": "Chicken Breast",
+            "category": "Poultry",
+            "defaultUom": "kg"
+        },
+        {
+            "name": "Tomato",
+            "category": "Vegetables",
+            "defaultUom": "kg"
+        },
+        {
+            "name": "Onion",
+            "category": "Vegetables",
+            "defaultUom": "kg"
+        },
+        {
+            "name": "Potato",
+            "category": "Vegetables",
+            "defaultUom": "kg"
+        },
+        {
+            "name": "Capsicum",
+            "category": "Vegetables",
+            "defaultUom": "kg"
+        },
+        {
+            "name": "Green Capsicum",
+            "category": "Vegetables",
+            "defaultUom": "kg"
+        },
+        {
+            "name": "Red Capsicum",
+            "category": "Vegetables",
+            "defaultUom": "kg"
+        },
+        {
+            "name": "Yellow Capsicum",
+            "category": "Vegetables",
+            "defaultUom": "kg"
+        },
+        {
+            "name": "Coriander",
+            "category": "Vegetables",
+            "defaultUom": "kg"
+        },
+        {
+            "name": "Lettuce",
+            "category": "Vegetables",
+            "defaultUom": "kg"
+        },
+        {
+            "name": "Mushroom",
+            "category": "Vegetables",
+            "defaultUom": "kg"
+        },
+        {
+            "name": "Garlic",
+            "category": "Vegetables",
+            "defaultUom": "kg"
+        },
+        {
+            "name": "Ginger",
+            "category": "Vegetables",
+            "defaultUom": "kg"
+        },
+        {
+            "name": "Broccoli",
+            "category": "Vegetables",
+            "defaultUom": "kg"
+        },
+        {
+            "name": "Carrot",
+            "category": "Vegetables",
+            "defaultUom": "kg"
+        },
+        {
+            "name": "Beans",
+            "category": "Vegetables",
+            "defaultUom": "kg"
+        },
+        {
+            "name": "Cucumber",
+            "category": "Vegetables",
+            "defaultUom": "kg"
+        },
+        {
+            "name": "Spinach",
+            "category": "Vegetables",
+            "defaultUom": "kg"
+        },
+        {
+            "name": "Mint",
+            "category": "Vegetables",
+            "defaultUom": "kg"
+        },
+        {
+            "name": "Curry Leaves",
+            "category": "Vegetables",
+            "defaultUom": "kg"
+        },
+        {
+            "name": "Green Chilli",
+            "category": "Vegetables",
+            "defaultUom": "kg"
+        },
+        {
+            "name": "Cabbage",
+            "category": "Vegetables",
+            "defaultUom": "kg"
+        },
+        {
+            "name": "Cauliflower",
+            "category": "Vegetables",
+            "defaultUom": "kg"
+        },
+        {
+            "name": "Banana",
+            "category": "Fruits",
+            "defaultUom": "dozen"
+        },
+        {
+            "name": "Apple",
+            "category": "Fruits",
+            "defaultUom": "kg"
+        },
+        {
+            "name": "Lemon",
+            "category": "Fruits",
+            "defaultUom": "kg"
+        },
+        {
+            "name": "Papaya",
+            "category": "Fruits",
+            "defaultUom": "kg"
+        },
+        {
+            "name": "Watermelon",
+            "category": "Fruits",
+            "defaultUom": "kg"
+        },
+        {
+            "name": "Pineapple",
+            "category": "Fruits",
+            "defaultUom": "pcs"
+        },
+        {
+            "name": "Mango",
+            "category": "Fruits",
+            "defaultUom": "kg"
+        },
+        {
+            "name": "Basmati Rice",
+            "category": "Dry Store",
+            "defaultUom": "kg"
+        },
+        {
+            "name": "Wheat Flour",
+            "category": "Dry Store",
+            "defaultUom": "kg"
+        },
+        {
+            "name": "Maida",
+            "category": "Dry Store",
+            "defaultUom": "kg"
+        },
+        {
+            "name": "Besan",
+            "category": "Dry Store",
+            "defaultUom": "kg"
+        },
+        {
+            "name": "Chana Dal",
+            "category": "Dry Store",
+            "defaultUom": "kg"
+        },
+        {
+            "name": "Moong Dal",
+            "category": "Dry Store",
+            "defaultUom": "kg"
+        },
+        {
+            "name": "Urad Dal",
+            "category": "Dry Store",
+            "defaultUom": "kg"
+        },
+        {
+            "name": "Rajma",
+            "category": "Dry Store",
+            "defaultUom": "kg"
+        },
+        {
+            "name": "Sugar",
+            "category": "Dry Store",
+            "defaultUom": "kg"
+        },
+        {
+            "name": "Salt",
+            "category": "Dry Store",
+            "defaultUom": "kg"
+        },
+        {
+            "name": "Turmeric Powder",
+            "category": "Dry Store",
+            "defaultUom": "kg"
+        },
+        {
+            "name": "Red Chilli Powder",
+            "category": "Dry Store",
+            "defaultUom": "kg"
+        },
+        {
+            "name": "Coriander Powder",
+            "category": "Dry Store",
+            "defaultUom": "kg"
+        },
+        {
+            "name": "Garam Masala",
+            "category": "Dry Store",
+            "defaultUom": "kg"
+        },
+        {
+            "name": "Cumin",
+            "category": "Dry Store",
+            "defaultUom": "kg"
+        },
+        {
+            "name": "Sunflower Oil",
+            "category": "Dry Store",
+            "defaultUom": "liter"
+        },
+        {
+            "name": "Olive Oil",
+            "category": "Dry Store",
+            "defaultUom": "liter"
+        },
+        {
+            "name": "Cooking Oil",
+            "category": "Dry Store",
+            "defaultUom": "liter"
+        },
+        {
+            "name": "Tomato Ketchup",
+            "category": "Dry Store",
+            "defaultUom": "kg"
+        },
+        {
+            "name": "Mayonnaise",
+            "category": "Dry Store",
+            "defaultUom": "kg"
+        },
+        {
+            "name": "Soya Sauce",
+            "category": "Dry Store",
+            "defaultUom": "liter"
+        },
+        {
+            "name": "Bread",
+            "category": "Dry Store",
+            "defaultUom": "pcs"
+        },
+        {
+            "name": "Tortilla",
+            "category": "Dry Store",
+            "defaultUom": "packet"
+        },
+        {
+            "name": "Bun",
+            "category": "Dry Store",
+            "defaultUom": "pcs"
+        },
+        {
+            "name": "Prawns",
+            "category": "Dry Store",
+            "defaultUom": "kg"
+        },
+        {
+            "name": "Fish",
+            "category": "Dry Store",
+            "defaultUom": "kg"
+        },
+        {
+            "name": "French Fries",
+            "category": "Dry Store",
+            "defaultUom": "kg"
+        },
+        {
+            "name": "Frozen Peas",
+            "category": "Dry Store",
+            "defaultUom": "kg"
+        },
+        {
+            "name": "Frozen Corn",
+            "category": "Dry Store",
+            "defaultUom": "kg"
+        },
+        {
+            "name": "Food Container 500ml",
+            "category": "Packaging",
+            "defaultUom": "pcs"
+        },
+        {
+            "name": "Food Container 250ml",
+            "category": "Packaging",
+            "defaultUom": "pcs"
+        },
+        {
+            "name": "Paper Bag",
+            "category": "Packaging",
+            "defaultUom": "pcs"
+        },
+        {
+            "name": "Aluminium Foil",
+            "category": "Packaging",
+            "defaultUom": "pcs"
+        },
+        {
+            "name": "Cling Film",
+            "category": "Packaging",
+            "defaultUom": "pcs"
+        },
+        {
+            "name": "Tissue Paper",
+            "category": "Packaging",
+            "defaultUom": "pcs"
+        },
+        {
+            "name": "Napkin",
+            "category": "Packaging",
+            "defaultUom": "pcs"
+        },
+        {
+            "name": "Wooden Spork",
+            "category": "Packaging",
+            "defaultUom": "pcs"
+        },
+        {
+            "name": "Dishwash Liquid",
+            "category": "Housekeeping",
+            "defaultUom": "liter"
+        },
+        {
+            "name": "Floor Cleaner",
+            "category": "Housekeeping",
+            "defaultUom": "liter"
+        },
+        {
+            "name": "Hand Gloves",
+            "category": "Housekeeping",
+            "defaultUom": "pcs"
+        },
+        {
+            "name": "Garbage Bag",
+            "category": "Housekeeping",
+            "defaultUom": "pcs"
+        },
+        {
+            "name": "Scrubber",
+            "category": "Housekeeping",
+            "defaultUom": "pcs"
+        }
+    ]
+}

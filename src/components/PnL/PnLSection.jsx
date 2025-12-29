@@ -227,7 +227,7 @@ cons < h3 style = {{
                     }}>
                         <div style={{ marginBottom: '0.5rem' }}>
                             <strong style={{ color: '#1a1a1a' }}>
-                                Gross Sale: {formatValue(grossSale, 'currency')}
+                                Gross Sale + GST: {formatValue(grossSale, 'currency')}
                             </strong>
                         </div>
                         <div style={{ marginBottom: '0.5rem' }}>

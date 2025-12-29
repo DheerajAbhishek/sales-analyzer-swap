@@ -142,8 +142,8 @@ export const RESTAURANT_ID_MAP = {
     },
     'WeWork Kondapur': {
         name: 'WeWork Kondapur',
-        zomato: '',
-        swiggy: '',
+        zomato: '22097588',
+        swiggy: '1181060',
         takeaway: 'WWK',
         corporate: 'WWK',
         subs: '',
@@ -174,16 +174,25 @@ export const RESTAURANT_ID_MAP = {
         takeaway: 'RPS',
         corporate: 'RPS',
         subs: '',
-        ristaBranchCode: 'RPS'
+        ristaBranchCode: 'WWRMZ'
     },
     'Wework Symbiosis': {
         name: 'Wework Symbiosis',
         zomato: '',
         swiggy: '',
-        takeaway: 'BEN',
-        corporate: 'BEN',
+        takeaway: 'WWSS',
+        corporate: 'WWSS',
         subs: '',
-        ristaBranchCode: 'BEN'
+        ristaBranchCode: 'WWSS'
+    },
+    'ISB HYD': {
+        name: 'ISB HYD',
+        zomato: '',
+        swiggy: '',
+        takeaway: 'ISB-HYD',
+        corporate: 'ISB-HYD',
+        subs: '',
+        ristaBranchCode: 'ISB-HYD'
     }
 
 };
@@ -360,15 +369,16 @@ export const CHART_COLORS = {
 };
 
 export const METRICS_CONFIG = [
+    { key: 'grossSaleWithGST', title: 'Gross Sale + GST', type: 'currency' },
     { key: 'grossSale', title: 'Gross Sale', type: 'currency' },
-    { key: 'discounts', title: 'Discounts', type: 'currency' },
-    { key: 'commissionAndTaxes', title: 'Commission & Taxes', type: 'currency' },
-    { key: 'ads', title: 'Ads', type: 'currency' },
-    { key: 'netSale', title: 'Net Sale', type: 'currency' },
+    { key: 'netOrder', title: 'Net Order', type: 'currency' },
+    { key: 'totalDeductions', title: 'Deductions', type: 'currency' },
+    { key: 'netPay', title: 'Net Pay', type: 'currency' },
     { key: 'noOfOrders', title: 'No. of Orders', type: 'number' },
-    { key: 'commissionPercent', title: 'Commission %', type: 'percent' },
-    { key: 'discountPercent', title: 'Discount %', type: 'percent' },
-    { key: 'adsPercent', title: 'Ads %', type: 'percent' }
+    { key: 'discounts', title: 'Discounts', type: 'currency' },
+    { key: 'ads', title: 'Ads', type: 'currency' },
+    { key: 'discountPercent', title: 'Discount %', type: 'percentage' },
+    { key: 'adsPercent', title: 'Ads %', type: 'percentage' }
 ];
 
 // Function to check data availability for selected channels

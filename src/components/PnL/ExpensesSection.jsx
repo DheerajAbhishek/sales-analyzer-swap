@@ -174,7 +174,7 @@ const ExpensesSection = ({ selections, grossSale, grossSaleAfterGST, netSale }) 
                             <tr>
                                 <th>Expense Category</th>
                                 <th>Amount</th>
-                                <th>% of Gross Sale After GST</th>
+                                <th>% of Gross Sale</th>
                             </tr>
                         </thead>
                         <tbody>

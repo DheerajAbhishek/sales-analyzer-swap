@@ -1,0 +1,111 @@
+{
+  "generated_on": "2025-11-05 17:45:00",
+  "note": "Comprehensive and business-aligned categorization for Hyperpure products. Includes all items from reference mapping and additional intelligent regex coverage.",
+  "category_patterns": {
+    "Dairy": {
+      "Paneer": "\\bpaneer\\b",
+      "Milk": "\\bmilk\\b|\\bnandini\\b|\\bamul\\b|\\bgood life\\b",
+      "Curd_Yogurt": "\\bcurd\\b|\\bdahi\\b|\\byogurt\\b|\\byoghurt\\b",
+      "Butter": "\\bbutter\\b|\\btable butter\\b",
+      "Cheese": "\\bcheese\\b|\\bprocessed cheese\\b",
+      "Tofu": "\\btofu\\b",
+      "Ghee": "\\bghee\\b"
+    },
+
+    "Poultry": {
+      "Eggs": "\\begg\\b|\\beggs\\b|\\btray\\b",
+      "Chicken": "\\bchicken\\b|\\bbreast\\b|\\bboneless\\b|\\bdrumstick\\b"
+    },
+
+
+    "Vegetables": {
+      "Capsicum": "\\bcapsicum\\b|\\bred capsicum\\b|\\byellow capsicum\\b|\\bgreen capsicum\\b",
+      "Tomato": "\\btomato\\b|\\btomatoes\\b",
+      "Coriander": "\\bcoriander\\b|\\bkothmir\\b",
+      "Lettuce": "\\blettuce\\b",
+      "Mushroom": "\\bmushroom\\b",
+      "Garlic": "\\bgarlic\\b|\\bpeeled garlic\\b|\\bwhole garlic\\b",
+      "Ginger": "\\bginger\\b|\\badrak\\b",
+      "Onion": "\\bonion\\b",
+      "Potato": "\\bpotato\\b",
+      "Broccoli": "\\bbroccoli\\b",
+      "Chilli":"\\bchilli\\b",
+      "Carrot": "\\bcarrot\\b|\\bcarrots\\b",
+      "Beans": "\\bbeans\\b|\\bgreen beans\\b|\\bfrench beans\\b",
+      "Cucumber": "\\bcucumber\\b",
+      "Pumpkin": "\\bpumpkin\\b",
+      "Beetroot": "\\bbeetroot\\b",
+      "Okra": "\\bokra\\b|\\bbhindi\\b|\\bladyfinger\\b",
+      "Leafy Vegs": "\\bbasil\\b|\\bmint\\b|\\bpudina\\b|\\bparsley\\b|\\bdill\\b|\\bcelery\\b|\\bcurry leaves\\b|\\blemon grass\\b|\\bspinach\\b",
+      "Others": "\\b(cabbage|zucchini|brinjal|eggplant|chow chow|cauliflower|lauki|bottle gourd|bitter gourd|karela|turnip|red cabbage)\\b"
+    },
+
+    "Fruits": {
+      "Banana": "\\bbanana\\b|\\bkela\\b",
+      "Papaya": "\\bpapaya\\b",
+      "Watermelon": "\\bwatermelon\\b",
+      "Pineapple": "\\bpineapple\\b",
+      "Pomegranate": "\\bpomegranate\\b",
+      "Mango": "\\bmango\\b",
+      "Apple": "\\bapple\\b",
+      "Kiwi": "\\bkiwi\\b",
+      "Melon": "\\bmusk melon\\b|\\bmelon\\b",
+      "Guava": "\\bguava\\b",
+      "Lemon": "\\blemon\\b|\\blime\\b"
+    },
+
+    "Dry Store": {
+      "Rice": "\\bbasmati\\b|\\bbiryani\\b|\\brice\\b|\\bwhite rice\\b",
+      "Flour": "\\batta\\b|\\bmaida\\b|\\bbesan\\b|\\bragi flour\\b|\\bwheat flour\\b|\\bupma rava\\b|\\bvermicilli\\b|\\bpoha\\b",
+      "Pulses": "\\b(chana|chickpea|kabuli|rajma|dal|lentil|moong|urad|cowpea|whitepeas|green moong dal|kandi pappu)\\b",
+      "Millets": "\\b(millet|kutki|sama|ragi|bajra|jowar|barley)\\b",
+      "Oats": "\\boats\\b",
+      "Spices": "\\b(masala|spice|chhole|rajma masala|chilli powder|red chilli powder|coriander powder|cardamom|elachi|pepper|mdh|turmeric|cumin|garam masala|cinnamon|clove|rasam powder|sambar powder|whole jeera)\\b",
+      "Seasoning": "\\b(seasoning|paprika|oregano|herb mix|dry basil|bay leaf|thyme|lemon seasoning|ajwain|Chilli Flakes)\\b",
+      "Dry Fruits": "\\b(raisin|almond|cashew|peanut|pistachio|walnut|dates|apricot|fig|dry coconut|dry red chillies)\\b",
+      "Nuts_Seeds": "\\b(chia|sunflower seeds|flax|sesame|melon seeds)\\b",
+      "Sauces_Dressings": "\\b(barbeque|mayo|mayonnaise|sriracha|chipotle|sauce|ketchup|soya sauce|veeba|sweet onion|jalapeno|piri piri|garlic mayo|thai curry paste|vinegar|tomato sauce)\\b",
+      "Jams_Spreads": "\\b(jam|fruit spread|peanut butter|choco spread|strawberry crush|honey|jaggery|brown sugar)\\b",
+      "Pastes": "\\b(ginger garlic paste|tomato paste|coconut milk powder)\\b",
+      "Essentials": "\\bsalt\\b|\\bsugar\\b|\\btamarind\\b|\\btea powder\\b",
+      "soya": "\\bsoya chunks?\\b|\\bsoya beans\\b",
+      "Beverages": "\\bjuice\\b|\\bfruit drink\\b|\\b(lassi|milkshake|flavored milk)\\b|\\b(coke|diet coke|pepsi|soda|cola)\\b|\\bwater bottle\\b|\\bmineral water\\b",
+
+      "Bakery": "\\bbread\\b|\\bbrown bread\\b|\\btortilla\\b|\\bbun\\b|\\broll\\b|\\bcake\\b|\\bpastry\\b|\\bmuffin\\b|\\bsponge\\b",
+
+      "Seafood": "\\bprawn\\b|\\bprawns\\b|\\bfish\\b|\\bfillet\\b|\\bsalmon\\b|\\bseabass\\b",
+      "Oils": "\\boil\\b|\\brefined oil\\b|\\bcooking oil\\b|\\bsunflower oil\\b|\\bolive oil\\b|\\bpomace oil\\b|\\bpalmolein oil\\b",
+      "Frozen":"\\bfrozen chicken\\b|\\bfrozen fish\\b|\\bfrozen prawn\\b|\\bfrozen\\b|\\bfrozen sweet corn\\b|\\bfrozen peas\\b|\\bfrench fries\\b|\\bcorn\\b"
+    },
+
+    "Packaging": {
+      "Containers": "\\bcontainer\\b|\\btray\\b|\\bpack of\\b|\\bbox\\b|\\b500ml rectangle\\b|\\b250ml round bowls\\b",
+      "Cutlery": "\\b(spork|wooden spork|spoon|fork|knife|straw)\\b",
+      "Bags": "\\bbag\\b|\\bbags\\b|\\bpaper bag\\b",
+      "Tapes_Foils": "\\btape\\b|\\baluminium\\ foil\\b|\\bcling film\\b|\\broll\\b|\\bfoil\\b|\\baluminium clovers\\b",
+      "Paper_Wrapping": "\\b(kitchen paper|napkin|tissue|butter paper|wrapping paper|paper towel)\\b"
+    },
+
+    
+
+    
+
+
+    "Housekeeping": {
+      "Cleaners": "\\b(clean wrap|colin|cleaner|detcare|detergent|dishwash|surface|floor|toilet|bathroom|liquid soap|phenyl|sanitizer|disinfectant)\\b",
+      "Tools": "\\b(mop|broom|brush|duster|cloth|kitchen cloth|scrubber|wiper|glove|hand gloves)\\b",
+      "Waste_Disposal": "\\b(garbage bag|garbage cover|dustbin bag|trash bag)\\b",
+      "Personal_Protection": "\\b(hair net|apron|mask|cap)\\b",
+      "Paper_Products": "\\b(tissue|napkin|tissue roll|butter paper|paper towel)\\b"
+    },
+
+    "Misc": {
+      "Delivery": "\\b(delivery charges?|shipping|pay on delivery|freight)\\b",
+      "Other": "\\b(miscellaneous|service charge)\\b"
+    },
+
+    "Unknown": {
+      "Uncategorized": ".*"
+    }
+  }
+}

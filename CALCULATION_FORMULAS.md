@@ -6,34 +6,45 @@ This document describes how each metric is calculated from the Zomato, Swiggy, a
 
 ## **ZOMATO Calculations**
 
-### Column Headers Used
-- `Res. ID` - Restaurant identifier
-- `Order ID` - Unique order identifier (for deduplication)
-- `Order Date` - Date grouping
-- `Subtotal (items total)` - Items subtotal
-- `Packaging charge` - Packaging fees
-- `Order level Payout` - Restaurant payout
-- `Restaurant discount (Promo)` - Promotional discounts
-- `Restaurant discount (BOGO/others)` - BOGO and other discounts
-- `Total GST collected from customers` - GST amount
-- `Service fee & payment mechanism fee` - Platform service fees
-- `Taxes on service` - Service taxes
-- `TDS 194O amount` - TDS deductions
-- `Discount Construct` - Offer details (for breakdown)
+### File Format & Structure
+- **File Types**: Excel (.xlsx) or CSV (.csv)
+- **Sheet Name**: "Order Level" (for Excel files)
+- **Skip Rows**: First 6 rows are skipped (header rows)
+- **Detection Method**: Looks for column matching `Week No.` pattern
+
+### Column Headers Used (Regex Patterns)
+- `Res. ID` - Restaurant identifier - Pattern: `r"Res\. ID"`
+- `Order ID` - Unique order identifier (for deduplication) - Pattern: `r"Order ID"`
+- `Order Date` - Date grouping - Pattern: `r"Order Date"`
+- `Subtotal (items total)` - Items subtotal - Pattern: `r"Subtotal.*\(items total\)"`
+- `Packaging charge` - Packaging fees - Pattern: `r"Packaging charge"`
+- `Order level Payout` - Restaurant payout - Pattern: `r"Order level Payout.*"`
+- `Restaurant discount (Promo)` - Promotional discounts - Pattern: `r"Restaurant discount.*Promo.*"`
+- `Restaurant discount (BOGO/others)` - BOGO and other discounts - Pattern: `r"Restaurant discount.*BOGO.*others"`
+- `Total GST collected from customers` - GST amount - Pattern: `r"Total GST collected from customers"`
+- `Service fee & payment mechanism fee` - Platform service fees - Pattern: `r"Service fee & payment mechanism fee"`
+- `Taxes on service` - Service taxes - Pattern: `r"Taxes on service.*"`
+- `TDS 194O amount` - TDS deductions - Pattern: `r"TDS 194O amount.*"`
+- `Discount Construct` - Offer details (for breakdown) - Found by searching for "discount construct" (case-insensitive)
 
 ### Metric Formulas
 
-| Metric | Formula |
-|--------|---------|
-| **Gross Sale** | `Subtotal (items total)` + `Packaging charge` |
-| **GST on Order** | `Total GST collected from customers` |
-| **Discounts** | \|`Restaurant discount (Promo)`\| + \|`Restaurant discount (BOGO/others)`\| |
-| **Packings** | `Packaging charge` |
-| **Commission & Taxes** | `Service fee & payment mechanism fee` + `Taxes on service` + `TDS 194O amount` |
-| **Payout** | `Order level Payout` |
-| **Ads** | (From "Addition Deductions Details" sheet → "total ads & miscellaneous services" row → `Total amount`) ÷ number of days |
-| **Net Sale** | `Payout` - `daily_ad_cost` |
-| **NBV** | 0 (not applicable for Zomato) |
+| Metric | Formula | Description |
+|--------|---------|-------------|
+| **Gross Sale + GST** | `Subtotal (items total)` + `Packaging charge` | Total amount WITH GST (shown in UI) |
+| **Gross Sale** | `Gross Sale + GST` - `Total GST collected from customers` | Base sale amount WITHOUT GST |
+| **Net Order** | `Subtotal (items total)` + `Packaging charge` - `Restaurant discount (Promo)` - `Restaurant discount (BOGO/others)` + `Total GST collected from customers` | Order value after discounts |
+| **Deductions (Total)** | Commission + Taxes + Other Deductions | All platform deductions |
+| **Commission** | `Base service fee` + `Payment mechanism fee` + `Long distance enablement fee` - `Discount on service fee due to 30% capping` | Platform commission |
+| **Taxes** | `Taxes on service fee & payment mechanism fee` + `TDS 194O amount` + `Total GST collected from customers` | All tax deductions |
+| **Other Deductions** | `Other order-level deductions` | Miscellaneous deductions |
+| **Net Pay** | `Net Order` - `Total Deductions` | Final payout to restaurant |
+| **No. of Orders** | Count of unique orders | Order count |
+| **Discounts** | \|`Restaurant discount (Promo)`\| + \|`Restaurant discount (BOGO/others)`\| | Absolute value of total discounts |
+| **GST on Order** | `Total GST collected from customers` | GST/Tax amount |
+| **Packings** | `Packaging charge` | Packaging charges |
+| **Commission & Taxes** | `Service fee & payment mechanism fee` + `Taxes on service` + `TDS 194O amount` | Platform fees + taxes (for compatibility) |
+| **NBV** | `GST on Order` - `Discounts` | Net Business Value |
 
 ### Discount Breakdown (Zomato)
 
@@ -58,76 +69,134 @@ Calculated per-day from NEW orders only (after deduplication):
 
 ## **SWIGGY Calculations**
 
-### Column Headers Used
-- `Order No` - Unique order identifier (for deduplication)
-- `Order Date` - Date grouping
-- `Item Total` - Items subtotal
-- `Packaging Charges` - Packaging fees
-- `GST Collected` - GST amount
-- `Restaurant Discount Share` - Restaurant's share of discount
-- `Total Swiggy Fees` - Platform fees
-- `TCS` - Tax Collected at Source
-- `TDS` - Tax Deducted at Source
-- `Net Payout for Order (after taxes)` - Restaurant payout
+### File Format & Structure
+- **File Types**: Excel (.xlsx) or CSV (.csv)
+- **Sheet Name**: "Order Level" (for Excel files)
+- **Skip Rows**: First 2 rows are skipped (header rows)
+- **Detection Method**: Looks for column matching `Item Total` pattern
+
+### Column Headers Used (Regex Patterns)
+- `Order No` / `Order ID` / `Order Number` - Unique order identifier (for deduplication) - Pattern: `r"Order\s*(ID|No\.?|Number)"`
+- `Order Date` - Date grouping - Pattern: `r"Order Date"`
+- `Item Total` - Items subtotal - Pattern: `r"Item Total"`
+- `Packaging Charges` - Packaging fees - Pattern: `r"Packaging Charges"`
+- `GST Collected` - GST amount - Pattern: `r"GST Collected"`
+- `Restaurant Discount Share` - Restaurant's share of discount - Pattern: `r"Restaurant Discount Share"`
+- `Total Swiggy Fees` - Platform fees - Pattern: `r"Total Swiggy Fees"`
+- `TCS` - Tax Collected at Source - Pattern: `r"^TCS$"`
+- `TDS` - Tax Deducted at Source - Pattern: `r"^TDS$"`
+- `Net Payout for Order (after taxes)` - Restaurant payout - Pattern: `r"Net Payout for Order.*after taxes.*"`
 
 ### Metric Formulas
 
-| Metric | Formula |
-|--------|---------|
-| **Gross Sale** | `Item Total` + `Packaging Charges` |
-| **GST on Order** | `GST Collected` |
-| **Discounts** | \|`Restaurant Discount Share`\| |
-| **Packings** | `Packaging Charges` |
-| **Commission & Taxes** | `Total Swiggy Fees` + `TCS` + `TDS` |
-| **Payout** | `Net Payout for Order (after taxes)` |
-| **Ads** | (From "Payout Breakup" sheet → row matching "other charges.*refund" → total column) ÷ number of days |
-| **Net Sale** | `Payout` - `daily_ad_cost` |
-| **NBV** | 0 (not applicable for Swiggy) |
+| Metric | Formula | Description |
+|--------|---------|-------------|
+| **Gross Sale + GST** | `Item Total` + `Packaging Charges` | Total amount WITH GST (shown in UI) |
+| **Gross Sale** | `Gross Sale + GST` - `GST Collected` | Base sale amount WITHOUT GST |
+| **Net Order** | `Item Total` + `Packaging Charges` - `Restaurant Discount Share` + `GST Collected` | Order value after discounts |
+| **Deductions (Total)** | Commission + Taxes + Other Deductions | All platform deductions |
+| **Commission** | Sum of commission-related fees from Swiggy | Platform commission |
+| **Taxes** | `TCS` + `TDS` + `GST Collected` | All tax deductions |
+| **Other Deductions** | Customer cancellation charges and other fees | Miscellaneous deductions |
+| **Net Pay** | `Net Order` - `Total Deductions` | Final payout to restaurant |
+| **No. of Orders** | Count of unique orders | Order count |
+| **Discounts** | \|`Restaurant Discount Share`\| | Absolute value of restaurant's discount share |
+| **GST on Order** | `GST Collected` | GST/Tax amount |
+| **Packings** | `Packaging Charges` | Packaging charges |
+| **Commission & Taxes** | `Total Swiggy Fees` + `TCS` + `TDS` | Platform fees + taxes (for compatibility) |
+| **NBV** | `GST on Order` - `Discounts` | Net Business Value |
 
-### Discount Breakdown (Swiggy)
-
-Calculated from **entire file** using "Discount Summary" sheet:
-
-1. **Per Restaurant Share %** (grouped by `Restaurant Share (%)` column)
-   - `orders` = sum of `Total Orders` for that share percentage
-   - `discount` = sum of `Total Discount Given` for that share percentage
-
-2. **Ordering**: Numeric keys (e.g., 65, 100) → Undefined → TOTAL
-
-3. **TOTAL**
-   - `orders` = sum of all orders
-   - `discount` = sum of all discounts
+### Restaurant ID Extraction (Excel Only)
+- **Sheet**: "Summary"
+- **Method**: 
+  1. Read first 15 rows without header
+  2. Search each cell for text containing "Rest. ID"
+  3. Extract ID using pattern: `r"Rest\. ID\s*-\s*(\d+)"`
 
 ---
 
 ## **TAKEAWAY (POS) Calculations**
 
-### Column Headers Used
-- `Branch Name` - Branch identifier
-- `Order Source` - Must be "POS" (filters applied)
-- `Invoice Number` - Unique order identifier (for deduplication)
-- `Invoice Date` - Date grouping
-- `Gross Amount` - Gross sale amount
-- `Discounts` - Discount amount
-- `Taxes` (or `GST`) - Tax amount
-- `Other Charge Amount` - Packaging/other charges
-- `Total` (or `Net Sale`) - Net sale amount
+### File Format & Structure
+- **File Types**: Excel (.xlsx) or CSV (.csv)
+- **Single Sheet**: No specific sheet name (single sheet file)
+- **Skip Rows**: First 1 row is skipped (header row)
+- **Detection Method**: Looks for both `Branch Name` AND `Order Source` columns
+- **Channel Filtering**: Separates data by "Channel" column:
+  - `Takeaway - Swap` → Main POS orders
+  - `Corporate Orders` → Saved with `_CO` suffix in restaurantId
+
+### Column Headers Used (Regex Patterns)
+- `Branch Name` - Branch identifier - Pattern: `r"Branch Name"`
+- `Order Source` - Order source type - Pattern: `r"Order Source"` (Not used in filtering, kept for compatibility)
+- `Invoice Number` - Unique order identifier (for deduplication) - Pattern: `r"Invoice Number"`
+- `Invoice Date` - Date grouping - Pattern: `r"Invoice Date"`
+- `Gross Amount` - Gross sale amount - Pattern: `r"Gross Amount"`
+- `Discounts` - Discount amount - Pattern: `r"Discounts"`
+- `Taxes` / `GST` - Tax amount - Pattern: `r"(Taxes(\s*\(.*\))?|GST.*)"`  
+  *(Matches "Taxes", "Taxes (...)", or "GST...")*
+- `Other Charge Amount` - Packaging/other charges - Pattern: `r"Other Charge Amount"`
+- `Total` / `Net Sale` - Net sale amount - Pattern: `r"(Total.*|Net Sale)"`  
+  *(Matches "Total", "Total (net sale)", or "Net Sale")*
 
 ### Metric Formulas
 
-| Metric | Formula |
-|--------|---------|
-| **Gross Sale** | `Gross Amount` + \|`Other Charge Amount`\| - `Taxes/GST` |
-| **GST on Order** | `Taxes` (or `GST`) |
-| **Discounts** | \|`Discounts`\| |
-| **Packings** | `Other Charge Amount` |
-| **Commission & Taxes** | 0 (no commissions in POS) |
-| **Payout** | 0 (no payout in POS) |
-| **Ads** | 0 (no ads in POS) |
-| **Net Sale** | `Total` (or `Net Sale`) |
-| **NBV** | `GST` - `Discounts` |
+| Metric | Formula | Description |
+|--------|---------|-------------|
+| **Gross Sale** | `Gross Amount` + \|`Other Charge Amount`\| - `Taxes/GST` | Base sale amount WITHOUT GST |
+| **Gross Sale + GST** | `Gross Sale` + `Taxes/GST` | Total amount WITH GST (shown in UI) |
+| **GST on Order** | `Taxes` (or `GST`) | GST/Tax amount |
+| **Discounts** | \|`Discounts`\| | Absolute value of discounts |
+| **Packings** | `Other Charge Amount` | Other charges (packaging) |
+| **Commission & Taxes** | 0 | No commissions in POS |
+| **Net Sale** | `Gross Sale` - `GST on Order` - `Discounts` | Final sale amount |
+| **NBV** | `GST on Order` - `Discounts` | Net Business Value |
 
-**Note**: Only orders where `Order Source = "POS"` are processed.
+### Branch Processing
+- **Main Orders** (Channel = "Takeaway - Swap"):
+  - Group by: Branch Name AND Date
+  - RestaurantId: Sanitized branch name (non-alphanumeric chars → `_`)
+  - S3 Key: `daily-insights/{sanitized_branch_name}/{date}.json`
+
+- **Corporate Orders** (Channel = "Corporate Orders"):
+  - Group by: Branch Name AND Date
+  - RestaurantId: Sanitized branch name + `_CO` suffix
+  - S3 Key: `daily-insights/{sanitized_branch_name}_CO/{date}.json`
+  - Platform: "takeaway-corporate"
+
+**Note**: Data is filtered by "Channel" column value, not "Order Source"
+
+---
+
+## **Dashboard Cards Display**
+
+### Cards for Zomato/Swiggy (Aggregator Platforms)
+These platforms show detailed breakdown with Net Order and Deductions:
+1. **Gross Sale + GST** - Total amount with tax
+2. **Gross Sale** - Amount without GST
+3. **Net Order** (with breakdown) - Order value after discounts
+4. **Deductions** (with breakdown) - Commission, Taxes, Other
+5. **No. of Orders** - Order count
+6. **Net Sale** - Final amount after all deductions
+7. **Discounts** - Promotional and BOGO discounts
+8. **GST on Order** - Tax amount
+9. **Packings** - Packaging charges
+10. **Commission & Taxes** - Platform fees
+11. **NBV** - Net Business Value
+
+### Cards for Takeaway/Corporate (POS Platforms)
+These platforms show simpler metrics without aggregator fees:
+1. **Gross Sale + GST** - Calculated as `Gross Sale` + `GST on Order`
+2. **Gross Sale** - Base sale amount
+3. **No. of Orders** - Order count
+4. **Net Sale** - `Gross Sale` - `GST` - `Discounts`
+5. **Discounts** - Discount amount
+6. **GST on Order** - Tax amount
+7. **Packings** - Other charges
+8. **Commission & Taxes** - Always 0 (no platform fees)
+9. **NBV** - `GST` - `Discounts`
+
+**Note**: Net Order, Deductions, and Net Pay cards are ONLY shown for Zomato/Swiggy platforms.
 
 ---
 
@@ -147,16 +216,6 @@ To prevent double-counting when files have overlapping data:
 
 ### Fallback
 If no order ID column found, uses `file_hash + row_index` as unique identifier.
-
----
-
-## **Daily Ad Cost Calculation**
-
-For Zomato and Swiggy:
-
-1. Extract total ads amount from respective sheets
-2. Calculate: `daily_ad_cost = total_ads ÷ number_of_unique_days_in_file`
-3. Apply to each day proportionally
 
 ---
 
@@ -183,6 +242,9 @@ The API response returns:
 
 - **Date Range**: `startDate` and `endDate` from the file
 - **Summary Metrics**: Aggregated totals across all processed dates
+  - **Gross Sale + GST**: Calculated in frontend as `Gross Sale` + `GST on Order` if not provided by backend
+  - **Net Sale**: `Gross Sale` - `Commission & Taxes` - `Discounts`
+  - **NBV**: `GST on Order` - `Discounts`
 - **Discount Breakdown**: 
   - Zomato: Aggregated from all new orders
   - Swiggy: From entire file (same for all days)
